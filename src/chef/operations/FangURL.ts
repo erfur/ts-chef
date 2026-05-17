@@ -74,7 +74,7 @@ export class FangURL extends Operation {
  * @param {boolean} slashes
  * @returns {string}
  */
-function fangURL(url, dots, http, slashes) {
+function fangURL(url: string, dots: boolean, http: boolean, slashes: boolean): string {
     if (dots) url = url.replace(/\[\.\]/g, ".");
     if (http) url = url.replace(/hxxp/g, "http");
     if (slashes) url = url.replace(/\[:\/\/\]/g, "://");

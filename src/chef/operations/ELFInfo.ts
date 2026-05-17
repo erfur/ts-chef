@@ -13,7 +13,7 @@
 
 import { Operation } from "../Operation";
 import Stream from "../lib/Stream";
-import Utils from "../Utils";
+import { Utils } from "../Utils";
 import OperationError from "../errors/OperationError";
 
 /**
@@ -38,10 +38,10 @@ export class ELFInfo extends Operation {
 
     /**
      * @param {ArrayBuffer} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: ArrayBuffer, args: any[]): string {
         let phoff = 0;
         let phEntries = 0;
         let shoff = 0;
@@ -49,7 +49,7 @@ export class ELFInfo extends Operation {
         let shentSize = 0;
         let entry = 0;
         let format = 0;
-        let endianness = "";
+        let endianness: "le" | "be" = "le";
         let shstrtab = 0;
 
         let namesOffset = 0;
@@ -64,16 +64,16 @@ export class ELFInfo extends Operation {
         /**
          * This function reads characters until it hits a null terminator.
          *
-         * @param {stream} stream
-         * @param {integer} namesOffset
-         * @param {integer} nameOffset
+         * @param {Stream} stream
+         * @param {number} namesOffset
+         * @param {number} nameOffset
          * @returns {string}
          */
-        function readString(stream, namesOffset, nameOffset) {
+        function readString(stream: Stream, namesOffset: number, nameOffset: number): string {
             const preMove = stream.position;
             stream.moveTo(namesOffset + nameOffset);
 
-            const nameResult = stream.readString();
+            const nameResult = stream.readString() ?? "";
             stream.moveTo(preMove);
             return nameResult;
         }
@@ -81,10 +81,10 @@ export class ELFInfo extends Operation {
         /**
          * This function parses and extracts relevant information from the ELF Header.
          *
-         * @param {stream} stream
+         * @param {Stream} stream
          * @returns {string}
          */
-        function elfHeader(stream) {
+        function elfHeader(stream: Stream): string {
             /**
              * The ELF Header is comprised of the following structures depending on the binary's format.
              *
@@ -117,24 +117,24 @@ export class ELFInfo extends Operation {
              * e_shnum     - 2 Bytes specifying the number of entries in the Section Header Table.
              * e_shstrndx  - 2 Bytes specifying the index of the section containing the section names in the Section Header Table.
              */
-            const ehResult = [];
+            const ehResult: string[] = [];
 
             const magic = stream.getBytes(4);
-            if (magic.join("") !== [0x7f, 0x45, 0x4c, 0x46].join(""))
+            if (!magic || Array.from(magic).join(",") !== [0x7f, 0x45, 0x4c, 0x46].join(","))
                 throw new OperationError("Invalid ELF");
 
-            ehResult.push("Magic:".padEnd(align) + `${Utils.byteArrayToChars(magic)}`);
+            ehResult.push("Magic:".padEnd(align) + `${Utils.byteArrayToChars(Array.from(magic))}`);
 
-            format = stream.readInt(1);
+            format = stream.readInt(1) ?? 0;
             ehResult.push("Format:".padEnd(align) + `${format === 1 ? "32-bit" : "64-bit"}`);
 
-            endianness = stream.readInt(1) === 1 ? "le" : "be";
+            endianness = (stream.readInt(1) ?? 1) === 1 ? "le" : "be";
             ehResult.push("Endianness:".padEnd(align) + `${endianness === "le" ? "Little" : "Big"}`);
 
-            ehResult.push("Version:".padEnd(align) + `${stream.readInt(1).toString()}`);
+            ehResult.push("Version:".padEnd(align) + `${(stream.readInt(1) ?? 0).toString()}`);
 
             let ABI = "";
-            switch (stream.readInt(1)) {
+            switch (stream.readInt(1) ?? -1) {
                 case 0x00:
                     ABI = "System V";
                     break;
@@ -195,14 +195,14 @@ export class ELFInfo extends Operation {
             ehResult.push("ABI:".padEnd(align) + ABI);
 
             // Linux Kernel does not use ABI Version.
-            const abiVersion = stream.readInt(1).toString();
+            const abiVersion = (stream.readInt(1) ?? 0).toString();
             if (ABI !== "Linux")
                 ehResult.push("ABI Version:".padEnd(align) + abiVersion);
 
             stream.moveForwardsBy(7);
 
             let eType = "";
-            switch (stream.readInt(2, endianness)) {
+            switch (stream.readInt(2, endianness) ?? -1) {
                 case 0x0000:
                     eType = "Unknown";
                     break;
@@ -236,7 +236,7 @@ export class ELFInfo extends Operation {
             ehResult.push("Type:".padEnd(align) + eType);
 
             let ISA = "";
-            switch (stream.readInt(2, endianness)) {
+            switch (stream.readInt(2, endianness) ?? -1) {
                 case 0x0000:
                     ISA = "No specific instruction set";
                     break;
@@ -531,29 +531,29 @@ export class ELFInfo extends Operation {
             }
             ehResult.push("Instruction Set Architecture:".padEnd(align) + ISA);
 
-            ehResult.push("ELF Version:".padEnd(align) + `${stream.readInt(4, endianness)}`);
+            ehResult.push("ELF Version:".padEnd(align) + `${stream.readInt(4, endianness) ?? 0}`);
 
             const readSize = format === 1 ? 4 : 8;
-            entry = stream.readInt(readSize, endianness);
-            phoff = stream.readInt(readSize, endianness);
-            shoff = stream.readInt(readSize, endianness);
+            entry = stream.readInt(readSize, endianness) ?? 0;
+            phoff = stream.readInt(readSize, endianness) ?? 0;
+            shoff = stream.readInt(readSize, endianness) ?? 0;
             ehResult.push("Entry Point:".padEnd(align) + `0x${Utils.hex(entry)}`);
             ehResult.push("Entry PHOFF:".padEnd(align) + `0x${Utils.hex(phoff)}`);
             ehResult.push("Entry SHOFF:".padEnd(align) + `0x${Utils.hex(shoff)}`);
 
-            const flags = stream.readInt(4, endianness);
+            const flags = stream.readInt(4, endianness) ?? 0;
             ehResult.push("Flags:".padEnd(align) + `${Utils.bin(flags)}`);
 
-            ehResult.push("ELF Header Size:".padEnd(align) + `${stream.readInt(2, endianness)} bytes`);
-            ehResult.push("Program Header Size:".padEnd(align) + `${stream.readInt(2, endianness)} bytes`);
-            phEntries = stream.readInt(2, endianness);
-            ehResult.push("Program Header Entries:".padEnd(align) + phEntries);
-            shentSize = stream.readInt(2, endianness);
+            ehResult.push("ELF Header Size:".padEnd(align) + `${stream.readInt(2, endianness) ?? 0} bytes`);
+            ehResult.push("Program Header Size:".padEnd(align) + `${stream.readInt(2, endianness) ?? 0} bytes`);
+            phEntries = stream.readInt(2, endianness) ?? 0;
+            ehResult.push("Program Header Entries:".padEnd(align) + phEntries.toString());
+            shentSize = stream.readInt(2, endianness) ?? 0;
             ehResult.push("Section Header Size:".padEnd(align) + shentSize + " bytes");
-            shEntries = stream.readInt(2, endianness);
-            ehResult.push("Section Header Entries:".padEnd(align) + shEntries);
-            shstrtab = stream.readInt(2, endianness);
-            ehResult.push("Section Header Names:".padEnd(align) + shstrtab);
+            shEntries = stream.readInt(2, endianness) ?? 0;
+            ehResult.push("Section Header Entries:".padEnd(align) + shEntries.toString());
+            shstrtab = stream.readInt(2, endianness) ?? 0;
+            ehResult.push("Section Header Names:".padEnd(align) + shstrtab.toString());
 
             return ehResult.join("\n");
         }
@@ -561,10 +561,10 @@ export class ELFInfo extends Operation {
         /**
          * This function parses and extracts relevant information from a Program Header.
          *
-         * @param {stream} stream
+         * @param {Stream} stream
          * @returns {string}
          */
-        function programHeader(stream) {
+        function programHeader(stream: Stream): string {
             /**
              * A Program Header is comprised of the following structures depending on the binary's format.
              *
@@ -592,11 +592,11 @@ export class ELFInfo extends Operation {
             /**
              * This function decodes the flags bitmask for the Program Header.
              *
-             * @param {integer} flags
+             * @param {number} flags
              * @returns {string}
              */
-            function readFlags(flags) {
-                const result = [];
+            function readFlags(flags: number): string {
+                const result: string[] = [];
                 if (flags & 0x1)
                     result.push("Execute");
                 if (flags & 0x2)
@@ -608,10 +608,10 @@ export class ELFInfo extends Operation {
                 return result.join(",");
             }
 
-            const phResult = [];
+            const phResult: string[] = [];
 
             let pType = "";
-            const programHeaderType = stream.readInt(4, endianness);
+            const programHeaderType = stream.readInt(4, endianness) ?? -1;
             switch (true) {
                 case (programHeaderType === 0x00000000):
                     pType = "Unused";
@@ -650,17 +650,17 @@ export class ELFInfo extends Operation {
             phResult.push("Program Header Type:".padEnd(align) + pType);
 
             if (format === 2)
-                phResult.push("Flags:".padEnd(align) + readFlags(stream.readInt(4, endianness)));
+                phResult.push("Flags:".padEnd(align) + readFlags(stream.readInt(4, endianness) ?? 0));
 
             const readSize = format === 1? 4 : 8;
-            phResult.push("Offset Of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness)}`);
-            phResult.push("Virtual Address of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness)}`);
-            phResult.push("Physical Address of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness)}`);
-            phResult.push("Size of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness)} bytes`);
-            phResult.push("Size of Segment in Memory:".padEnd(align) + `${stream.readInt(readSize, endianness)} bytes`);
+            phResult.push("Offset Of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness) ?? 0}`);
+            phResult.push("Virtual Address of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness) ?? 0}`);
+            phResult.push("Physical Address of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness) ?? 0}`);
+            phResult.push("Size of Segment:".padEnd(align) + `${stream.readInt(readSize, endianness) ?? 0} bytes`);
+            phResult.push("Size of Segment in Memory:".padEnd(align) + `${stream.readInt(readSize, endianness) ?? 0} bytes`);
 
             if (format === 1)
-                phResult.push("Flags:".padEnd(align) + readFlags(stream.readInt(4, endianness)));
+                phResult.push("Flags:".padEnd(align) + readFlags(stream.readInt(4, endianness) ?? 0));
 
             stream.moveForwardsBy(readSize);
 
@@ -670,10 +670,10 @@ export class ELFInfo extends Operation {
         /**
          * This function parses and extracts relevant information from a Section Header.
          *
-         * @param {stream} stream
+         * @param {Stream} stream
          * @returns {string}
          */
-        function sectionHeader(stream) {
+        function sectionHeader(stream: Stream): string {
             /**
              * A Section Header is comprised of the following structures depending on the binary's format.
              *
@@ -700,11 +700,11 @@ export class ELFInfo extends Operation {
              *      sh_addralign    - 8 Bytes containing the alignment for the section.
              *      sh_entsize      - 8 Bytes specifying the size, in bytes, of each entry in the section.
              */
-            const shResult = [];
+            const shResult: string[] = [];
 
-            const nameOffset = stream.readInt(4, endianness);
+            const nameOffset = stream.readInt(4, endianness) ?? 0;
             let type = "";
-            const shType = stream.readInt(4, endianness);
+            const shType = stream.readInt(4, endianness) ?? -1;
             switch (true) {
                 case (shType === 0x00000001):
                     type = "Program Data";
@@ -781,9 +781,9 @@ export class ELFInfo extends Operation {
 
             const readSize = (format === 1) ? 4 : 8;
 
-            const flags = stream.readInt(readSize, endianness);
-            const shFlags = [];
-            const bitMasks = [
+            const flags = stream.readInt(readSize, endianness) ?? 0;
+            const shFlags: string[] = [];
+            const bitMasks: [number, string][] = [
                 [0x00000001, "Writable"],
                 [0x00000002, "Alloc"],
                 [0x00000004, "Executable"],
@@ -803,26 +803,26 @@ export class ELFInfo extends Operation {
                 if (flags & elem[0])
                     shFlags.push(elem[1]);
             });
-            shResult.push("Flags:".padEnd(align) + shFlags);
+            shResult.push("Flags:".padEnd(align) + shFlags.join(","));
 
-            const vaddr = stream.readInt(readSize, endianness);
-            shResult.push("Section Vaddr in memory:".padEnd(align) + vaddr);
+            const vaddr = (stream.readInt(readSize, endianness) ?? 0);
+            shResult.push("Section Vaddr in memory:".padEnd(align) + vaddr.toString());
 
-            const shoffset = stream.readInt(readSize, endianness);
-            shResult.push("Offset of the section:".padEnd(align) + shoffset);
+            const shoffset = (stream.readInt(readSize, endianness) ?? 0);
+            shResult.push("Offset of the section:".padEnd(align) + shoffset.toString());
 
-            const secSize = stream.readInt(readSize, endianness);
-            shResult.push("Section Size:".padEnd(align) + secSize);
+            const secSize = (stream.readInt(readSize, endianness) ?? 0);
+            shResult.push("Section Size:".padEnd(align) + secSize.toString());
 
-            const associatedSection = stream.readInt(4, endianness);
-            shResult.push("Associated Section:".padEnd(align) + associatedSection);
+            const associatedSection = stream.readInt(4, endianness) ?? 0;
+            shResult.push("Associated Section:".padEnd(align) + associatedSection.toString());
 
-            const extraInfo = stream.readInt(4, endianness);
-            shResult.push("Section Extra Information:".padEnd(align) + extraInfo);
+            const extraInfo = stream.readInt(4, endianness) ?? 0;
+            shResult.push("Section Extra Information:".padEnd(align) + extraInfo.toString());
 
             // Jump over alignment field.
             stream.moveForwardsBy(readSize);
-            const entSize = stream.readInt(readSize, endianness);
+            const entSize = stream.readInt(readSize, endianness) ?? 0;
             switch (nameResult) {
                 case ".strtab":
                     strtabOffset = shoffset;
@@ -841,17 +841,17 @@ export class ELFInfo extends Operation {
         /**
          * This function returns the offset of the Section Header Names Section.
          *
-         * @param {stream} stream
+         * @param {Stream} stream
          */
-        function getNamesOffset(stream) {
+        function getNamesOffset(stream: Stream): void {
             const preMove = stream.position;
             stream.moveTo(shoff + (shentSize * shstrtab));
             if (format === 1) {
                 stream.moveForwardsBy(0x10);
-                namesOffset = stream.readInt(4, endianness);
+                namesOffset = stream.readInt(4, endianness) ?? 0;
             } else {
                 stream.moveForwardsBy(0x18);
-                namesOffset = stream.readInt(8, endianness);
+                namesOffset = stream.readInt(8, endianness) ?? 0;
             }
             stream.position = preMove;
         }
@@ -859,10 +859,10 @@ export class ELFInfo extends Operation {
         /**
          * This function returns a symbol's name from the string table.
          *
-         * @param {stream} stream
+         * @param {Stream} stream
          * @returns {string}
          */
-        function getSymbols(stream) {
+        function getSymbols(stream: Stream): string {
             /**
              * The Symbol Table is comprised of Symbol Table Entries whose structure depends on the binary's format.
              *
@@ -882,14 +882,14 @@ export class ELFInfo extends Operation {
              *      st_value        - 8 Bytes identifying the value associated with the symbol.
              *      st_size         - 8 Bytes specifying the size associated with the symbol (this is not the size of the symbol).
              */
-            const nameOffset = stream.readInt(4, endianness);
+            const nameOffset = stream.readInt(4, endianness) ?? 0;
             stream.moveForwardsBy(format === 2 ? 20 : 12);
             return readString(stream, strtabOffset, nameOffset);
         }
 
-        input = new Uint8Array(input);
-        const stream = new Stream(input);
-        const result = ["=".repeat(align) + " ELF Header " + "=".repeat(align)];
+        const uint8Input = new Uint8Array(input);
+        const stream = new Stream(uint8Input);
+        const result: string[] = ["=".repeat(align) + " ELF Header " + "=".repeat(align)];
         result.push(elfHeader(stream) + "\n");
 
         getNamesOffset(stream);

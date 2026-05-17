@@ -63,7 +63,7 @@ export class ProtobufDecode extends Operation {
         try {
             return Protobuf.decode(input, args);
         } catch (err) {
-            throw new OperationError(err);
+            throw new OperationError(err instanceof Error ? err.message : String(err));
         }
     }
 

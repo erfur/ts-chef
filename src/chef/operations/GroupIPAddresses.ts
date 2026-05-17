@@ -55,24 +55,25 @@ export class GroupIPAddresses extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const delim = Utils.charRep(args[0]),
-            cidr = args[1],
-            onlySubnets = args[2],
+            cidr: number = args[1],
+            onlySubnets: boolean = args[2],
             ipv4Mask = cidr < 32 ? ~(0xFFFFFFFF >>> cidr) : 0xFFFFFFFF,
             ipv6Mask = genIpv6Mask(cidr),
             ips = input.split(delim),
-            ipv4Networks = {},
-            ipv6Networks = {};
-        let match = null,
+            ipv4Networks: { [key: number]: number[] } = {},
+            ipv6Networks: { [key: string]: number[][] } = {};
+        let match: RegExpExecArray | null = null,
             output = "",
-            ip = null,
-            network = null,
+            ip4: number = 0,
+            ip6: number[] = [],
+            network4: number = 0,
             networkStr = "",
-            i;
+            i: number;
 
         if (cidr < 0 || cidr > 127) {
             throw new OperationError("CIDR must be less than 32 for IPv4 or 128 for IPv6");
@@ -81,56 +82,57 @@ export class GroupIPAddresses extends Operation {
         // Parse all IPs and add to network dictionary
         for (i = 0; i < ips.length; i++) {
             if ((match = IPV4_REGEX.exec(ips[i]))) {
-                ip = strToIpv4(match[1]) >>> 0;
-                network = ip & ipv4Mask;
+                ip4 = (strToIpv4(match[1]) as number) >>> 0;
+                network4 = ip4 & ipv4Mask;
 
-                if (network in ipv4Networks) {
-                    ipv4Networks[network].push(ip);
+                if (network4 in ipv4Networks) {
+                    ipv4Networks[network4].push(ip4);
                 } else {
-                    ipv4Networks[network] = [ip];
+                    ipv4Networks[network4] = [ip4];
                 }
             } else if ((match = IPV6_REGEX.exec(ips[i]))) {
-                ip = strToIpv6(match[1]);
-                network = [];
+                ip6 = strToIpv6(match[1]) as number[];
+                const networkArr: number[] = [];
                 networkStr = "";
 
                 for (let j = 0; j < 8; j++) {
-                    network.push(ip[j] & ipv6Mask[j]);
+                    networkArr.push(ip6[j] & ipv6Mask[j]);
                 }
 
-                networkStr = ipv6ToStr(network, true);
+                networkStr = ipv6ToStr(networkArr, true);
 
                 if (networkStr in ipv6Networks) {
-                    ipv6Networks[networkStr].push(ip);
+                    ipv6Networks[networkStr].push(ip6);
                 } else {
-                    ipv6Networks[networkStr] = [ip];
+                    ipv6Networks[networkStr] = [ip6];
                 }
             }
         }
 
         // Sort IPv4 network dictionaries and print
-        for (network in ipv4Networks) {
-            ipv4Networks[network] = ipv4Networks[network].sort();
+        for (const net in ipv4Networks) {
+            const netNum = parseInt(net, 10);
+            ipv4Networks[netNum] = ipv4Networks[netNum].sort();
 
-            output += ipv4ToStr(network) + "/" + cidr + "\n";
+            output += ipv4ToStr(netNum) + "/" + cidr + "\n";
 
             if (!onlySubnets) {
-                for (i = 0; i < ipv4Networks[network].length; i++) {
-                    output += "  " + ipv4ToStr(ipv4Networks[network][i]) + "\n";
+                for (i = 0; i < ipv4Networks[netNum].length; i++) {
+                    output += "  " + ipv4ToStr(ipv4Networks[netNum][i]) + "\n";
                 }
                 output += "\n";
             }
         }
 
         // Sort IPv6 network dictionaries and print
-        for (networkStr in ipv6Networks) {
-            // ipv6Networks[networkStr] = ipv6Networks[networkStr].sort();  TODO
+        for (const netStr in ipv6Networks) {
+            // ipv6Networks[netStr] = ipv6Networks[netStr].sort();  TODO
 
-            output += networkStr + "/" + cidr + "\n";
+            output += netStr + "/" + cidr + "\n";
 
             if (!onlySubnets) {
-                for (i = 0; i < ipv6Networks[networkStr].length; i++) {
-                    output += "  " + ipv6ToStr(ipv6Networks[networkStr][i], true) + "\n";
+                for (i = 0; i < ipv6Networks[netStr].length; i++) {
+                    output += "  " + ipv6ToStr(ipv6Networks[netStr][i], true) + "\n";
                 }
                 output += "\n";
             }

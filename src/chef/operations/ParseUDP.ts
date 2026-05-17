@@ -67,15 +67,16 @@ export class ParseUDP extends Operation {
         }
 
         // Parse Header
-        const UDPPacket = {
+        const UDPPacket: Record<string, any> = {
             "Source port": s.readInt(2),
             "Destination port": s.readInt(2),
             "Length": s.readInt(2),
-            "Checksum": "0x" + toHexFast(s.getBytes(2))
+            "Checksum": "0x" + toHexFast(s.getBytes(2)!)
         };
         // Parse data if present
         if (s.hasMore()) {
-            UDPPacket.Data = "0x" + toHexFast(s.getBytes(UDPPacket.Length - 8));
+            const length: number = UDPPacket["Length"] ?? 8;
+            UDPPacket["Data"] = "0x" + toHexFast(s.getBytes(length - 8)!);
         }
 
         return UDPPacket;
@@ -86,7 +87,7 @@ export class ParseUDP extends Operation {
      * @param {Object} data
      * @returns {html}
      */
-    present(data) {
+    present(data: any) {
         return objToTable(data);
     }
 

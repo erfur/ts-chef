@@ -15,7 +15,8 @@ import { Operation } from "../Operation";
 import {COMPRESSION_TYPE} from "../lib/Zlib";
 import rawdeflate from "zlibjs/bin/rawdeflate.min.js";
 
-const Zlib = rawdeflate.Zlib;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Zlib = (rawdeflate as any).Zlib;
 
 const RAW_COMPRESSION_TYPE_LOOKUP = {
     "Fixed Huffman Coding":   Zlib.RawDeflate.CompressionType.FIXED,
@@ -56,7 +57,7 @@ export class RawDeflate extends Operation {
      */
     run(input: any, args: any[]): any {
         const deflate = new Zlib.RawDeflate(new Uint8Array(input), {
-            compressionType: RAW_COMPRESSION_TYPE_LOOKUP[args[0]]
+            compressionType: RAW_COMPRESSION_TYPE_LOOKUP[args[0] as keyof typeof RAW_COMPRESSION_TYPE_LOOKUP]
         });
         return new Uint8Array(deflate.compress()).buffer;
     }

@@ -54,17 +54,17 @@ export class RenderMarkdown extends Operation {
     /**
      * @param {string} input
      * @param {Object[]} args
-     * @returns {html}
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const [convertLinks, enableHighlighting, openLinksBlank] = args,
             md = new MarkdownIt({
                 linkify: convertLinks,
                 html: false, // Explicitly disable HTML rendering
-                highlight: function(str, lang) {
+                highlight: function(str: string, lang: string): string {
                     if (lang && hljs.getLanguage(lang) && enableHighlighting) {
                         try {
-                            return hljs.highlight(lang, str).value;
+                            return hljs.highlight(str, { language: lang }).value;
                         } catch (__) {}
                     }
 
@@ -82,7 +82,7 @@ export class RenderMarkdown extends Operation {
      * Adds target="_blank" to links.
      * @param {MarkdownIt} md
      */
-    makeLinksOpenInNewTab(md: any) {
+    makeLinksOpenInNewTab(md: MarkdownIt) {
         // Adapted from: https://github.com/markdown-it/markdown-it/blob/master/docs/architecture.md#renderer
         // Remember old renderer, if overridden, or proxy to default renderer
         const defaultRender = md.renderer.rules.link_open || function(tokens, idx, options, env, self) {
@@ -92,11 +92,16 @@ export class RenderMarkdown extends Operation {
         // eslint-disable-next-line camelcase
         md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
             const token = tokens[idx];
-            if (token.attrIndex("target") >= 0) {
-                // Target attribute already set, do not replace.
-                return;
+            const aIndex = token.attrIndex("target");
+
+            if (aIndex < 0) {
+                token.attrPush(["target", "_blank"]); // add new attribute
+            } else {
+                const attrs = token.attrs;
+                if (attrs) {
+                    attrs[aIndex][1] = "_blank";
+                }
             }
-            token.attrPush(["target", "_blank"]); // add new attribute
 
             // pass token to default renderer.
             return defaultRender(tokens, idx, options, env, self);

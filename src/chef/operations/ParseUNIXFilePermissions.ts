@@ -14,6 +14,28 @@
 import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 
+interface Perms {
+    d: boolean;
+    sl: boolean;
+    np: boolean;
+    s: boolean;
+    cd: boolean;
+    bd: boolean;
+    dr: boolean;
+    sb: boolean;
+    su: boolean;
+    sg: boolean;
+    ru: boolean;
+    wu: boolean;
+    eu: boolean;
+    rg: boolean;
+    wg: boolean;
+    eg: boolean;
+    ro: boolean;
+    wo: boolean;
+    eo: boolean;
+}
+
 /**
  * Parse UNIX file permissions operation
  */
@@ -46,8 +68,8 @@ export class ParseUNIXFilePermissions extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
-        const perms = {
+    run(input: string, args: any[]): string {
+        const perms: Perms = {
             d:  false, // directory
             sl: false, // symbolic link
             np: false, // named pipe
@@ -73,115 +95,121 @@ export class ParseUNIXFilePermissions extends Operation {
             g = 0,
             o = 0,
             output = "",
-            octal = null,
-            textual = null;
+            octal: string | null = null,
+            textual: string | null = null;
 
         if (input.search(/\s*[0-7]{1,4}\s*/i) === 0) {
             // Input is octal
-            octal = input.match(/\s*([0-7]{1,4})\s*/i)[1];
+            const match = input.match(/\s*([0-7]{1,4})\s*/i);
+            if (match) {
+                octal = match[1];
 
-            if (octal.length === 4) {
-                d = parseInt(octal[0], 8);
-                u = parseInt(octal[1], 8);
-                g = parseInt(octal[2], 8);
-                o = parseInt(octal[3], 8);
-            } else {
-                if (octal.length > 0) u = parseInt(octal[0], 8);
-                if (octal.length > 1) g = parseInt(octal[1], 8);
-                if (octal.length > 2) o = parseInt(octal[2], 8);
+                if (octal.length === 4) {
+                    d = parseInt(octal[0], 8);
+                    u = parseInt(octal[1], 8);
+                    g = parseInt(octal[2], 8);
+                    o = parseInt(octal[3], 8);
+                } else {
+                    if (octal.length > 0) u = parseInt(octal[0], 8);
+                    if (octal.length > 1) g = parseInt(octal[1], 8);
+                    if (octal.length > 2) o = parseInt(octal[2], 8);
+                }
+
+                perms.su = !!(d >> 2 & 0x1);
+                perms.sg = !!(d >> 1 & 0x1);
+                perms.sb = !!(d & 0x1);
+
+                perms.ru = !!(u >> 2 & 0x1);
+                perms.wu = !!(u >> 1 & 0x1);
+                perms.eu = !!(u & 0x1);
+
+                perms.rg = !!(g >> 2 & 0x1);
+                perms.wg = !!(g >> 1 & 0x1);
+                perms.eg = !!(g & 0x1);
+
+                perms.ro = !!(o >> 2 & 0x1);
+                perms.wo = !!(o >> 1 & 0x1);
+                perms.eo = !!(o & 0x1);
             }
-
-            perms.su = d >> 2 & 0x1;
-            perms.sg = d >> 1 & 0x1;
-            perms.sb = d & 0x1;
-
-            perms.ru = u >> 2 & 0x1;
-            perms.wu = u >> 1 & 0x1;
-            perms.eu = u & 0x1;
-
-            perms.rg = g >> 2 & 0x1;
-            perms.wg = g >> 1 & 0x1;
-            perms.eg = g & 0x1;
-
-            perms.ro = o >> 2 & 0x1;
-            perms.wo = o >> 1 & 0x1;
-            perms.eo = o & 0x1;
         } else if (input.search(/\s*[dlpcbDrwxsStT-]{1,10}\s*/) === 0) {
             // Input is textual
-            textual = input.match(/\s*([dlpcbDrwxsStT-]{1,10})\s*/)[1];
+            const match = input.match(/\s*([dlpcbDrwxsStT-]{1,10})\s*/);
+            if (match) {
+                textual = match[1];
 
-            switch (textual[0]) {
-                case "d":
-                    perms.d = true;
-                    break;
-                case "l":
-                    perms.sl = true;
-                    break;
-                case "p":
-                    perms.np = true;
-                    break;
-                case "s":
-                    perms.s = true;
-                    break;
-                case "c":
-                    perms.cd = true;
-                    break;
-                case "b":
-                    perms.bd = true;
-                    break;
-                case "D":
-                    perms.dr = true;
-                    break;
-            }
-
-            if (textual.length > 1) perms.ru = textual[1] === "r";
-            if (textual.length > 2) perms.wu = textual[2] === "w";
-            if (textual.length > 3) {
-                switch (textual[3]) {
-                    case "x":
-                        perms.eu = true;
+                switch (textual[0]) {
+                    case "d":
+                        perms.d = true;
+                        break;
+                    case "l":
+                        perms.sl = true;
+                        break;
+                    case "p":
+                        perms.np = true;
                         break;
                     case "s":
-                        perms.eu = true;
-                        perms.su = true;
+                        perms.s = true;
                         break;
-                    case "S":
-                        perms.su = true;
+                    case "c":
+                        perms.cd = true;
                         break;
-                }
-            }
-
-            if (textual.length > 4) perms.rg = textual[4] === "r";
-            if (textual.length > 5) perms.wg = textual[5] === "w";
-            if (textual.length > 6) {
-                switch (textual[6]) {
-                    case "x":
-                        perms.eg = true;
+                    case "b":
+                        perms.bd = true;
                         break;
-                    case "s":
-                        perms.eg = true;
-                        perms.sg = true;
-                        break;
-                    case "S":
-                        perms.sg = true;
+                    case "D":
+                        perms.dr = true;
                         break;
                 }
-            }
 
-            if (textual.length > 7) perms.ro = textual[7] === "r";
-            if (textual.length > 8) perms.wo = textual[8] === "w";
-            if (textual.length > 9) {
-                switch (textual[9]) {
-                    case "x":
-                        perms.eo = true;
-                        break;
-                    case "t":
-                        perms.eo = true;
-                        perms.sb = true;
-                        break;
-                    case "T":
-                        perms.sb = true;
-                        break;
+                if (textual.length > 1) perms.ru = textual[1] === "r";
+                if (textual.length > 2) perms.wu = textual[2] === "w";
+                if (textual.length > 3) {
+                    switch (textual[3]) {
+                        case "x":
+                            perms.eu = true;
+                            break;
+                        case "s":
+                            perms.eu = true;
+                            perms.su = true;
+                            break;
+                        case "S":
+                            perms.su = true;
+                            break;
+                    }
+                }
+
+                if (textual.length > 4) perms.rg = textual[4] === "r";
+                if (textual.length > 5) perms.wg = textual[5] === "w";
+                if (textual.length > 6) {
+                    switch (textual[6]) {
+                        case "x":
+                            perms.eg = true;
+                            break;
+                        case "s":
+                            perms.eg = true;
+                            perms.sg = true;
+                            break;
+                        case "S":
+                            perms.sg = true;
+                            break;
+                    }
+                }
+
+                if (textual.length > 7) perms.ro = textual[7] === "r";
+                if (textual.length > 8) perms.wo = textual[8] === "w";
+                if (textual.length > 9) {
+                    switch (textual[9]) {
+                        case "x":
+                            perms.eo = true;
+                            break;
+                        case "t":
+                            perms.eo = true;
+                            perms.sb = true;
+                            break;
+                        case "T":
+                            perms.sb = true;
+                            break;
+                    }
                 }
             }
         } else {
@@ -231,10 +259,10 @@ export class ParseUNIXFilePermissions extends Operation {
 /**
  * Given a permissions object dictionary, generates a textual permissions string.
  *
- * @param {Object} perms
+ * @param {Perms} perms
  * @returns {string}
  */
-function permsToStr(perms) {
+function permsToStr(perms: Perms): string {
     let str = "",
         type = "-";
 
@@ -290,10 +318,10 @@ function permsToStr(perms) {
 /**
  * Given a permissions object dictionary, generates an octal permissions string.
  *
- * @param {Object} perms
+ * @param {Perms} perms
  * @returns {string}
  */
-function permsToOctal(perms) {
+function permsToOctal(perms: Perms): string {
     let d = 0,
         u = 0,
         g = 0,
@@ -322,10 +350,10 @@ function permsToOctal(perms) {
 /**
  * Given a permissions object dictionary, returns the file type.
  *
- * @param {Object} perms
+ * @param {Perms} perms
  * @returns {string}
  */
-function ftFromPerms(perms) {
+function ftFromPerms(perms: Perms): string {
     if (perms.d) return "Directory";
     if (perms.sl) return "Symbolic link";
     if (perms.np) return "Named pipe";

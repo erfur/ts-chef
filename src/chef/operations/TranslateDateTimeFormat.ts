@@ -56,7 +56,8 @@ export class TranslateDateTimeFormat extends Operation {
         if (builtinIn !== "Input format") inputFormat = builtinIn;
         if (builtinOut !== "Output format") outputFormat = builtinOut;
 
-        let d: moment.Moment;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let d: any;
         try {
             d = moment.tz(input, inputFormat, inputTZ || "UTC");
         } catch {

@@ -138,9 +138,9 @@ export class CropImage extends Operation {
 
             let imageBuffer;
             if (image.mime === "image/gif") {
-                imageBuffer = await image.getBuffer(JimpMime.png);
+                imageBuffer = await image.getBuffer(JimpMime.png as any);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as any);
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -153,7 +153,7 @@ export class CropImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

@@ -12,6 +12,9 @@
  */
 
 import { Operation } from "../Operation";
+import XRegExp from "xregexp";
+import Dish from "../Dish";
+import { isWorkerEnvironment } from "../Utils";
 
 /**
  * Register operation
@@ -62,7 +65,7 @@ export class Register extends Operation {
      * @param {Operation[]} state.opList - The list of operations in the recipe.
      * @returns {Object} The updated state of the recipe.
      */
-    async run(state) {
+    async run(state: { progress: number; dish: { get(type: number): Promise<string> }; opList: Array<{ ingValues: unknown[]; disabled?: boolean }>; forkOffset: number; numRegisters: number }) {
         const ings = state.opList[state.progress].ingValues;
         const [extractorStr, i, m, s] = ings;
 
@@ -78,7 +81,7 @@ export class Register extends Operation {
         if (!registers) return state;
 
         if (isWorkerEnvironment()) {
-            self.setRegisters(state.forkOffset + state.progress, state.numRegisters, registers.slice(1));
+            (self as unknown as { setRegisters: (...args: unknown[]) => void }).setRegisters(state.forkOffset + state.progress, state.numRegisters, registers.slice(1));
         }
 
         /**
@@ -87,9 +90,9 @@ export class Register extends Operation {
          * @param {string} str
          * @returns {string}
          */
-        function replaceRegister(str) {
+        function replaceRegister(str: string): string {
             // Replace references to registers ($Rn) with contents of registers
-            return str.replace(/(\\*)\$R(\d{1,2})/g, (match, slashes, regNum) => {
+            return str.replace(/(\\*)\$R(\d{1,2})/g, (match: string, slashes: string, regNum: string) => {
                 const index = parseInt(regNum, 10) + 1;
                 if (index <= state.numRegisters || index >= state.numRegisters + registers.length)
                     return match;
@@ -103,7 +106,7 @@ export class Register extends Operation {
             if (state.opList[i].disabled) continue;
 
             let args = state.opList[i].ingValues;
-            args = args.map(arg => {
+            args = args.map((arg: unknown) => {
                 if (typeof arg !== "string" && typeof arg !== "object") return arg;
 
                 if (typeof arg === "object" && Object.prototype.hasOwnProperty.call(arg, "string")) {

@@ -15,7 +15,8 @@ import { Operation } from "../Operation";
 import {INFLATE_BUFFER_TYPE} from "../lib/Zlib";
 import rawinflate from "zlibjs/bin/rawinflate.min.js";
 
-const Zlib = rawinflate.Zlib;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Zlib = (rawinflate as any).Zlib;
 
 const RAW_BUFFER_TYPE_LOOKUP = {
     "Adaptive": Zlib.RawInflate.BufferType.ADAPTIVE,
@@ -66,7 +67,8 @@ export class RawInflate extends Operation {
                 value: false
             }
         ];
-        this.checks = [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (this as any).checks = [
             {
                 entropyRange: [7.5, 8],
                 args: [0, 0, INFLATE_BUFFER_TYPE, false, false]
@@ -83,7 +85,7 @@ export class RawInflate extends Operation {
         const inflate = new Zlib.RawInflate(new Uint8Array(input), {
                 index: args[0],
                 bufferSize: args[1],
-                bufferType: RAW_BUFFER_TYPE_LOOKUP[args[2]],
+                bufferType: RAW_BUFFER_TYPE_LOOKUP[args[2] as keyof typeof RAW_BUFFER_TYPE_LOOKUP],
                 resize: args[3],
                 verify: args[4]
             }),

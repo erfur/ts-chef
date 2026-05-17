@@ -50,7 +50,7 @@ export class PHPDeserialize extends Operation {
          * Recursive method for deserializing.
          * @returns {*}
          */
-        function handleInput() {
+        function handleInput(): any {
             /**
              * Read `length` characters from the input, shifting them out the input.
              * @param length
@@ -104,7 +104,7 @@ export class PHPDeserialize extends Operation {
              * Helper function to handle deserialized arrays.
              * @returns {Array}
              */
-            function handleArray() {
+            function handleArray(): any[] {
                 const items = parseInt(readUntil(":"), 10) * 2;
                 expect("{");
                 const result = [];
@@ -155,7 +155,7 @@ export class PHPDeserialize extends Operation {
                     expect(":");
                     const length = readUntil(":");
                     expect("\"");
-                    const value = read(length);
+                    const value = read(parseInt(length, 10));
                     expect('";');
                     if (args[0]) {
                         return '"' + value.replace(/"/g, '\\"') + '"'; // lgtm [js/incomplete-sanitization]

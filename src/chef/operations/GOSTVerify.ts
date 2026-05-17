@@ -117,7 +117,14 @@ export class GOSTVerify extends Operation {
 
         const sBoxVal = versionNum === 1989 ? sBox : null;
 
-        const algorithm = {
+        const algorithm: {
+            version: number;
+            length: number;
+            mode: string;
+            sBox: unknown;
+            macLength: number;
+            iv?: unknown;
+        } = {
             version: versionNum,
             length: blockLength,
             mode: "MAC",
@@ -134,7 +141,7 @@ export class GOSTVerify extends Operation {
 
             return out ? "The signature matches" : "The signature does not match";
         } catch (err) {
-            throw new OperationError(err);
+            throw new OperationError(err instanceof Error ? err.message : String(err));
         }
     }
 

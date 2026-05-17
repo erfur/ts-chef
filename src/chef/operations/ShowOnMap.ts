@@ -87,7 +87,7 @@ export class ShowOnMap extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    async present(data, args) {
+    async present(data: any, args: any[]) {
         if (data.replace(/\s+/g, "") === "") {
             data = "0, 0";
         }

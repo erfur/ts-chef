@@ -67,7 +67,7 @@ export class FlaskSessionDecode extends Operation {
         const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
         let payloadJson;
         try {
-            payloadJson = fromBase64(padded);
+            payloadJson = fromBase64(padded) as string;
         } catch (e) {
             throw new OperationError("Invalid Base64 payload");
         }
@@ -80,7 +80,8 @@ export class FlaskSessionDecode extends Operation {
             }
             return data;
         } catch (e) {
-            throw new OperationError("Unable to decode JSON payload: " + e.message);
+            const errMsg = e instanceof Error ? e.message : String(e);
+            throw new OperationError("Unable to decode JSON payload: " + errMsg);
         }
     }
 }

@@ -80,7 +80,7 @@ export class GenerateQRCode extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data, args) {
+    present(data: ArrayBuffer, args: unknown[]) {
         if (!data.byteLength && !data.length) return "";
         const dataArray = new Uint8Array(data),
             [format] = args;

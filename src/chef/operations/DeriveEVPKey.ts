@@ -76,9 +76,9 @@ export class DeriveEVPKey extends Operation {
             hasher = args[3],
             salt = CryptoJS.enc.Latin1.parse(
                 Utils.convertToByteString(args[4].string, args[4].option)),
-            key = CryptoJS.EvpKDF(passphrase, salt, { // lgtm [js/insufficient-password-hash]
+            key = CryptoJS.EvpKDF(passphrase as any, salt as any, { // lgtm [js/insufficient-password-hash]
                 keySize: keySize,
-                hasher: CryptoJS.algo[hasher],
+                hasher: (CryptoJS.algo as any)[hasher],
                 iterations: iterations,
             });
 
@@ -111,7 +111,7 @@ export default DeriveEVPKey;
  * // Does not use a salt
  * var derivedParams = CryptoJS.kdf.OpenSSL.execute('Password', 256/32, 128/32, false);
  */
-CryptoJS.kdf.OpenSSL.execute = function (password, keySize, ivSize, salt) {
+(CryptoJS.kdf.OpenSSL as any).execute = function (password: any, keySize: number, ivSize: number, salt: any) {
     // Generate random salt if no salt specified and not set to false
     // This line changed from `if (!salt) {` to the following
     if (salt === undefined || salt === null) {
@@ -119,7 +119,7 @@ CryptoJS.kdf.OpenSSL.execute = function (password, keySize, ivSize, salt) {
     }
 
     // Derive key and IV
-    const key = CryptoJS.algo.EvpKDF.create({ keySize: keySize + ivSize }).compute(password, salt);
+    const key = (CryptoJS.algo.EvpKDF as any).create({ keySize: keySize + ivSize, iterations: 1 }).compute(password, salt);
 
     // Separate key and IV
     const iv = CryptoJS.lib.WordArray.create(key.words.slice(keySize), ivSize * 4);
@@ -137,7 +137,7 @@ CryptoJS.kdf.OpenSSL.execute = function (password, keySize, ivSize, salt) {
  * @param {string} hexStr
  * @returns {CryptoJS.lib.WordArray}
  */
-CryptoJS.enc.Hex.parse = function (hexStr) {
+(CryptoJS.enc.Hex as any).parse = function (hexStr: string) {
     // Remove whitespace
     hexStr = hexStr.replace(/\s/g, "");
 
@@ -145,10 +145,10 @@ CryptoJS.enc.Hex.parse = function (hexStr) {
     const hexStrLength = hexStr.length;
 
     // Convert
-    const words = [];
+    const words: number[] = [];
     for (let i = 0; i < hexStrLength; i += 2) {
         words[i >>> 3] |= parseInt(hexStr.substr(i, 2), 16) << (24 - (i % 8) * 4);
     }
 
-    return new CryptoJS.lib.WordArray.init(words, hexStrLength / 2);
+    return CryptoJS.lib.WordArray.create(words, hexStrLength / 2);
 };

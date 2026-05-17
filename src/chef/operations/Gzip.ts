@@ -15,7 +15,8 @@ import { Operation } from "../Operation";
 import {COMPRESSION_TYPE, ZLIB_COMPRESSION_TYPE_LOOKUP} from "../lib/Zlib";
 import gzip from "zlibjs/bin/gzip.min.js";
 
-const Zlib = gzip.Zlib;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Zlib = (gzip as any).Zlib;
 
 /**
  * Gzip operation
@@ -66,22 +67,27 @@ export class Gzip extends Operation {
     run(input: any, args: any[]): any {
         const filename = args[1],
             comment = args[2],
-            options = {
+            options: {
+                deflateOptions: { compressionType: number };
+                flags: { fhcrc: boolean; fname?: boolean; comment?: boolean };
+                filename?: string;
+                comment?: string;
+            } = {
                 deflateOptions: {
-                    compressionType: ZLIB_COMPRESSION_TYPE_LOOKUP[args[0]]
+                    compressionType: ZLIB_COMPRESSION_TYPE_LOOKUP[args[0] as string]
                 },
                 flags: {
-                    fhcrc: args[3]
+                    fhcrc: args[3] as boolean
                 }
             };
 
-        if (filename.length) {
+        if ((filename as string).length) {
             options.flags.fname = true;
-            options.filename = filename;
+            options.filename = filename as string;
         }
-        if (comment.length) {
+        if ((comment as string).length) {
             options.flags.comment = true;
-            options.comment = comment;
+            options.comment = comment as string;
         }
         const gzipObj = new Zlib.Gzip(new Uint8Array(input), options);
         const compressed = new Uint8Array(gzipObj.compress());

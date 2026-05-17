@@ -226,10 +226,10 @@ export class Lorenz extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
 
         const model = args[0],
             pattern = args[1],
@@ -266,21 +266,21 @@ export class Lorenz extends Operation {
 
         this.reverseTable();
 
-        if (s1<1 || s1>43) throw new OperationError("Ψ1 start must be between 1 and 43");
-        if (s2<1 || s2>47) throw new OperationError("Ψ2 start must be between 1 and 47");
-        if (s3<1 || s3>51) throw new OperationError("Ψ3 start must be between 1 and 51");
-        if (s4<1 || s4>53) throw new OperationError("Ψ4 start must be between 1 and 53");
-        if (s5<1 || s5>59) throw new OperationError("Ψ5 start must be between 1 and 59");
-        if (m37<1 || m37>37) throw new OperationError("Μ37 start must be between 1 and 37");
-        if (m61<1 || m61>61) throw new OperationError("Μ61 start must be between 1 and 61");
-        if (x1<1 || x1>41) throw new OperationError("Χ1 start must be between 1 and 41");
-        if (x2<1 || x2>31) throw new OperationError("Χ2 start must be between 1 and 31");
-        if (x3<1 || x3>29) throw new OperationError("Χ3 start must be between 1 and 29");
-        if (x4<1 || x4>26) throw new OperationError("Χ4 start must be between 1 and 26");
-        if (x5<1 || x5>23) throw new OperationError("Χ5 start must be between 1 and 23");
+        if (s1 < 1 || s1 > 43) throw new OperationError("Ψ1 start must be between 1 and 43");
+        if (s2 < 1 || s2 > 47) throw new OperationError("Ψ2 start must be between 1 and 47");
+        if (s3 < 1 || s3 > 51) throw new OperationError("Ψ3 start must be between 1 and 51");
+        if (s4 < 1 || s4 > 53) throw new OperationError("Ψ4 start must be between 1 and 53");
+        if (s5 < 1 || s5 > 59) throw new OperationError("Ψ5 start must be between 1 and 59");
+        if (m37 < 1 || m37 > 37) throw new OperationError("Μ37 start must be between 1 and 37");
+        if (m61 < 1 || m61 > 61) throw new OperationError("Μ61 start must be between 1 and 61");
+        if (x1 < 1 || x1 > 41) throw new OperationError("Χ1 start must be between 1 and 41");
+        if (x2 < 1 || x2 > 31) throw new OperationError("Χ2 start must be between 1 and 31");
+        if (x3 < 1 || x3 > 29) throw new OperationError("Χ3 start must be between 1 and 29");
+        if (x4 < 1 || x4 > 26) throw new OperationError("Χ4 start must be between 1 and 26");
+        if (x5 < 1 || x5 > 23) throw new OperationError("Χ5 start must be between 1 and 23");
 
         // Initialise chosen wheel pattern
-        let chosenSetting = "";
+        let chosenSetting: any;
         if (pattern === "Custom") {
             const re = new RegExp("^[.xX]*$");
             if (lugs1.length !== 43 || !re.test(lugs1)) throw new OperationError("Ψ1 custom lugs must be 43 long and can only include . or x ");
@@ -295,7 +295,7 @@ export class Lorenz extends Operation {
             if (lugx3.length !== 29 || !re.test(lugx3)) throw new OperationError("Χ3 custom lugs must be 29 long and can only include . or x");
             if (lugx4.length !== 26 || !re.test(lugx4)) throw new OperationError("Χ4 custom lugs must be 26 long and can only include . or x");
             if (lugx5.length !== 23 || !re.test(lugx5)) throw new OperationError("Χ5 custom lugs must be 23 long and can only include . or x");
-            chosenSetting = INIT_PATTERNS["No Pattern"];
+            chosenSetting = JSON.parse(JSON.stringify(INIT_PATTERNS["No Pattern"]));
             chosenSetting.S[1] = this.readLugs(lugs1);
             chosenSetting.S[2] = this.readLugs(lugs2);
             chosenSetting.S[3] = this.readLugs(lugs3);
@@ -309,57 +309,56 @@ export class Lorenz extends Operation {
             chosenSetting.X[4] = this.readLugs(lugx4);
             chosenSetting.X[5] = this.readLugs(lugx5);
         } else {
-            chosenSetting = INIT_PATTERNS[pattern];
+            chosenSetting = (INIT_PATTERNS as any)[pattern];
         }
-        const chiSettings = chosenSetting.X; // Pin settings for Chi links (X)
-        const psiSettings = chosenSetting.S; // Pin settings for Psi links (S)
-        const muSettings = chosenSetting.M; // Pin settings for Motor links (M)
+        const chiSettings: Record<number, number[]> = chosenSetting.X; // Pin settings for Chi links (X)
+        const psiSettings: Record<number, number[]> = chosenSetting.S; // Pin settings for Psi links (S)
+        const muSettings: Record<number, number[]> = chosenSetting.M; // Pin settings for Motor links (M)
 
         // Convert input text to ITA2 (including figure/letter shifts)
         const ita2Input = this.convertToITA2(input, intype, mode);
 
-        let thisPsi = [];
-        let thisChi = [];
-        let m61lug = muSettings[1][m61-1];
-        let m37lug = muSettings[2][m37-1];
+        let thisPsi: number[] = [];
+        let thisChi: number[] = [];
+        let m61lug = muSettings[1][m61 - 1];
+        let m37lug = muSettings[2][m37 - 1];
         const p5 = [0, 0, 0];
 
-        const self = this;
-        const letters = Array.prototype.map.call(ita2Input, function(character) {
+        const letters = Array.prototype.map.call(ita2Input, (character: string) => {
             const letter = character.toUpperCase();
 
             // Store lugs used in limitations, need these later
-            let x2bptr = x2+1;
-            if (x2bptr===32) x2bptr=1;
-            let s1bptr = s1+1;
-            if (s1bptr===44) s1bptr=1;
+            let x2bptr = x2 + 1;
+            if (x2bptr === 32) x2bptr = 1;
+            let s1bptr = s1 + 1;
+            if (s1bptr === 44) s1bptr = 1;
 
             thisChi = [
-                chiSettings[1][x1-1],
-                chiSettings[2][x2-1],
-                chiSettings[3][x3-1],
-                chiSettings[4][x4-1],
-                chiSettings[5][x5-1]
+                chiSettings[1][x1 - 1],
+                chiSettings[2][x2 - 1],
+                chiSettings[3][x3 - 1],
+                chiSettings[4][x4 - 1],
+                chiSettings[5][x5 - 1]
             ];
 
             thisPsi = [
-                psiSettings[1][s1-1],
-                psiSettings[2][s2-1],
-                psiSettings[3][s3-1],
-                psiSettings[4][s4-1],
-                psiSettings[5][s5-1]
+                psiSettings[1][s1 - 1],
+                psiSettings[2][s2 - 1],
+                psiSettings[3][s3 - 1],
+                psiSettings[4][s4 - 1],
+                psiSettings[5][s5 - 1]
             ];
 
-            if (typeof ITA2_TABLE[letter] == "undefined") {
+            if (typeof (ITA2_TABLE as any)[letter] === "undefined") {
                 return "";
             }
 
             // The encipher calculation
 
             // We calculate Bitwise XOR for each of the 5 bits across our input ( K XOR Psi XOR Chi )
-            const xorSum = [];
-            for (let i=0;i<=4;i++) {
-                xorSum[i] = ITA2_TABLE[letter][i] ^ thisPsi[i] ^ thisChi[i];
+            const xorSum: number[] = [];
+            for (let i = 0; i <= 4; i++) {
+                xorSum[i] = parseInt((ITA2_TABLE as any)[letter][i], 10) ^ thisPsi[i] ^ thisChi[i];
             }
             const resultStr = xorSum.join("");
 
@@ -383,59 +382,59 @@ export class Lorenz extends Operation {
             // Psi wheels only move sometimes, dependent on M37 current setting and limitations
 
             const basicmotor = m37lug;
-            let totalmotor;
+            let totalmotor: number;
             let lim = 0;
 
             p5[2] = p5[1];
             p5[1] = p5[0];
-            if (mode==="Send") {
-                p5[0] = parseInt(ITA2_TABLE[letter][4], 10);
+            if (mode === "Send") {
+                p5[0] = parseInt((ITA2_TABLE as any)[letter][4], 10);
             } else {
-                p5[0] = parseInt(xorSum[4], 10);
+                p5[0] = xorSum[4];
             }
 
             // Limitations here
-            if (model==="SZ42a") {
+            if (model === "SZ42a") {
                 // Chi 2 one back lim - The active character of Chi 2 (2nd Chi wheel) in the previous position
-                lim = parseInt(chiSettings[2][x2bptr-1], 10);
+                lim = chiSettings[2][x2bptr - 1];
                 if (kt) {
                     // p5 back 2
-                    if (lim===p5[2]) {
+                    if (lim === p5[2]) {
                         lim = 0;
                     } else {
-                        lim=1;
+                        lim = 1;
                     }
                 }
 
                 // If basic motor = 0 and limitation = 1, Total motor = 0 [no move], otherwise, total motor = 1 [move]
-                if (basicmotor===0 && lim===1) {
+                if (basicmotor === 0 && lim === 1) {
                     totalmotor = 0;
                 } else {
                     totalmotor = 1;
                 }
 
-            } else if (model==="SZ42b") {
+            } else if (model === "SZ42b") {
                 // Chi 2 one back + Psi 1 one back.
-                const x2b1lug = parseInt(chiSettings[2][x2bptr-1], 10);
-                const s1b1lug = parseInt(psiSettings[1][s1bptr-1], 10);
+                const x2b1lug = chiSettings[2][x2bptr - 1];
+                const s1b1lug = psiSettings[1][s1bptr - 1];
                 lim = 1;
-                if (x2b1lug===s1b1lug) lim=0;
+                if (x2b1lug === s1b1lug) lim = 0;
                 if (kt) {
-                     // p5 back 2
-                    if (lim===p5[2]) {
-                        lim=0;
+                    // p5 back 2
+                    if (lim === p5[2]) {
+                        lim = 0;
                     } else {
-                        lim=1;
+                        lim = 1;
                     }
                 }
                 // If basic motor = 0 and limitation = 1, Total motor = 0 [no move], otherwise, total motor = 1 [move]
-                if (basicmotor===0 && lim===1) {
+                if (basicmotor === 0 && lim === 1) {
                     totalmotor = 0;
                 } else {
                     totalmotor = 1;
                 }
 
-            } else if (model==="SZ40") {
+            } else if (model === "SZ40") {
                 // SZ40 - just move based on the M37 motor wheel
                 totalmotor = basicmotor;
             } else {
@@ -451,14 +450,14 @@ export class Lorenz extends Operation {
                 if (--s5 < 1) s5 = 59;
             }
 
-            m61lug = muSettings[1][m61-1];
-            m37lug = muSettings[2][m37-1];
+            m61lug = muSettings[1][m61 - 1];
+            m37lug = muSettings[2][m37 - 1];
 
-            let rtnstr = self.REVERSE_ITA2_TABLE[resultStr];
-            if (format==="5/8/9") {
-                if (rtnstr==="+") rtnstr="5"; // + or 5 used to represent figure shift
-                if (rtnstr==="-") rtnstr="8"; // - or 8 used to represent letter shift
-                if (rtnstr===".") rtnstr="9"; // . or 9 used to represent space
+            let rtnstr = this.REVERSE_ITA2_TABLE[resultStr];
+            if (format === "5/8/9") {
+                if (rtnstr === "+") rtnstr = "5"; // + or 5 used to represent figure shift
+                if (rtnstr === "-") rtnstr = "8"; // - or 8 used to represent letter shift
+                if (rtnstr === ".") rtnstr = "9"; // . or 9 used to represent space
             }
             return rtnstr;
         });
@@ -472,16 +471,16 @@ export class Lorenz extends Operation {
     /**
      * Reverses the ITA2 Code lookup table
      */
-    reverseTable() {
+    reverseTable(): void {
         this.REVERSE_ITA2_TABLE = {};
         this.REVERSE_FIGSHIFT_TABLE = {};
 
         for (const letter in ITA2_TABLE) {
-            const code = ITA2_TABLE[letter];
+            const code = (ITA2_TABLE as any)[letter];
             this.REVERSE_ITA2_TABLE[code] = letter;
         }
         for (const letter in figShiftArr) {
-            const ltr = figShiftArr[letter];
+            const ltr = (figShiftArr as any)[letter];
             this.REVERSE_FIGSHIFT_TABLE[ltr] = letter;
         }
     }
@@ -489,21 +488,21 @@ export class Lorenz extends Operation {
     /**
      * Read lugs settings - convert to 0|1
      */
-    readLugs(lugstr) {
-        const arr = Array.prototype.map.call(lugstr, function(lug) {
-            if (lug===".") {
+    readLugs(lugstr: string): number[] {
+        const arr = Array.prototype.map.call(lugstr, (lug: string) => {
+            if (lug === ".") {
                 return 0;
             } else {
                 return 1;
             }
         });
-        return arr;
+        return arr as number[];
     }
 
     /**
      * Convert input plaintext to ITA2
      */
-    convertToITA2(input, intype, mode) {
+    convertToITA2(input: string, intype: string, mode: string): string {
         let result = "";
         let figShifted = false;
 
@@ -514,35 +513,35 @@ export class Lorenz extends Operation {
             if (intype === "ITA2" || mode === "Receive") {
                 if (validITA2.indexOf(letter) === -1) {
                     let errltr = letter;
-                    if (errltr==="\n") errltr = "Carriage Return";
-                    if (errltr===" ") errltr = "Space";
-                    throw new OperationError("Invalid ITA2 character : "+errltr);
+                    if (errltr === "\n") errltr = "Carriage Return";
+                    if (errltr === " ") errltr = "Space";
+                    throw new OperationError("Invalid ITA2 character : " + errltr);
                 }
                 result += letter;
             } else {
-                if (validChars.indexOf(letter) === -1) throw new OperationError("Invalid Plaintext character : "+letter);
+                if (validChars.indexOf(letter) === -1) throw new OperationError("Invalid Plaintext character : " + letter);
 
                 if (!figShifted && figShiftedChars.indexOf(letter) !== -1) {
                     // in letters mode and next char needs to be figure shifted
                     figShifted = true;
-                    result += "55" + figShiftArr[letter];
+                    result += "55" + (figShiftArr as any)[letter];
                 } else if (figShifted) {
                     // in figures mode and next char needs to be letter shifted
-                    if (letter==="\n") {
+                    if (letter === "\n") {
                         result += "34";
-                    } else if (letter==="\r") {
+                    } else if (letter === "\r") {
                         result += "4";
                     } else if (figShiftedChars.indexOf(letter) === -1) {
                         figShifted = false;
                         result += "88" + letter;
                     } else {
-                        result += figShiftArr[letter];
+                        result += (figShiftArr as any)[letter];
                     }
 
                 } else {
-                    if (letter==="\n") {
+                    if (letter === "\n") {
                         result += "34";
-                    } else if (letter==="\r") {
+                    } else if (letter === "\r") {
                         result += "4";
                     } else {
                         result += letter;
@@ -559,7 +558,7 @@ export class Lorenz extends Operation {
     /**
      * Convert final result ITA2 to plaintext
      */
-    convertFromITA2(input, outtype, mode) {
+    convertFromITA2(input: string, outtype: string, mode: string): string {
         let result = "";
         let figShifted = false;
         for (const letter of input) {
@@ -717,12 +716,12 @@ const INIT_PATTERNS = {
             4: [0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
             5: [1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0]
         },
-        "M":  {
+        "M": {
             1: [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0],
             2: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0]
         }
     },
-    "ZMUG Pattern":  {
+    "ZMUG Pattern": {
         "X": {
             1: [0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0],
             2: [1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0],

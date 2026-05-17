@@ -94,7 +94,7 @@ export class ContainImage extends Operation {
     async run(input: any, args: any[]): Promise<any> {
         const [width, height, hAlign, vAlign, alg, opaqueBg] = args;
 
-        const resizeMap = {
+        const resizeMap: Record<string, ResizeStrategy> = {
             "Nearest Neighbour": ResizeStrategy.NEAREST_NEIGHBOR,
             Bilinear: ResizeStrategy.BILINEAR,
             Bicubic: ResizeStrategy.BICUBIC,
@@ -102,7 +102,7 @@ export class ContainImage extends Operation {
             Bezier: ResizeStrategy.BEZIER,
         };
 
-        const alignMap = {
+        const alignMap: Record<string, number> = {
             Left: HorizontalAlign.LEFT,
             Center: HorizontalAlign.CENTER,
             Right: HorizontalAlign.RIGHT,
@@ -123,10 +123,10 @@ export class ContainImage extends Operation {
         }
         const originalMime = image.mime;
         try {
-                        image.contain({
+            image.contain({
                 w: width,
                 h: height,
-                align: alignMap[hAlign] | alignMap[vAlign],
+                align: (alignMap[hAlign] as any) | (alignMap[vAlign] as any),
                 mode: resizeMap[alg],
             });
 
@@ -140,14 +140,14 @@ export class ContainImage extends Operation {
                     src: image,
                     x: 0,
                     y: 0,
-                });
+                }) as unknown as typeof image;
             }
 
             let imageBuffer;
             if (originalMime === "image/gif") {
                 imageBuffer = await image.getBuffer(JimpMime.png);
             } else {
-                imageBuffer = await image.getBuffer(originalMime);
+                imageBuffer = await image.getBuffer(originalMime as "image/jpeg" | "image/gif" | "image/png" | "image/tiff" | "image/bmp" | "image/x-ms-bmp");
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -160,7 +160,7 @@ export class ContainImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

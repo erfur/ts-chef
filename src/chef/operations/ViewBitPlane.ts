@@ -74,20 +74,20 @@ export class ViewBitPlane extends Operation {
 
         let pixel, bin, newPixelValue;
 
-        parsedImage.scan(0, 0, width, height, function (x, y, idx) {
-            pixel = this.bitmap.data[idx + colourIndex];
+        parsedImage.scan(0, 0, width, height, (x, y, idx) => {
+            pixel = parsedImage.bitmap.data[idx + colourIndex];
             bin = Utils.bin(pixel);
             newPixelValue = 255;
 
             if (bin.charAt(bitIndex) === "1") newPixelValue = 0;
 
             for (let i = 0; i < 3; i++) {
-                this.bitmap.data[idx + i] = newPixelValue;
+                parsedImage.bitmap.data[idx + i] = newPixelValue;
             }
-            this.bitmap.data[idx + 3] = 255;
+            parsedImage.bitmap.data[idx + 3] = 255;
         });
 
-        const imageBuffer = await parsedImage.getBuffer(parsedImage.mime);
+        const imageBuffer = await parsedImage.getBuffer(parsedImage.mime as "image/jpeg" | "image/gif" | "image/png" | "image/tiff" | "image/bmp" | "image/x-ms-bmp");
 
         return new Uint8Array(imageBuffer).buffer;
     }

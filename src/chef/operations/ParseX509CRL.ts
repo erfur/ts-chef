@@ -11,8 +11,8 @@
  * -----------------------------------------------------------------------------
  */
 
-import r from "jsrsasign";
-import { Operation } from "../Operation";
+import * as r from "jsrsasign";
+import { Operation, ArgConfig } from "../Operation";
 import { fromBase64 } from "../lib/Base64";
 import { toHex } from "../lib/Hex";
 import { formatDnObj } from "../lib/PublicKey";
@@ -54,10 +54,10 @@ export class ParseX509CRL extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string} Human-readable description of a Certificate Revocation List (CRL).
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         if (!input.length) {
             return "No input";
         }
@@ -73,7 +73,7 @@ export class ParseX509CRL extends Operation {
                 case "PEM":
                     break;
                 case "Base64":
-                    input = toHex(fromBase64(input, null, "byteArray"), "");
+                    input = toHex(fromBase64(input, undefined, "byteArray") as number[], "");
                     break;
                 case "Raw":
                     input = toHex(Utils.strToArrayBuffer(input), "");
@@ -82,11 +82,11 @@ export class ParseX509CRL extends Operation {
                     undefinedInputFormat = true;
             }
         } catch (e) {
-            throw "Certificate load error (non-certificate input?)";
+            throw new OperationError("Certificate load error (non-certificate input?)");
         }
-        if (undefinedInputFormat) throw "Undefined input format";
+        if (undefinedInputFormat) throw new OperationError("Undefined input format");
 
-        const crl = new r.X509CRL(input);
+        const crl = new (r as any).X509CRL(input);
 
         let out = `Certificate Revocation List (CRL):
     Version: ${crl.getVersion() === null ? "1 (0x0)" : "2 (0x1)"}
@@ -109,21 +109,21 @@ Signature Value:\n${formatCRLSignature(crl.getSignatureValueHex(), 8)}`;
 /**
  * Generalized date time string to UTC.
  * @param {string} datetime
- * @returns UTC datetime string.
+ * @returns {string} UTC datetime string.
  */
-function generalizedDateTimeToUTC(datetime) {
+function generalizedDateTimeToUTC(datetime: string): string {
     // Ensure the string is in the correct format
     if (!/^\d{12,14}Z$/.test(datetime)) {
         throw new OperationError(`failed to format datetime string ${datetime}`);
     }
 
     // Extract components
-    let centuary = "20";
+    let century = "20";
     if (datetime.length === 15) {
-        centuary = datetime.substring(0, 2);
+        century = datetime.substring(0, 2);
         datetime = datetime.slice(2);
     }
-    const year = centuary + datetime.substring(0, 2);
+    const year = century + datetime.substring(0, 2);
     const month = datetime.substring(2, 4);
     const day = datetime.substring(4, 6);
     const hour = datetime.substring(6, 8);
@@ -141,19 +141,19 @@ function generalizedDateTimeToUTC(datetime) {
 
 /**
  * Format CRL extensions.
- * @param {r.ExtParam[] | undefined} extensions
- * @param {Number} indent
- * @returns Formatted string detailing CRL extensions.
+ * @param {any[] | undefined} extensions
+ * @param {number} indent
+ * @returns {string} Formatted string detailing CRL extensions.
  */
-function formatCRLExtensions(extensions, indent) {
-    if (Array.isArray(extensions) === false || extensions.length === 0) {
+function formatCRLExtensions(extensions: any[] | undefined, indent: number): string {
+    if (!Array.isArray(extensions) || extensions.length === 0) {
         return indentString(`No CRL extensions.`, indent);
     }
 
     let out = ``;
 
     extensions.sort((a, b) => {
-        if (!Object.hasOwn(a, "extname") || !Object.hasOwn(b, "extname")) {
+        if (!Object.prototype.hasOwnProperty.call(a, "extname") || !Object.prototype.hasOwnProperty.call(b, "extname")) {
             return 0;
         }
         if (a.extname < b.extname) {
@@ -166,31 +166,31 @@ function formatCRLExtensions(extensions, indent) {
     });
 
     extensions.forEach((ext) => {
-        if (!Object.hasOwn(ext, "extname")) {
+        if (!Object.prototype.hasOwnProperty.call(ext, "extname")) {
             throw new OperationError(`CRL entry extension object missing 'extname' key: ${ext}`);
         }
         switch (ext.extname) {
             case "authorityKeyIdentifier":
                 out += `X509v3 Authority Key Identifier:\n`;
-                if (Object.hasOwn(ext, "kid")) {
+                if (Object.prototype.hasOwnProperty.call(ext, "kid")) {
                     out += `\tkeyid:${colonDelimitedHexFormatString(ext.kid.hex.toUpperCase())}\n`;
                 }
-                if (Object.hasOwn(ext, "issuer")) {
+                if (Object.prototype.hasOwnProperty.call(ext, "issuer")) {
                     out += `\tDirName:${ext.issuer.str}\n`;
                 }
-                if (Object.hasOwn(ext, "sn")) {
+                if (Object.prototype.hasOwnProperty.call(ext, "sn")) {
                     out += `\tserial:${colonDelimitedHexFormatString(ext.sn.hex.toUpperCase())}\n`;
                 }
                 break;
             case "cRLDistributionPoints":
                 out += `X509v3 CRL Distribution Points:\n`;
-                ext.array.forEach((distPoint) => {
+                (ext.array as any[]).forEach((distPoint) => {
                     const fullName = `Full Name:\n${formatGeneralNames(distPoint.dpname.full, 4)}`;
                     out += indentString(fullName, 4) + "\n";
                 });
                 break;
             case "cRLNumber":
-                if (!Object.hasOwn(ext, "num")) {
+                if (!Object.prototype.hasOwnProperty.call(ext, "num")) {
                     throw new OperationError(`'cRLNumber' CRL entry extension missing 'num' key: ${ext}`);
                 }
                 out += `X509v3 CRL Number:\n\t${ext.num.hex.toUpperCase()}\n`;
@@ -210,10 +210,11 @@ function formatCRLExtensions(extensions, indent) {
 
 /**
  * Format general names array.
- * @param {Object[]} names
- * @returns Multi-line formatted string describing all supported general name types.
+ * @param {any[]} names
+ * @param {number} indent
+ * @returns {string} Multi-line formatted string describing all supported general name types.
  */
-function formatGeneralNames(names, indent) {
+function formatGeneralNames(names: any[], indent: number): string {
     let out = ``;
 
     names.forEach((name) => {
@@ -236,10 +237,10 @@ function formatGeneralNames(names, indent) {
                 out += `DIR:${name.dn.str}\n`;
                 break;
             case "other":
-                out += `OtherName:${name.other.oid}::${Object.values(name.other.value)[0].str}\n`;
+                out += `OtherName:${name.other.oid}::${(Object.values(name.other.value)[0] as { str: string }).str}\n`;
                 break;
             default:
-                out += `${key}: unsupported general name type`;
+                out += `${key}: unsupported general name type\n`;
                 break;
         }
     });
@@ -250,9 +251,9 @@ function formatGeneralNames(names, indent) {
 /**
  * Colon-delimited hex formatted output.
  * @param {string} hexString Hex String
- * @returns String representing input hex string with colon delimiter.
+ * @returns {string} String representing input hex string with colon delimiter.
  */
-function colonDelimitedHexFormatString(hexString) {
+function colonDelimitedHexFormatString(hexString: string): string {
     if (hexString.length % 2 !== 0) {
         hexString = "0" + hexString;
     }
@@ -262,26 +263,26 @@ function colonDelimitedHexFormatString(hexString) {
 
 /**
  * Format revoked certificates array
- * @param {r.RevokedCertificate[] | null} revokedCertificates
- * @param {Number} indent
- * @returns Multi-line formatted string output of revoked certificates array
+ * @param {any[] | null} revokedCertificates
+ * @param {number} indent
+ * @returns {string} Multi-line formatted string output of revoked certificates array
  */
-function formatRevokedCertificates(revokedCertificates, indent) {
-    if (Array.isArray(revokedCertificates) === false || revokedCertificates.length === 0) {
+function formatRevokedCertificates(revokedCertificates: any[] | null, indent: number): string {
+    if (!Array.isArray(revokedCertificates) || revokedCertificates.length === 0) {
         return indentString("No Revoked Certificates.", indent);
     }
 
-    let out=``;
+    let out = ``;
 
     revokedCertificates.forEach((revCert) => {
-        if (!Object.hasOwn(revCert, "sn") || !Object.hasOwn(revCert, "date")) {
+        if (!Object.prototype.hasOwnProperty.call(revCert, "sn") || !Object.prototype.hasOwnProperty.call(revCert, "date")) {
             throw new OperationError("invalid revoked certificate object, missing either serial number or date");
         }
 
         out += `Serial Number: ${revCert.sn.hex.toUpperCase()}
     Revocation Date: ${generalizedDateTimeToUTC(revCert.date)}\n`;
-        if (Object.hasOwn(revCert, "ext") && Array.isArray(revCert.ext) && revCert.ext.length !== 0) {
-            out += `\tCRL entry extensions:\n${indentString(formatCRLEntryExtensions(revCert.ext), 2*indent)}\n`;
+        if (Object.prototype.hasOwnProperty.call(revCert, "ext") && Array.isArray(revCert.ext) && revCert.ext.length !== 0) {
+            out += `\tCRL entry extensions:\n${indentString(formatCRLEntryExtensions(revCert.ext), 2 * indent)}\n`;
         }
     });
 
@@ -290,13 +291,13 @@ function formatRevokedCertificates(revokedCertificates, indent) {
 
 /**
  * Format CRL entry extensions.
- * @param {Object[]} exts
- * @returns Formatted multi-line string describing CRL entry extensions.
+ * @param {any[]} exts
+ * @returns {string} Formatted multi-line string describing CRL entry extensions.
  */
-function formatCRLEntryExtensions(exts) {
+function formatCRLEntryExtensions(exts: any[]): string {
     let out = ``;
 
-    const crlReasonCodeToReasonMessage = {
+    const crlReasonCodeToReasonMessage: Record<number, string> = {
         0: "Unspecified",
         1: "Key Compromise",
         2: "CA Compromise",
@@ -309,26 +310,26 @@ function formatCRLEntryExtensions(exts) {
         10: "AA Compromise",
     };
 
-    const holdInstructionOIDToName = {
+    const holdInstructionOIDToName: Record<string, string> = {
         "1.2.840.10040.2.1": "Hold Instruction None",
         "1.2.840.10040.2.2": "Hold Instruction Call Issuer",
         "1.2.840.10040.2.3": "Hold Instruction Reject",
     };
 
     exts.forEach((ext) => {
-        if (!Object.hasOwn(ext, "extname")) {
+        if (!Object.prototype.hasOwnProperty.call(ext, "extname")) {
             throw new OperationError(`CRL entry extension object missing 'extname' key: ${ext}`);
         }
         switch (ext.extname) {
             case "cRLReason":
-                if (!Object.hasOwn(ext, "code")) {
+                if (!Object.prototype.hasOwnProperty.call(ext, "code")) {
                     throw new OperationError(`'cRLReason' CRL entry extension missing 'code' key: ${ext}`);
                 }
                 out += `X509v3 CRL Reason Code:
-    ${Object.hasOwn(crlReasonCodeToReasonMessage, ext.code) ? crlReasonCodeToReasonMessage[ext.code] : `invalid reason code: ${ext.code}`}\n`;
+    ${Object.prototype.hasOwnProperty.call(crlReasonCodeToReasonMessage, ext.code) ? crlReasonCodeToReasonMessage[ext.code] : `invalid reason code: ${ext.code}`}\n`;
                 break;
             case "2.5.29.23": // Hold instruction
-                out += `Hold Instruction Code:\n\t${Object.hasOwn(holdInstructionOIDToName, ext.extn.oid) ? holdInstructionOIDToName[ext.extn.oid] : `${ext.extn.oid}: unknown hold instruction OID`}\n`;
+                out += `Hold Instruction Code:\n\t${Object.prototype.hasOwnProperty.call(holdInstructionOIDToName, ext.extn.oid) ? holdInstructionOIDToName[ext.extn.oid] : `${ext.extn.oid}: unknown hold instruction OID`}\n`;
                 break;
             case "2.5.29.24": // Invalidity Date
                 out += `Invalidity Date:\n\t${generalizedDateTimeToUTC(ext.extn.gentime.str)}\n`;
@@ -345,11 +346,11 @@ function formatCRLEntryExtensions(exts) {
 
 /**
  * Format CRL signature.
- * @param {String} sigHex
- * @param {Number} indent
- * @returns String representing hex signature value formatted on multiple lines.
+ * @param {string} sigHex
+ * @param {number} indent
+ * @returns {string} String representing hex signature value formatted on multiple lines.
  */
-function formatCRLSignature(sigHex, indent) {
+function formatCRLSignature(sigHex: string, indent: number): string {
     if (sigHex.length % 2 !== 0) {
         sigHex = "0" + sigHex;
     }
@@ -360,12 +361,12 @@ function formatCRLSignature(sigHex, indent) {
 /**
  * Format string onto multiple lines.
  * @param {string} longStr
- * @returns String as a multi-line string.
+ * @returns {string} String as a multi-line string.
  */
-function formatMultiLine(longStr) {
+function formatMultiLine(longStr: string): string {
     const lines = [];
 
-    for (let remain = longStr ; remain !== "" ; remain = remain.substring(54)) {
+    for (let remain = longStr; remain !== ""; remain = remain.substring(54)) {
         lines.push(remain.substring(0, 54));
     }
 
@@ -376,19 +377,19 @@ function formatMultiLine(longStr) {
  * Indent a multi-line string by n spaces.
  * @param {string} input String
  * @param {number} spaces How many leading spaces
- * @returns Indented string.
+ * @returns {string} Indented string.
  */
-function indentString(input, spaces) {
-    const indent = " ".repeat(spaces);
-    return input.replace(/^/gm, indent);
+function indentString(input: string, spaces: number): string {
+    const indentChar = " ".repeat(spaces);
+    return input.replace(/^/gm, indentChar);
 }
 
 /**
  * Remove last character from a string.
  * @param {string} s String
- * @returns Chopped string.
+ * @returns {string} Chopped string.
  */
-function chop(s) {
+function chop(s: string): string {
     if (s.length < 1) {
         return s;
     }

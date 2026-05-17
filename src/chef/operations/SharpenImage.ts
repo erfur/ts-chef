@@ -80,17 +80,17 @@ export class SharpenImage extends Operation {
 
         try {
             if (isWorkerEnvironment())
-                self.sendStatusMessage("Sharpening image... (Cloning image)");
+                (self as any).sendStatusMessage("Sharpening image... (Cloning image)");
             const blurMask = image.clone();
 
             if (isWorkerEnvironment())
-                self.sendStatusMessage(
+                (self as any).sendStatusMessage(
                     "Sharpening image... (Blurring cloned image)",
                 );
             const blurImage = image.clone().gaussian(radius);
 
             if (isWorkerEnvironment())
-                self.sendStatusMessage(
+                (self as any).sendStatusMessage(
                     "Sharpening image... (Creating unsharp mask)",
                 );
             blurMask.scan(
@@ -98,7 +98,7 @@ export class SharpenImage extends Operation {
                 0,
                 blurMask.bitmap.width,
                 blurMask.bitmap.height,
-                function (x, y, idx) {
+                function (this: any, x, y, idx) {
                     const blurRed = blurImage.bitmap.data[idx];
                     const blurGreen = blurImage.bitmap.data[idx + 1];
                     const blurBlue = blurImage.bitmap.data[idx + 2];
@@ -118,7 +118,7 @@ export class SharpenImage extends Operation {
             );
 
             if (isWorkerEnvironment())
-                self.sendStatusMessage(
+                (self as any).sendStatusMessage(
                     "Sharpening image... (Merging with unsharp mask)",
                 );
             image.scan(
@@ -126,7 +126,7 @@ export class SharpenImage extends Operation {
                 0,
                 image.bitmap.width,
                 image.bitmap.height,
-                function (x, y, idx) {
+                function (this: any, x, y, idx) {
                     let maskRed = blurMask.bitmap.data[idx];
                     let maskGreen = blurMask.bitmap.data[idx + 1];
                     let maskBlue = blurMask.bitmap.data[idx + 2];
@@ -179,7 +179,7 @@ export class SharpenImage extends Operation {
             if (image.mime === "image/gif") {
                 imageBuffer = await image.getBuffer(JimpMime.png);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as any);
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -192,7 +192,7 @@ export class SharpenImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: any) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

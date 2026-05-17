@@ -120,7 +120,14 @@ export class GOSTKeyWrap extends Operation {
 
         const sBoxVal = versionNum === 1989 ? sBox : null;
 
-        const algorithm = {
+        const algorithm: {
+            version: number;
+            length: number;
+            mode: string;
+            sBox: unknown;
+            keyWrapping: unknown;
+            ukm?: unknown;
+        } = {
             version: versionNum,
             length: blockLength,
             mode: "KW",
@@ -137,10 +144,11 @@ export class GOSTKeyWrap extends Operation {
 
             return outputType === "Hex" ? out : Utils.byteArrayToChars(fromHex(out));
         } catch (err) {
-            if (err.toString().includes("Invalid typed array length")) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            if (errMsg.includes("Invalid typed array length")) {
                 throw new OperationError("Incorrect input length. Must be a multiple of the block size.");
             }
-            throw new OperationError(err);
+            throw new OperationError(errMsg);
         }
     }
 

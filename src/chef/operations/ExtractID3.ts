@@ -13,7 +13,7 @@
 
 import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
-import Utils from "../Utils";
+import { Utils } from "../Utils";
 
 /**
  * Extract ID3 operation
@@ -38,20 +38,20 @@ export class ExtractID3 extends Operation {
 
     /**
      * @param {ArrayBuffer} input
-     * @param {Object[]} args
-     * @returns {JSON}
+     * @param {any[]} args
+     * @returns {any}
      */
-    run(input: any, args: any[]): any {
-        input = new Uint8Array(input);
+    run(inputBuffer: ArrayBuffer, args: any[]): any {
+        let input = new Uint8Array(inputBuffer);
 
         /**
          * Extracts the ID3 header fields.
          */
-        function extractHeader() {
-            if (!Array.from(input.slice(0, 3)).equals([0x49, 0x44, 0x33]))
+        const extractHeader = () => {
+            if (input[0] !== 0x49 || input[1] !== 0x44 || input[2] !== 0x33)
                 throw new OperationError("No valid ID3 header.");
 
-            const header = {
+            const header: any = {
                 "Type": "ID3",
                 // Tag version
                 "Version": input[3].toString() + "." + input[4].toString(),
@@ -61,43 +61,43 @@ export class ExtractID3 extends Operation {
 
             input = input.slice(6);
             return header;
-        }
+        };
 
         /**
          * Converts the size fields to a single integer.
          *
          * @param {number} num
-         * @returns {string}
+         * @returns {number}
          */
-        function readSize(num) {
+        const readSize = (num: number): number => {
             let result = 0;
 
             // The sizes are 7 bit numbers stored in 8 bit locations
-            for (let i = (num) * 7; i; i -= 7) {
-                result = (result << i) | input[0];
+            for (let i = (num - 1) * 7; i >= 0; i -= 7) {
+                result |= (input[0] << i);
                 input = input.slice(1);
             }
             return result;
-        }
+        };
 
         /**
          * Reads frame header based on ID.
          *
          * @param {string} id
-         * @returns {number}
+         * @returns {[any, number]}
          */
-        function readFrame(id) {
-            const frame = {};
+        const readFrame = (id: string): [any, number] => {
+            const frame: any = {};
 
             // Size of frame
             const size = readSize(4);
             frame.Size = size.toString();
-            frame.Description = FRAME_DESCRIPTIONS[id];
+            frame.Description = (FRAME_DESCRIPTIONS as any)[id];
             input = input.slice(2);
 
             // Read data from frame
             let data = "";
-            for (let i = 1; i < size; i++)
+            for (let i = 0; i < size; i++)
                 data += String.fromCharCode(input[i]);
             frame.Data = data;
 
@@ -105,28 +105,31 @@ export class ExtractID3 extends Operation {
             input = input.slice(size);
 
             return [frame, size];
-        }
+        };
 
         const result = extractHeader();
 
         const headerTagSize = readSize(4);
         result.Size = headerTagSize.toString();
 
-        const tags = {};
+        const tags: any = {};
         let pos = 10;
 
         // While the current element is in the header
-        while (pos < headerTagSize) {
+        while (pos < headerTagSize && input.length > 0) {
 
             // Frame Identifier of frame
+            if (input.length < 3) break;
             let id = String.fromCharCode(input[0]) + String.fromCharCode(input[1]) + String.fromCharCode(input[2]);
             input = input.slice(3);
 
             // If the next character is non-zero it is an identifier
-            if (input[0] !== 0) {
+            if (input.length > 0 && input[0] !== 0) {
                 id += String.fromCharCode(input[0]);
+                input = input.slice(1);
+            } else if (input.length > 0) {
+                input = input.slice(1);
             }
-            input = input.slice(1);
 
             if (id in FRAME_DESCRIPTIONS) {
                 const [frame, size] = readFrame(id);
@@ -135,7 +138,12 @@ export class ExtractID3 extends Operation {
             } else if (id === "\x00\x00\x00") { // end of header
                 break;
             } else {
-                throw new OperationError("Unknown Frame Identifier: " + id);
+                // Skip unknown frame
+                if (input.length < 4) break;
+                const skipSize = readSize(4);
+                if (input.length < 2 + skipSize) break;
+                input = input.slice(2 + skipSize);
+                pos += 10 + skipSize;
             }
         }
 
@@ -146,10 +154,10 @@ export class ExtractID3 extends Operation {
 
     /**
      * Displays the extracted data in a more accessible format for web apps.
-     * @param {JSON} data
-     * @returns {html}
+     * @param {any} data
+     * @returns {string}
      */
-    present(data) {
+    present(data: any): string {
         if (!data || !Object.prototype.hasOwnProperty.call(data, "Tags"))
             return JSON.stringify(data, null, 4);
 
@@ -168,7 +176,7 @@ export class ExtractID3 extends Operation {
 }
 
 // Borrowed from https://github.com/aadsm/jsmediatags
-const FRAME_DESCRIPTIONS = {
+const FRAME_DESCRIPTIONS: Record<string, string> = {
     // v2.2
     "BUF": "Recommended buffer size",
     "CNT": "Play counter",

@@ -73,7 +73,7 @@ export class EscapeUnicodeCharacters extends Operation {
                 continue;
             }
 
-            let cp = character.codePointAt(0).toString(16);
+            let cp = character.codePointAt(0)!.toString(16);
             if (uppercaseHex) cp = cp.toUpperCase();
             output += prefix + cp.padStart(padding, "0");
         }

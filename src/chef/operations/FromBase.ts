@@ -60,7 +60,7 @@ export class FromBase extends Operation {
         // Fractional part
         for (let i = 0; i < number[1].length; i++) {
             const digit = new BigNumber(number[1][i], radix);
-            result += digit.div(Math.pow(radix, i+1));
+            result = result.plus(digit.div(Math.pow(radix, i+1)));
         }
 
         return result;

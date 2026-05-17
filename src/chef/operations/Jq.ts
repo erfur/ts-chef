@@ -58,7 +58,7 @@ export class Jq extends Operation {
         try {
             result = jq.json(input, query);
         } catch (err) {
-            throw new OperationError(`Invalid jq expression: ${err.message}`);
+            throw new OperationError(`Invalid jq expression: ${err instanceof Error ? err.message : String(err)}`);
         }
         if (raw && typeof result === "string") {
             return result;

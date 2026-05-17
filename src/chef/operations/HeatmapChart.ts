@@ -15,12 +15,12 @@ import * as d3temp from "d3";
 import * as nodomtemp from "nodom";
 import { getScatterValues, RECORD_DELIMITER_OPTIONS, COLOURS, FIELD_DELIMITER_OPTIONS } from "../lib/Charts";
 
-import { Operation } from "../Operation";
+import { Operation, ArgConfig } from "../Operation";
 import OperationError from "../errors/OperationError";
 import Utils from "../Utils";
 
-const d3 = d3temp.default ? d3temp.default : d3temp;
-const nodom = nodomtemp.default ? nodomtemp.default: nodomtemp;
+const d3 = (d3temp as any).default ? (d3temp as any).default : d3temp;
+const nodom = (nodomtemp as any).default ? (nodomtemp as any).default : nodomtemp;
 
 /**
  * Heatmap chart operation
@@ -98,13 +98,13 @@ export class HeatmapChart extends Operation {
      *
      * @param {string} input
      * @param {Object[]} args
-     * @returns {html}
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const recordDelimiter = Utils.charRep(args[0]),
             fieldDelimiter = Utils.charRep(args[1]),
-            vBins = args[2],
-            hBins = args[3],
+            vBins = args[2] as number,
+            hBins = args[3] as number,
             columnHeadingsAreIncluded = args[4],
             drawEdges = args[7],
             minColour = args[8],
@@ -128,7 +128,7 @@ export class HeatmapChart extends Operation {
         }
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
+        let svg: any = document.createElement("svg");
         svg = d3.select(svg)
             .attr("width", "100%")
             .attr("height", "100%")
@@ -143,7 +143,7 @@ export class HeatmapChart extends Operation {
             width = dimension - margin.left - margin.right,
             height = dimension - margin.top - margin.bottom,
             binWidth = width / hBins,
-            binHeight = height/ vBins,
+            binHeight = height / vBins,
             marginedSpace = svg.append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -153,8 +153,8 @@ export class HeatmapChart extends Operation {
                 return Math.max(...lengths);
             }));
 
-        const xExtent = d3.extent(values, d => d[0]),
-            yExtent = d3.extent(values, d => d[1]);
+        const xExtent = d3.extent(values, (d: [number, number]) => d[0]) as [number, number],
+            yExtent = d3.extent(values, (d: [number, number]) => d[1]) as [number, number];
 
         const xAxis = d3.scaleLinear()
             .domain(xExtent)
@@ -180,18 +180,18 @@ export class HeatmapChart extends Operation {
             .enter()
             .append("g")
             .selectAll("rect")
-            .data(d => d)
+            .data((d: any) => d)
             .enter()
             .append("rect")
-            .attr("x", (d) => binWidth * d.x)
-            .attr("y", (d) => (height - binHeight * (d.y + 1)))
+            .attr("x", (d: any) => binWidth * d.x)
+            .attr("y", (d: any) => (height - binHeight * (d.y + 1)))
             .attr("width", binWidth)
             .attr("height", binHeight)
-            .attr("fill", (d) => colour(d.length))
+            .attr("fill", (d: any) => colour(d.length))
             .attr("stroke", drawEdges ? "rgba(0, 0, 0, 0.5)" : "none")
             .attr("stroke-width", drawEdges ? "0.5" : "none")
             .append("title")
-            .text(d => {
+            .text((d: any) => {
                 const count = d.length,
                     perc = 100.0 * d.length / values.length,
                     tooltip = `Count: ${count}\n
@@ -223,29 +223,29 @@ export class HeatmapChart extends Operation {
             .style("text-anchor", "middle")
             .text(xLabel);
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as HTMLElement).outerHTML;
     }
 
     /**
      * Packs a list of x, y coordinates into a number of bins for use in a heatmap.
      *
-     * @param {Object[]} points
-     * @param {number} number of vertical bins
-     * @param {number} number of horizontal bins
+     * @param {Object[]} values
+     * @param {number} vBins number of vertical bins
+     * @param {number} hBins number of horizontal bins
      * @returns {Object[]} a list of bins (each bin is an Array) with x y coordinates, filled with the points
      */
-    getHeatmapPacking(values, vBins, hBins) {
-        const xBounds = d3.extent(values, d => d[0]),
-            yBounds = d3.extent(values, d => d[1]),
-            bins = [];
+    getHeatmapPacking(values: number[][], vBins: number, hBins: number): any[][] {
+        const xBounds = d3.extent(values, (d: number[]) => d[0]) as [number, number],
+            yBounds = d3.extent(values, (d: number[]) => d[1]) as [number, number],
+            bins: any[][] = [];
 
-        if (xBounds[0] === xBounds[1]) throw "Cannot pack points. There is no difference between the minimum and maximum X coordinate.";
-        if (yBounds[0] === yBounds[1]) throw "Cannot pack points. There is no difference between the minimum and maximum Y coordinate.";
+        if (xBounds[0] === xBounds[1]) throw new OperationError("Cannot pack points. There is no difference between the minimum and maximum X coordinate.");
+        if (yBounds[0] === yBounds[1]) throw new OperationError("Cannot pack points. There is no difference between the minimum and maximum Y coordinate.");
 
         for (let y = 0; y < vBins; y++) {
             bins.push([]);
             for (let x = 0; x < hBins; x++) {
-                const item = [];
+                const item: any = [];
                 item.y = y;
                 item.x = x;
 
@@ -261,7 +261,9 @@ export class HeatmapChart extends Operation {
                 y = Math.floor(vBins * fractionOfY),
                 x = Math.floor(hBins * fractionOfX);
 
-            bins[y][x].push({x: v[0], y: v[1]});
+            if (bins[y] && bins[y][x]) {
+                bins[y][x].push({x: v[0], y: v[1]});
+            }
         });
 
         return bins;

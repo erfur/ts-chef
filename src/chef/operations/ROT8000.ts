@@ -61,12 +61,12 @@ export class ROT8000 extends Operation {
             "57344": true
         };
         const bmpSize = 0x10000;
-        const rotList = {}; // the mapping of char to rotated char
+        const rotList: Record<string, string> = {}; // the mapping of char to rotated char
         const hiddenBlocks = [];
         let startBlock = 0;
         for (const key in validCodePoints) {
             if (Object.prototype.hasOwnProperty.call(validCodePoints, key)) {
-                if (validCodePoints[key] === true)
+                if (validCodePoints[key as keyof typeof validCodePoints] === true)
                     hiddenBlocks.push({ start: startBlock, end: parseInt(key, 10) - 1 });
                 else
                     startBlock = parseInt(key, 10);
@@ -75,8 +75,8 @@ export class ROT8000 extends Operation {
         const validIntList = []; // list of all valid chars
         let currValid = false;
         for (let i = 0; i < bmpSize; i++) {
-            if (validCodePoints[i] !== undefined) {
-                currValid = validCodePoints[i];
+            if (validCodePoints[String(i) as keyof typeof validCodePoints] !== undefined) {
+                currValid = validCodePoints[String(i) as keyof typeof validCodePoints];
             }
             if (currValid) validIntList.push(i);
         }

@@ -61,11 +61,12 @@ export class HASSHClientFingerprint extends Operation {
 
         // Length
         const length = s.readInt(4);
-        if (s.length !== length + 4)
+        if (length === undefined || s.length !== length + 4)
             throw new OperationError("Incorrect packet length.");
 
         // Padding length
         const paddingLength = s.readInt(1);
+        if (paddingLength === undefined) throw new OperationError("Could not read padding length.");
 
         // Message code
         const messageCode = s.readInt(1);
@@ -77,42 +78,52 @@ export class HASSHClientFingerprint extends Operation {
 
         // KEX Algorithms
         const kexAlgosLength = s.readInt(4);
-        const kexAlgos = s.readString(kexAlgosLength);
+        if (kexAlgosLength === undefined) throw new OperationError("Could not read KEX algorithms length.");
+        const kexAlgos = s.readString(kexAlgosLength) ?? "";
 
         // Server Host Key Algorithms
         const serverHostKeyAlgosLength = s.readInt(4);
+        if (serverHostKeyAlgosLength === undefined) throw new OperationError("Could not read server host key algorithms length.");
         s.moveForwardsBy(serverHostKeyAlgosLength);
 
         // Encryption Algorithms Client to Server
         const encAlgosC2SLength = s.readInt(4);
-        const encAlgosC2S = s.readString(encAlgosC2SLength);
+        if (encAlgosC2SLength === undefined) throw new OperationError("Could not read encryption algorithms (C2S) length.");
+        const encAlgosC2S = s.readString(encAlgosC2SLength) ?? "";
 
         // Encryption Algorithms Server to Client
         const encAlgosS2CLength = s.readInt(4);
+        if (encAlgosS2CLength === undefined) throw new OperationError("Could not read encryption algorithms (S2C) length.");
         s.moveForwardsBy(encAlgosS2CLength);
 
         // MAC Algorithms Client to Server
         const macAlgosC2SLength = s.readInt(4);
-        const macAlgosC2S = s.readString(macAlgosC2SLength);
+        if (macAlgosC2SLength === undefined) throw new OperationError("Could not read MAC algorithms (C2S) length.");
+        const macAlgosC2S = s.readString(macAlgosC2SLength) ?? "";
 
         // MAC Algorithms Server to Client
         const macAlgosS2CLength = s.readInt(4);
+        if (macAlgosS2CLength === undefined) throw new OperationError("Could not read MAC algorithms (S2C) length.");
         s.moveForwardsBy(macAlgosS2CLength);
 
         // Compression Algorithms Client to Server
         const compAlgosC2SLength = s.readInt(4);
-        const compAlgosC2S = s.readString(compAlgosC2SLength);
+        if (compAlgosC2SLength === undefined) throw new OperationError("Could not read compression algorithms (C2S) length.");
+        const compAlgosC2S = s.readString(compAlgosC2SLength) ?? "";
 
         // Compression Algorithms Server to Client
         const compAlgosS2CLength = s.readInt(4);
+        if (compAlgosS2CLength === undefined) throw new OperationError("Could not read compression algorithms (S2C) length.");
         s.moveForwardsBy(compAlgosS2CLength);
 
         // Languages Client to Server
         const langsC2SLength = s.readInt(4);
+        if (langsC2SLength === undefined) throw new OperationError("Could not read languages (C2S) length.");
         s.moveForwardsBy(langsC2SLength);
 
         // Languages Server to Client
         const langsS2CLength = s.readInt(4);
+        if (langsS2CLength === undefined) throw new OperationError("Could not read languages (S2C) length.");
         s.moveForwardsBy(langsS2CLength);
 
         // First KEX packet follows

@@ -12,9 +12,9 @@
  */
 
 import { Operation } from "../Operation";
-import Utils from "../Utils";
+import { Utils } from "../Utils";
 import { toHexFast } from "../lib/Hex";
-import OperationError from "../errors/OperationError";
+import { OperationError } from "../errors/OperationError";
 
 /**
  * Rabbit operation
@@ -35,46 +35,46 @@ export class Rabbit extends Operation {
         this.outputType = "string";
         this.args = [
             {
-                "name": "Key",
-                "type": "toggleString",
-                "value": "",
-                "toggleValues": ["Hex", "UTF8", "Latin1", "Base64"]
+                name: "Key",
+                type: "toggleString",
+                value: "",
+                toggleValues: ["Hex", "UTF8", "Latin1", "Base64"]
             },
             {
-                "name": "IV",
-                "type": "toggleString",
-                "value": "",
-                "toggleValues": ["Hex", "UTF8", "Latin1", "Base64"]
+                name: "IV",
+                type: "toggleString",
+                value: "",
+                toggleValues: ["Hex", "UTF8", "Latin1", "Base64"]
             },
             {
-                "name": "Endianness",
-                "type": "option",
-                "value": ["Big", "Little"]
+                name: "Endianness",
+                type: "option",
+                value: ["Big", "Little"]
             },
             {
-                "name": "Input",
-                "type": "option",
-                "value": ["Raw", "Hex"]
+                name: "Input",
+                type: "option",
+                value: ["Raw", "Hex"]
             },
             {
-                "name": "Output",
-                "type": "option",
-                "value": ["Raw", "Hex"]
+                name: "Output",
+                type: "option",
+                value: ["Raw", "Hex"]
             }
         ];
     }
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
-        const key = Utils.convertToByteArray(args[0].string, args[0].option),
-            iv = Utils.convertToByteArray(args[1].string, args[1].option),
-            endianness = args[2],
-            inputType = args[3],
-            outputType = args[4];
+    run(input: string, args: any[]): string {
+        const key = Utils.convertToByteArray(args[0].string, args[0].option);
+        const iv = Utils.convertToByteArray(args[1].string, args[1].option);
+        const endianness = args[2] as string;
+        const inputType = args[3] as string;
+        const outputType = args[4] as string;
 
         const littleEndian = endianness === "Little";
 
@@ -86,7 +86,8 @@ export class Rabbit extends Operation {
         }
 
         // Inner State
-        const X = new Uint32Array(8), C = new Uint32Array(8);
+        const X = new Uint32Array(8);
+        const C = new Uint32Array(8);
         let b = 0;
 
         // Counter System
@@ -94,38 +95,38 @@ export class Rabbit extends Operation {
             0x4d34d34d, 0xd34d34d3, 0x34d34d34, 0x4d34d34d,
             0xd34d34d3, 0x34d34d34, 0x4d34d34d, 0xd34d34d3
         ];
-        const counterUpdate = function() {
+        const counterUpdate = () => {
             for (let j = 0; j < 8; j++) {
                 const temp = C[j] + A[j] + b;
-                b = (temp / ((1 << 30) * 4)) >>> 0;
-                C[j] = temp;
+                b = (temp / 4294967296) >>> 0;
+                C[j] = temp >>> 0;
             }
         };
 
         // Next-State Function
-        const g = function(u, v) {
+        const g = (u: number, v: number): number => {
             const uv = (u + v) >>> 0;
             const upper = uv >>> 16, lower = uv & 0xffff;
             const upperUpper = upper * upper;
             const upperLower2 = 2 * upper * lower;
             const lowerLower = lower * lower;
-            const mswTemp = upperUpper + ((upperLower2 / (1 << 16)) >>> 0);
-            const lswTemp = lowerLower + (upperLower2 & 0xffff) * (1 << 16);
-            const msw = mswTemp + ((lswTemp / ((1 << 30) * 4)) >>> 0);
+            const mswTemp = upperUpper + ((upperLower2 / 65536) >>> 0);
+            const lswTemp = (lowerLower + (upperLower2 & 0xffff) * 65536) >>> 0;
+            const msw = (mswTemp + (lswTemp / 4294967296)) >>> 0;
             const lsw = lswTemp >>> 0;
             return lsw ^ msw;
         };
-        const leftRotate = function(value, width) {
+        const leftRotate = (value: number, width: number): number => {
             return (value << width) | (value >>> (32 - width));
         };
-        const nextStateHelper1 = function(v0, v1, v2) {
-            return v0 + leftRotate(v1, 16) + leftRotate(v2, 16);
+        const nextStateHelper1 = (v0: number, v1: number, v2: number): number => {
+            return (v0 + leftRotate(v1, 16) + leftRotate(v2, 16)) >>> 0;
         };
-        const nextStateHelper2 = function(v0, v1, v2) {
-            return v0 + leftRotate(v1, 8) + v2;
+        const nextStateHelper2 = (v0: number, v1: number, v2: number): number => {
+            return (v0 + leftRotate(v1, 8) + v2) >>> 0;
         };
         const G = new Uint32Array(8);
-        const nextState = function() {
+        const nextState = () => {
             for (let j = 0; j < 8; j++) {
                 G[j] = g(X[j], C[j]);
             }
@@ -152,11 +153,11 @@ export class Rabbit extends Operation {
         }
         for (let j = 0; j < 8; j++) {
             if (j % 2 === 0) {
-                X[j] = (K[(j + 1) % 8] << 16) | K[j];
-                C[j] = (K[(j + 4) % 8] << 16) | K[(j + 5) % 8];
+                X[j] = ((K[(j + 1) % 8] << 16) | K[j]) >>> 0;
+                C[j] = ((K[(j + 4) % 8] << 16) | K[(j + 5) % 8]) >>> 0;
             } else {
-                X[j] = (K[(j + 5) % 8] << 16) | K[(j + 4) % 8];
-                C[j] = (K[j] << 16) | K[(j + 1) % 8];
+                X[j] = ((K[(j + 5) % 8] << 16) | K[(j + 4) % 8]) >>> 0;
+                C[j] = ((K[j] << 16) | K[(j + 1) % 8]) >>> 0;
             }
         }
         for (let i = 0; i < 4; i++) {
@@ -164,12 +165,12 @@ export class Rabbit extends Operation {
             nextState();
         }
         for (let j = 0; j < 8; j++) {
-            C[j] = C[j] ^ X[(j + 4) % 8];
+            C[j] = (C[j] ^ X[(j + 4) % 8]) >>> 0;
         }
 
         // IV Setup Scheme
         if (iv.length === 8) {
-            const getIVValue = function(a, b, c, d) {
+            const getIVValue = (a: number, b: number, c: number, d: number): number => {
                 if (littleEndian) {
                     return (iv[a] << 24) | (iv[b] << 16) |
                         (iv[c] << 8) | iv[d];
@@ -178,14 +179,14 @@ export class Rabbit extends Operation {
                         (iv[7 - c] << 8) | iv[7 - d];
                 }
             };
-            C[0] = C[0] ^ getIVValue(3, 2, 1, 0);
-            C[1] = C[1] ^ getIVValue(7, 6, 3, 2);
-            C[2] = C[2] ^ getIVValue(7, 6, 5, 4);
-            C[3] = C[3] ^ getIVValue(5, 4, 1, 0);
-            C[4] = C[4] ^ getIVValue(3, 2, 1, 0);
-            C[5] = C[5] ^ getIVValue(7, 6, 3, 2);
-            C[6] = C[6] ^ getIVValue(7, 6, 5, 4);
-            C[7] = C[7] ^ getIVValue(5, 4, 1, 0);
+            C[0] = (C[0] ^ getIVValue(3, 2, 1, 0)) >>> 0;
+            C[1] = (C[1] ^ getIVValue(7, 6, 3, 2)) >>> 0;
+            C[2] = (C[2] ^ getIVValue(7, 6, 5, 4)) >>> 0;
+            C[3] = (C[3] ^ getIVValue(5, 4, 1, 0)) >>> 0;
+            C[4] = (C[4] ^ getIVValue(3, 2, 1, 0)) >>> 0;
+            C[5] = (C[5] ^ getIVValue(7, 6, 3, 2)) >>> 0;
+            C[6] = (C[6] ^ getIVValue(7, 6, 5, 4)) >>> 0;
+            C[7] = (C[7] ^ getIVValue(5, 4, 1, 0)) >>> 0;
             for (let i = 0; i < 4; i++) {
                 counterUpdate();
                 nextState();
@@ -194,22 +195,22 @@ export class Rabbit extends Operation {
 
         // Extraction Scheme
         const S = new Uint8Array(16);
-        const extract = function() {
+        const extract = () => {
             let pos = 0;
-            const addPart = function(value) {
-                S[pos++] = value >>> 8;
+            const addPart = (value: number) => {
+                S[pos++] = (value >>> 8) & 0xff;
                 S[pos++] = value & 0xff;
             };
             counterUpdate();
             nextState();
-            addPart((X[6] >>> 16) ^ (X[1] & 0xffff));
-            addPart((X[6] & 0xffff) ^ (X[3] >>> 16));
-            addPart((X[4] >>> 16) ^ (X[7] & 0xffff));
-            addPart((X[4] & 0xffff) ^ (X[1] >>> 16));
-            addPart((X[2] >>> 16) ^ (X[5] & 0xffff));
-            addPart((X[2] & 0xffff) ^ (X[7] >>> 16));
-            addPart((X[0] >>> 16) ^ (X[3] & 0xffff));
-            addPart((X[0] & 0xffff) ^ (X[5] >>> 16));
+            addPart(((X[6] >>> 16) ^ (X[1] & 0xffff)) & 0xffff);
+            addPart(((X[6] & 0xffff) ^ (X[3] >>> 16)) & 0xffff);
+            addPart(((X[4] >>> 16) ^ (X[7] & 0xffff)) & 0xffff);
+            addPart(((X[4] & 0xffff) ^ (X[1] >>> 16)) & 0xffff);
+            addPart(((X[2] >>> 16) ^ (X[5] & 0xffff)) & 0xffff);
+            addPart(((X[2] & 0xffff) ^ (X[7] >>> 16)) & 0xffff);
+            addPart(((X[0] >>> 16) ^ (X[3] & 0xffff)) & 0xffff);
+            addPart(((X[0] & 0xffff) ^ (X[5] >>> 16)) & 0xffff);
             if (littleEndian) {
                 for (let i = 0, j = S.length - 1; i < j;) {
                     const temp = S[i];

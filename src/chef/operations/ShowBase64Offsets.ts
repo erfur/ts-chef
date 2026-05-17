@@ -53,15 +53,17 @@ export class ShowBase64Offsets extends Operation {
     }
 
     /**
-     * @param {byteArray} input
-     * @param {Object[]} args
-     * @returns {html}
+     * @param {number[]} input
+     * @param {any[]} args
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
-        const [alphabet, showVariable, format] = args;
+    run(input: number[], args: any[]): string {
+        const alphabet: string = args[0],
+            showVariable: boolean = args[1],
+            format: string = args[2];
 
         if (format === "Base64") {
-            input = fromBase64(Utils.byteArrayToUtf8(input), null, "byteArray");
+            input = fromBase64(Utils.byteArrayToUtf8(input), alphabet, "byteArray") as number[];
         }
 
         let offset0 = toBase64(input, alphabet),
@@ -83,21 +85,21 @@ export class ShowBase64Offsets extends Operation {
         if (len0 % 4 === 2) {
             staticSection = offset0.slice(0, -3);
             offset0 = "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64(staticSection, alphabet).slice(0, -2)) + "'>" +
+                Utils.escapeHtml(fromBase64(staticSection, alphabet, "string") as string).slice(0, -2) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset0.substr(offset0.length - 3, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset0.substr(offset0.length - 2)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset0.substring(offset0.length - 3, offset0.length - 2)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset0.substring(offset0.length - 2)) + "</span>";
         } else if (len0 % 4 === 3) {
             staticSection = offset0.slice(0, -2);
             offset0 = "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64(staticSection, alphabet).slice(0, -1)) + "'>" +
+                Utils.escapeHtml(fromBase64(staticSection, alphabet, "string") as string).slice(0, -1) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset0.substr(offset0.length - 2, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset0.substr(offset0.length - 1)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset0.substring(offset0.length - 2, offset0.length - 1)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset0.substring(offset0.length - 1)) + "</span>";
         } else {
             staticSection = offset0;
             offset0 = "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64(staticSection, alphabet)) + "'>" +
+                Utils.escapeHtml(fromBase64(staticSection, alphabet, "string") as string) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>";
         }
 
@@ -107,27 +109,27 @@ export class ShowBase64Offsets extends Operation {
 
 
         // Highlight offset 1
-        padding = "<span class='hl3'>" + Utils.escapeHtml(offset1.substr(0, 1)) + "</span>" +
-            "<span class='hl5'>" + Utils.escapeHtml(offset1.substr(1, 1)) + "</span>";
-        offset1 = offset1.substr(2);
+        padding = "<span class='hl3'>" + Utils.escapeHtml(offset1.substring(0, 1)) + "</span>" +
+            "<span class='hl5'>" + Utils.escapeHtml(offset1.substring(1, 2)) + "</span>";
+        offset1 = offset1.substring(2);
         if (len1 % 4 === 2) {
             staticSection = offset1.slice(0, -3);
             offset1 = padding + "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet).slice(1, -2)) + "'>" +
+                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet, "string") as string).slice(1, -2) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset1.substr(offset1.length - 3, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset1.substr(offset1.length - 2)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset1.substring(offset1.length - 3, offset1.length - 2)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset1.substring(offset1.length - 2)) + "</span>";
         } else if (len1 % 4 === 3) {
             staticSection = offset1.slice(0, -2);
             offset1 = padding + "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet).slice(1, -1)) + "'>" +
+                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet, "string") as string).slice(1, -1) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset1.substr(offset1.length - 2, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset1.substr(offset1.length - 1)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset1.substring(offset1.length - 2, offset1.length - 1)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset1.substring(offset1.length - 1)) + "</span>";
         } else {
             staticSection = offset1;
             offset1 = padding +  "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet).slice(1)) + "'>" +
+                Utils.escapeHtml(fromBase64("AA" + staticSection, alphabet, "string") as string).slice(1) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>";
         }
 
@@ -136,27 +138,27 @@ export class ShowBase64Offsets extends Operation {
         }
 
         // Highlight offset 2
-        padding = "<span class='hl3'>" + Utils.escapeHtml(offset2.substr(0, 2)) + "</span>" +
-            "<span class='hl5'>" + Utils.escapeHtml(offset2.substr(2, 1)) + "</span>";
-        offset2 = offset2.substr(3);
+        padding = "<span class='hl3'>" + Utils.escapeHtml(offset2.substring(0, 2)) + "</span>" +
+            "<span class='hl5'>" + Utils.escapeHtml(offset2.substring(2, 3)) + "</span>";
+        offset2 = offset2.substring(3);
         if (len2 % 4 === 2) {
             staticSection = offset2.slice(0, -3);
             offset2 = padding + "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet).slice(2, -2)) + "'>" +
+                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet, "string") as string).slice(2, -2) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset2.substr(offset2.length - 3, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset2.substr(offset2.length - 2)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset2.substring(offset2.length - 3, offset2.length - 2)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset2.substring(offset2.length - 2)) + "</span>";
         } else if (len2 % 4 === 3) {
             staticSection = offset2.slice(0, -2);
             offset2 = padding + "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet).slice(2, -2)) + "'>" +
+                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet, "string") as string).slice(2, -2) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>" +
-                "<span class='hl5'>" + Utils.escapeHtml(offset2.substr(offset2.length - 2, 1)) + "</span>" +
-                "<span class='hl3'>" + Utils.escapeHtml(offset2.substr(offset2.length - 1)) + "</span>";
+                "<span class='hl5'>" + Utils.escapeHtml(offset2.substring(offset2.length - 2, offset2.length - 1)) + "</span>" +
+                "<span class='hl3'>" + Utils.escapeHtml(offset2.substring(offset2.length - 1)) + "</span>";
         } else {
             staticSection = offset2;
             offset2 = padding +  "<span data-toggle='tooltip' data-placement='top' title='" +
-                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet).slice(2)) + "'>" +
+                Utils.escapeHtml(fromBase64("AAA" + staticSection, alphabet, "string") as string).slice(2) + "'>" +
                 Utils.escapeHtml(staticSection) + "</span>";
         }
 

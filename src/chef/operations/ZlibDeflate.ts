@@ -37,7 +37,7 @@ export class ZlibDeflate extends Operation {
             "Best Compression": 9,
             "No Compression": 0,
         };
-        const level = (levelMap[levelOpt] ?? -1) as pako.DeflateOptions["level"];
+        const level = (levelMap[levelOpt] ?? -1) as -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
         try {
             const compressed = pako.deflate(new Uint8Array(input), { level });
             return compressed.buffer as ArrayBuffer;

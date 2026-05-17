@@ -141,7 +141,7 @@ export class AddTextToImage extends Operation {
         }
 
         
-        const fontsMap = {};
+        const fontsMap: {[key: string]: any} = {};
         try {
             const fonts = [
                 import(
@@ -188,9 +188,10 @@ export class AddTextToImage extends Operation {
             const font = fontsMap[fontFace];
 
             // LoadFont needs an absolute url, so append the font name to self.docURL
-            jimpFont = await loadFont(self.docURL + "/" + font.default);
+            const docURL = (globalThis as any).docURL || "";
+            jimpFont = await loadFont(docURL + "/" + font.default);
 
-            jimpFont.pages.forEach(function (page) {
+            jimpFont.pages.forEach(function (page: any) {
                 if (page.bitmap) {
                     // Adjust the RGB values of the image pages to change the font colour.
                     const pageWidth = page.bitmap.width;
@@ -227,7 +228,7 @@ export class AddTextToImage extends Operation {
             // Create a temporary image to hold the rendered text
             const textImage = new Jimp({
                 width: measureText(jimpFont, text),
-                height: measureTextHeight(jimpFont, text),
+                height: measureTextHeight(jimpFont, text, Infinity),
             });
             textImage.print({
                 font: jimpFont,
@@ -293,7 +294,7 @@ export class AddTextToImage extends Operation {
             if (image.mime === "image/gif") {
                 imageBuffer = await image.getBuffer(JimpMime.png);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as any);
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -307,7 +308,7 @@ export class AddTextToImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: any) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

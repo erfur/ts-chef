@@ -53,7 +53,7 @@ export class JsonataQuery extends Operation {
         try {
             jsonObj = JSON.parse(input);
         } catch (err) {
-            throw new OperationError(`Invalid input JSON: ${err.message}`);
+            throw new OperationError(`Invalid input JSON: ${err instanceof Error ? err.message : String(err)}`);
         }
 
         try {
@@ -61,7 +61,7 @@ export class JsonataQuery extends Operation {
             result = await expression.evaluate(jsonObj);
         } catch (err) {
             throw new OperationError(
-                `Invalid Jsonata Expression: ${err.message}`
+                `Invalid Jsonata Expression: ${err instanceof Error ? err.message : String(err)}`
             );
         }
 

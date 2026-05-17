@@ -1,9 +1,14 @@
-/* Ported from CyberChef */
-
-/**
- * @author linuxgemini [ilteris@asenkron.com.tr]
- * @copyright Crown Copyright 2024
- * @license Apache-2.0
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
  */
 
 import Utils from "../Utils";
@@ -37,9 +42,11 @@ const HEX_ALPHABET_MAP = HEX_ALPHABET.split("");
 /**
  * Convert a byte array into a modhex string.
  *
- * @param {byteArray|Uint8Array|ArrayBuffer} data
+ * @param {Uint8Array|ArrayBuffer|number[]} data
  * @param {string} [delim=" "]
  * @param {number} [padding=2]
+ * @param {string} [extraDelim=""]
+ * @param {number} [lineSize=0]
  * @returns {string}
  *
  * @example
@@ -49,12 +56,18 @@ const HEX_ALPHABET_MAP = HEX_ALPHABET.split("");
  * // returns "cl:bf:bu"
  * toModhex([10,20,30], ":");
  */
-export function toModhex(data, delim=" ", padding=2, extraDelim="", lineSize=0) {
+export function toModhex(
+    data: Uint8Array | ArrayBuffer | number[],
+    delim: string = " ",
+    padding: number = 2,
+    extraDelim: string = "",
+    lineSize: number = 0
+): string {
     if (!data) return "";
-    if (data instanceof ArrayBuffer) data = new Uint8Array(data);
-    if (data.length === 0) return "";
+    const uint8Data = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (uint8Data.length === 0) return "";
 
-    const regularHexString = toHex(data, "", padding, "", 0);
+    const regularHexString = toHex(uint8Data, "", padding, "", 0);
 
     let modhexString = "";
     for (const letter of regularHexString.split("")) {
@@ -65,23 +78,25 @@ export function toModhex(data, delim=" ", padding=2, extraDelim="", lineSize=0) 
     const groupingRegexp = new RegExp(`.{1,${padding}}`, "g");
     const groupedModhex = modhexString.match(groupingRegexp);
 
-    for (let i = 0; i < groupedModhex.length; i++) {
-        const group = groupedModhex[i];
-        output += group + delim;
+    if (groupedModhex) {
+        for (let i = 0; i < groupedModhex.length; i++) {
+            const group = groupedModhex[i];
+            output += group + delim;
 
-        if (extraDelim) {
-            output += extraDelim;
-        }
-        // Add LF after each lineSize amount of bytes but not at the end
-        if ((i !== groupedModhex.length - 1) && ((i + 1) % lineSize === 0)) {
-            output += "\n";
+            if (extraDelim) {
+                output += extraDelim;
+            }
+            // Add LF after each lineSize amount of bytes but not at the end
+            if ((i !== groupedModhex.length - 1) && (lineSize > 0) && ((i + 1) % lineSize === 0)) {
+                output += "\n";
+            }
         }
     }
 
     // Remove the extraDelim at the end (if there is one)
     // and remove the delim at the end, but if it's prepended there's nothing to remove
     const rTruncLen = extraDelim.length + delim.length;
-    if (rTruncLen) {
+    if (rTruncLen && output.length >= rTruncLen) {
         // If rTruncLen === 0 then output.slice(0,0) will be returned, which is nothing
         return output.slice(0, -rTruncLen);
     } else {
@@ -93,23 +108,23 @@ export function toModhex(data, delim=" ", padding=2, extraDelim="", lineSize=0) 
 /**
  * Convert a byte array into a modhex string as efficiently as possible with no options.
  *
- * @param {byteArray|Uint8Array|ArrayBuffer} data
+ * @param {Uint8Array|ArrayBuffer|number[]} data
  * @returns {string}
  *
  * @example
  * // returns "clbfbu"
  * toModhexFast([10,20,30]);
  */
-export function toModhexFast(data) {
+export function toModhexFast(data: Uint8Array | ArrayBuffer | number[]): string {
     if (!data) return "";
-    if (data instanceof ArrayBuffer) data = new Uint8Array(data);
-    if (data.length === 0) return "";
+    const uint8Data = data instanceof Uint8Array ? data : new Uint8Array(data);
+    if (uint8Data.length === 0) return "";
 
-    const output = [];
+    const output: string[] = [];
 
-    for (let i = 0; i < data.length; i++) {
-        output.push(MODHEX_ALPHABET_MAP[(data[i] >> 4) & 0xf]);
-        output.push(MODHEX_ALPHABET_MAP[data[i] & 0xf]);
+    for (let i = 0; i < uint8Data.length; i++) {
+        output.push(MODHEX_ALPHABET_MAP[(uint8Data[i] >> 4) & 0xf]);
+        output.push(MODHEX_ALPHABET_MAP[uint8Data[i] & 0xf]);
     }
     return output.join("");
 }
@@ -121,7 +136,7 @@ export function toModhexFast(data) {
  * @param {string} data
  * @param {string} [delim]
  * @param {number} [byteLen=2]
- * @returns {byteArray}
+ * @returns {number[]}
  *
  * @example
  * // returns [10,20,30]
@@ -130,25 +145,29 @@ export function toModhexFast(data) {
  * // returns [10,20,30]
  * fromModhex("cl:bf:bu", "Colon");
  */
-export function fromModhex(data, delim="Auto", byteLen=2) {
+export function fromModhex(data: string, delim: string = "Auto", byteLen: number = 2): number[] {
     if (byteLen < 1 || Math.round(byteLen) !== byteLen)
         throw new OperationError("Byte length must be a positive integer");
 
     // The `.replace(/\s/g, "")` an interesting workaround: Hex "multiline" tests aren't actually
     // multiline. Tests for Modhex fixes that, thus exposing the issue.
-    data = data.toLowerCase().replace(/\s/g, "");
+    let cleanedData = data.toLowerCase().replace(/\s/g, "");
 
+    let dataParts: string[];
     if (delim !== "None") {
         const delimRegex = delim === "Auto" ? /[^cbdefghijklnrtuv]/gi : Utils.regexRep(delim);
-        data = data.split(delimRegex);
+        dataParts = cleanedData.split(delimRegex);
     } else {
-        data = [data];
+        dataParts = [cleanedData];
     }
 
     let regularHexString = "";
-    for (let i = 0; i < data.length; i++) {
-        for (const letter of data[i].split("")) {
-            regularHexString += HEX_ALPHABET_MAP[MODHEX_ALPHABET_MAP.indexOf(letter)];
+    for (let i = 0; i < dataParts.length; i++) {
+        for (const letter of dataParts[i].split("")) {
+            const index = MODHEX_ALPHABET_MAP.indexOf(letter);
+            if (index !== -1) {
+                regularHexString += HEX_ALPHABET_MAP[index];
+            }
         }
     }
 

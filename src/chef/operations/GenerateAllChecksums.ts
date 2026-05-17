@@ -23,6 +23,7 @@ import Fletcher64Checksum from "./Fletcher64Checksum";
  * Generate all checksums operation
  */
 export class GenerateAllChecksums extends Operation {
+    checksums: Array<{name: string; algo: Operation; params: string[]}> = [];
 
     /**
      * GenerateAllChecksums constructor
@@ -246,7 +247,7 @@ export class GenerateAllChecksums extends Operation {
         const [length, includeNames] = args;
         let output = "";
         this.checksums.forEach(checksum => {
-            const checksumLength = checksum.name.match(new RegExp("-(\\d{1,2})(\\/|$)"))[1];
+            const checksumLength = checksum.name.match(new RegExp("-(\\d{1,2})(\\/|$)"))?.[1];
             if (length === "All" || length === checksumLength) {
                 const value = checksum.algo.run(new Uint8Array(input), checksum.params || []);
                 output += includeNames ?

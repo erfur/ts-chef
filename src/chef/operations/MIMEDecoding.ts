@@ -57,7 +57,7 @@ export class MIMEDecoding extends Operation {
      *
      * @param headerString
      */
-    decodeHeaders(headerString) {
+    decodeHeaders(headerString: string) {
         // No encoded words detected
         let i = headerString.indexOf("=?");
         if (i === -1) return headerString;
@@ -94,7 +94,7 @@ export class MIMEDecoding extends Operation {
             end = cur + j + "?=".length;
 
             if (encoding.toLowerCase() === "b") {
-                text = fromBase64(text);
+                text = fromBase64(text) as string;
             } else if (encoding.toLowerCase() === "q") {
                 text = this.parseQEncodedWord(text);
             } else {
@@ -126,7 +126,7 @@ export class MIMEDecoding extends Operation {
      *
      * @param encodedWord
      */
-    convertFromCharset(charset, encodedText) {
+    convertFromCharset(charset: string, encodedText: string) {
         charset = charset.toLowerCase();
         const parsedCharset = charset.split("-");
 
@@ -149,7 +149,7 @@ export class MIMEDecoding extends Operation {
      *
      * @param encodedWord
      */
-    parseQEncodedWord(encodedWord) {
+    parseQEncodedWord(encodedWord: string) {
         let decodedWord = "";
         for (let i = 0; i < encodedWord.length; i++) {
             if (encodedWord[i] === "_") {

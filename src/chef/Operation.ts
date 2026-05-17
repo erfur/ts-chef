@@ -19,7 +19,7 @@ export interface ArgConfig {
     hint?: string;
     rows?: number;
     disabled?: boolean;
-    target?: number;
+    target?: number | number[];
     defaultIndex?: number;
     maxLength?: number;
     min?: number;
@@ -42,6 +42,7 @@ export abstract class Operation {
     outputType: string = "string";
     presentType: string = "string";
     flowControl: boolean = false;
+    manualBake: boolean = false;
     args: ArgConfig[] = [];
     checks?: Array<{ pattern: string; flags: string; args: unknown[] }>;
 

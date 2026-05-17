@@ -66,7 +66,7 @@ const DATA_UNITS = [
     "[Decimal bytes (8 x 10^n)]", "Kilobytes (KB)", "Megabytes (MB)", "Gigabytes (GB)", "Terabytes (TB)", "Petabytes (PB)", "Exabytes (EB)", "Zettabytes (ZB)", "Yottabytes (YB)", "[/Decimal bytes (8 x 10^n)]"
 ];
 
-const DATA_FACTOR = { // Multiples of a bit
+const DATA_FACTOR: Record<string, number> = { // Multiples of a bit
     "Bits (b)":        1,
     "Nibbles":         4,
     "Octets":          8,

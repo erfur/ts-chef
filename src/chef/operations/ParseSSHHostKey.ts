@@ -63,7 +63,7 @@ export class ParseSSHHostKey extends Operation {
         const [inputFormat] = args,
             inputKey = this.convertKeyToBinary(input.trim(), inputFormat),
             fields = this.parseKey(inputKey),
-            keyType = Utils.byteArrayToChars(fromHex(fields[0]), "");
+            keyType = Utils.byteArrayToChars(fromHex(fields[0]));
 
         let output = `Key type: ${keyType}`;
 
@@ -95,7 +95,7 @@ export class ParseSSHHostKey extends Operation {
      * @param {string} inputFormat
      * @returns {byteArray}
      */
-    convertKeyToBinary(inputKey, inputFormat) {
+    convertKeyToBinary(inputKey: string, inputFormat: string): number[] {
         const keyPattern = new RegExp(/^(?:ssh|ecdsa-sha2)\S+\s+(\S*)/),
             keyMatch = inputKey.match(keyPattern);
 
@@ -109,7 +109,7 @@ export class ParseSSHHostKey extends Operation {
         if (inputFormat === "Hex") {
             return fromHex(inputKey);
         } else if (inputFormat === "Base64") {
-            return fromBase64(inputKey, null, "byteArray");
+            return fromBase64(inputKey, undefined, "byteArray") as number[];
         } else {
             throw new OperationError("Invalid input format.");
         }
@@ -122,7 +122,7 @@ export class ParseSSHHostKey extends Operation {
      * @param {string} inputKey
      * @returns {string}
      */
-    detectKeyFormat(inputKey) {
+    detectKeyFormat(inputKey: string): string {
         const hexPattern = new RegExp(/^(?:[\dA-Fa-f]{2}[ ,;:]?)+$/);
         const b64Pattern = new RegExp(/^\s*(?:[A-Za-z\d+/]{4})+(?:[A-Za-z\d+/]{2}==|[A-Za-z\d+/]{3}=)?\s*$/);
 
@@ -141,7 +141,7 @@ export class ParseSSHHostKey extends Operation {
      *
      * @param {byteArray} key
      */
-    parseKey(key) {
+    parseKey(key: number[]): string[] {
         const fields = [];
         while (key.length > 0) {
             const lengthField = key.slice(0, 4);

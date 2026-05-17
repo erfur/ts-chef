@@ -16,7 +16,7 @@ import OperationError from "../errors/OperationError";
 import { isImage } from "../lib/FileType";
 import { Jimp } from "jimp";
 
-import { RGBA_DELIM_OPTIONS } from "../lib/Delim";
+import { DELIM_OPTIONS as RGBA_DELIM_OPTIONS } from "../lib/Delim";
 
 /**
  * Extract RGBA operation
@@ -62,7 +62,7 @@ export class ExtractRGBA extends Operation {
             includeAlpha = args[1],
             parsedImage = await Jimp.read(input);
 
-        let bitmap = parsedImage.bitmap.data;
+        let bitmap = parsedImage.bitmap.data as Buffer;
         bitmap = includeAlpha ?
             bitmap :
             bitmap.filter((val, idx) => idx % 4 !== 3);

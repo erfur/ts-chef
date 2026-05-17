@@ -7,12 +7,12 @@
  * Source:      Ported from GCHQ's CyberChef (JavaScript)
  * License:     Apache License 2.0
  * Description: TypeScript implementation of CyberChef modules.
- * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * Note:        First Port done by Author
  * -----------------------------------------------------------------------------
  */
 
 import { Operation } from "../Operation";
-import OperationError from "../errors/OperationError";
+import { OperationError } from "../errors/OperationError";
 
 /**
  * DNS over HTTPS operation
@@ -97,34 +97,33 @@ export class DNSOverHTTPS extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
-     * @returns {JSON}
+     * @param {any[]} args
+     * @returns {Promise<any>}
      */
-    run(input: any, args: any[]): any {
+    async run(input: string, args: any[]): Promise<any> {
         const [resolver, requestType, justAnswer, DNSSEC] = args;
-        let url = URL;
+        let url: URL;
         try {
             url = new URL(resolver);
-        } catch (error) {
+        } catch (error: any) {
             throw new OperationError(error.toString() +
             "\n\nThis error could be caused by one of the following:\n" +
             " - An invalid Resolver URL\n");
         }
-        const params = {name: input, type: requestType, cd: DNSSEC};
+        const params: Record<string, string> = { name: input, type: requestType, cd: DNSSEC.toString() };
 
-        url.search = new URLSearchParams(params);
+        url.search = new URLSearchParams(params).toString();
 
-        return fetch(url, {headers: {"accept": "application/dns-json"}}).then(response => {
-            return response.json();
-        }).then(data => {
+        try {
+            const response = await fetch(url.toString(), { headers: { "accept": "application/dns-json" } });
+            const data = await response.json();
             if (justAnswer) {
                 return extractData(data.Answer);
             }
             return data;
-        }).catch(e => {
-            throw new OperationError(`Error making request to ${url}\n${e.toString()}`);
-        });
-
+        } catch (e: any) {
+            throw new OperationError(`Error making request to ${url.toString()}\n${e.toString()}`);
+        }
     }
 }
 
@@ -132,15 +131,15 @@ export class DNSOverHTTPS extends Operation {
  * Construct an array of just data from a DNS Answer section
  *
  * @private
- * @param {JSON} data
- * @returns {JSON}
+ * @param {any} data
+ * @returns {any[]}
  */
-function extractData(data) {
-    if (typeof(data) == "undefined") {
+function extractData(data: any): any[] {
+    if (typeof(data) === "undefined") {
         return [];
     } else {
-        const dataValues = [];
-        data.forEach(element => {
+        const dataValues: any[] = [];
+        data.forEach((element: any) => {
             dataValues.push(element.data);
         });
         return dataValues;

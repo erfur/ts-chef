@@ -80,10 +80,10 @@ export class FormatMACAddresses extends Operation {
                 ciscoStyle,
                 ipv6IntID
             ] = args,
-            outputList = [],
+            outputList: string[] = [],
             macs = input.toLowerCase().split(/[,\s\r\n]+/);
 
-        macs.forEach(function(mac) {
+        macs.forEach(function(mac: string) {
             const cleanMac = mac.replace(/[:.-]+/g, ""),
                 macHyphen = cleanMac.replace(/(.{2}(?=.))/g, "$1-"),
                 macColon = cleanMac.replace(/(.{2}(?=.))/g, "$1:"),
@@ -91,8 +91,8 @@ export class FormatMACAddresses extends Operation {
             let macIPv6 = cleanMac.slice(0, 6) + "fffe" + cleanMac.slice(6);
 
             macIPv6 = macIPv6.replace(/(.{4}(?=.))/g, "$1:");
-            let bite = parseInt(macIPv6.slice(0, 2), 16) ^ 2;
-            bite = bite.toString(16).padStart(2, "0");
+            const biteNum = parseInt(macIPv6.slice(0, 2), 16) ^ 2;
+            const bite = biteNum.toString(16).padStart(2, "0");
             macIPv6 = bite + macIPv6.slice(2);
 
             if (outputCase === "Lower only") {

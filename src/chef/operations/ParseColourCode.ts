@@ -38,11 +38,11 @@ export class ParseColourCode extends Operation {
      * @param {Object[]} args
      * @returns {html}
      */
-    run(input: any, args: any[]): any {
-        let m = null,
-            r = 0, g = 0, b = 0, a = 1;
+    run(input: string, args: any[]): string {
+        let r = 0, g = 0, b = 0, a = 1;
 
         // Read in the input
+        let m: RegExpMatchArray | null;
         if ((m = input.match(/#([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})/i))) {
             // Hex - #d9edf7
             r = parseInt(m[1], 16);
@@ -81,16 +81,15 @@ export class ParseColourCode extends Operation {
             h = Math.round(hsl_[0] * 360),
             s = Math.round(hsl_[1] * 100),
             l = Math.round(hsl_[2] * 100);
-        let k = 1 - Math.max(r/255, g/255, b/255),
-            c = (1 - r/255 - k) / (1 - k),
-            y = (1 - b/255 - k) / (1 - k);
+        let k_val = 1 - Math.max(r/255, g/255, b/255),
+            c_val = (1 - r/255 - k_val) / (1 - k_val),
+            y_val = (1 - b/255 - k_val) / (1 - k_val),
+            m_val = (1 - g/255 - k_val) / (1 - k_val);
 
-        m = (1 - g/255 - k) / (1 - k);
-
-        c = isNaN(c) ? "0" : c.toFixed(2);
-        m = isNaN(m) ? "0" : m.toFixed(2);
-        y = isNaN(y) ? "0" : y.toFixed(2);
-        k = k.toFixed(2);
+        const c_str = isNaN(c_val) ? "0" : c_val.toFixed(2);
+        const m_str = isNaN(m_val) ? "0" : m_val.toFixed(2);
+        const y_str = isNaN(y_val) ? "0" : y_val.toFixed(2);
+        const k_str = k_val.toFixed(2);
 
         const hex = "#" +
                 Math.round(r).toString(16).padStart(2, "0") +
@@ -100,7 +99,7 @@ export class ParseColourCode extends Operation {
             rgba = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")",
             hsl  = "hsl(" + h + ", " + s + "%, " + l + "%)",
             hsla = "hsla(" + h + ", " + s + "%, " + l + "%, " + a + ")",
-            cmyk = "cmyk(" + c + ", " + m + ", " + y + ", " + k + ")";
+            cmyk = "cmyk(" + c_str + ", " + m_str + ", " + y_str + ", " + k_str + ")";
 
         // Generate output
         return `<div id="colorpicker" style="white-space: normal;"></div>
@@ -136,15 +135,15 @@ CMYK: ${cmyk}
      * @param {number} h - The hue
      * @param {number} s - The saturation
      * @param {number} l - The lightness
-     * @return {Array} The RGB representation
+     * @return {number[]} The RGB representation
      */
-    static _hslToRgb(h, s, l) {
+    static _hslToRgb(h: number, s: number, l: number): number[] {
         let r, g, b;
 
         if (s === 0) {
             r = g = b = l; // achromatic
         } else {
-            const hue2rgb = function hue2rgb(p, q, t) {
+            const hue2rgb = (p: number, q: number, t: number) => {
                 if (t < 0) t += 1;
                 if (t > 1) t -= 1;
                 if (t < 1/6) return p + (q - p) * 6 * t;
@@ -174,9 +173,9 @@ CMYK: ${cmyk}
      * @param {number} r - The red color value
      * @param {number} g - The green color value
      * @param {number} b - The blue color value
-     * @return {Array} The HSL representation
+     * @return {number[]} The HSL representation
      */
-    static _rgbToHsl(r, g, b) {
+    static _rgbToHsl(r: number, g: number, b: number): number[] {
         r /= 255; g /= 255; b /= 255;
         const max = Math.max(r, g, b),
             min = Math.min(r, g, b),
@@ -193,10 +192,10 @@ CMYK: ${cmyk}
                 case g: h = (b - r) / d + 2; break;
                 case b: h = (r - g) / d + 4; break;
             }
-            h /= 6;
+            if (h !== undefined) h /= 6;
         }
 
-        return [h, s, l];
+        return [h ?? 0, s, l];
     }
 }
 

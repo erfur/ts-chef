@@ -123,7 +123,14 @@ export class GOSTSign extends Operation {
 
         const sBoxVal = versionNum === 1989 ? sBox : null;
 
-        const algorithm = {
+        const algorithm: {
+            version: number;
+            length: number;
+            mode: string;
+            sBox: unknown;
+            macLength: unknown;
+            iv?: unknown;
+        } = {
             version: versionNum,
             length: blockLength,
             mode: "MAC",
@@ -140,7 +147,7 @@ export class GOSTSign extends Operation {
 
             return outputType === "Hex" ? out : Utils.byteArrayToChars(fromHex(out));
         } catch (err) {
-            throw new OperationError(err);
+            throw new OperationError(err instanceof Error ? err.message : String(err));
         }
     }
 

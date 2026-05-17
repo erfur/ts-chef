@@ -1,4 +1,15 @@
-/* Ported from CyberChef */
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
+ */
 
 /**
  * XXTEA library
@@ -18,9 +29,9 @@ const DELTA = 0x9E3779B9;
  * Convert a buffer to a Uint8Array
  * @param {Uint32Array} v
  * @param {boolean} includeLength
- * @returns {Uint8Array}
+ * @returns {Uint8Array | null}
  */
-function toUint8Array(v, includeLength) {
+function toUint8Array(v: Uint32Array, includeLength: boolean): Uint8Array | null {
     const length = v.length;
     let n = length << 2;
     if (includeLength) {
@@ -40,17 +51,17 @@ function toUint8Array(v, includeLength) {
 
 /**
  * Convert a buffer to a Uint32Array
- * @param {TypedArray} bs
+ * @param {Uint8Array} bs
  * @param {boolean} includeLength
  * @returns {Uint32Array}
  */
-function toUint32Array(bs, includeLength) {
+function toUint32Array(bs: Uint8Array, includeLength: boolean): Uint32Array {
     const length = bs.length;
     let n = length >> 2;
     if ((length & 3) !== 0) {
         ++n;
     }
-    let v;
+    let v: Uint32Array;
     if (includeLength) {
         v = new Uint32Array(n + 1);
         v[n] = length;
@@ -68,7 +79,7 @@ function toUint32Array(bs, includeLength) {
  * @param {number} i
  * @returns {number}
  */
-function int32(i) {
+function int32(i: number): number {
     return i & 0xFFFFFFFF;
 }
 
@@ -79,19 +90,19 @@ function int32(i) {
  * @param {number} z
  * @param {number} p
  * @param {number} e
- * @param {number} k
+ * @param {Uint32Array} k
  * @returns {number}
  */
-function mx(sum, y, z, p, e, k) {
+function mx(sum: number, y: number, z: number, p: number, e: number, k: Uint32Array): number {
     return ((z >>> 5 ^ y << 2) + (y >>> 3 ^ z << 4)) ^ ((sum ^ y) + (k[p & 3 ^ e] ^ z));
 }
 
 /**
  * Ensure an array is a multiple of 16 bits
- * @param {TypedArray} k
- * @returns {TypedArray}
+ * @param {Uint8Array} k
+ * @returns {Uint8Array}
  */
-function fixk(k) {
+function fixk(k: Uint8Array): Uint8Array {
     if (k.length < 16) {
         const key = new Uint8Array(16);
         key.set(k);
@@ -106,8 +117,9 @@ function fixk(k) {
  * @param {Uint32Array} k
  * @returns {Uint32Array}
  */
-function encryptUint32Array(v, k) {
+function encryptUint32Array(v: Uint32Array, k: Uint32Array): Uint32Array {
     const length = v.length;
+    if (length <= 1) return v;
     const n = length - 1;
     let y, z, sum, e, p, q;
     z = v[n];
@@ -131,8 +143,9 @@ function encryptUint32Array(v, k) {
  * @param {Uint32Array} k
  * @returns {Uint32Array}
  */
-function decryptUint32Array(v, k) {
+function decryptUint32Array(v: Uint32Array, k: Uint32Array): Uint32Array {
     const length = v.length;
+    if (length <= 1) return v;
     const n = length - 1;
     let y, z, sum, e, p;
     y = v[0];
@@ -151,11 +164,11 @@ function decryptUint32Array(v, k) {
 
 /**
  * Encrypt function
- * @param {TypedArray} data
- * @param {TypedArray} key
- * @returns {Uint8Array}
+ * @param {Uint8Array} data
+ * @param {Uint8Array} key
+ * @returns {Uint8Array | null}
  */
-export function encrypt(data, key) {
+export function encrypt(data: Uint8Array, key: Uint8Array): Uint8Array | null {
     if (data === undefined || data === null || data.length === 0) {
         return data;
     }
@@ -164,11 +177,11 @@ export function encrypt(data, key) {
 
 /**
  * Decrypt function
- * @param {TypedArray} data
- * @param {TypedArray} key
- * @returns {Uint8Array}
+ * @param {Uint8Array} data
+ * @param {Uint8Array} key
+ * @returns {Uint8Array | null}
  */
-export function decrypt(data, key) {
+export function decrypt(data: Uint8Array, key: Uint8Array): Uint8Array | null {
     if (data === undefined || data === null || data.length === 0) {
         return data;
     }

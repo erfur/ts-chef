@@ -21,3 +21,12 @@ export const DATETIME_FORMATS = [
     { name: "UNIX timestamp (seconds)", value: "X" },
     { name: "UNIX timestamp (milliseconds)", value: "x" },
 ];
+
+export const FORMAT_EXAMPLES = `Examples:
+- DD/MM/YYYY HH:mm:ss
+- MM/DD/YYYY HH:mm:ss
+- YYYY-MM-DD HH:mm:ss
+- dddd Do MMMM YYYY HH:mm:ss
+- X (UNIX timestamp in seconds)
+- x (UNIX timestamp in milliseconds)`;
+

@@ -115,7 +115,7 @@ export class Fork extends Operation {
 
             try {
                 progress = await recipe.execute(dish, 0, state);
-            } catch (err) {
+            } catch (err: any) {
                 if (!ignoreErrors) {
                     throw err;
                 }

@@ -41,9 +41,9 @@ export class PubKeyFromPrivKey extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         let output = "";
-        let match;
+        let match: RegExpExecArray | null;
         const regex = /-----BEGIN ((RSA |EC |DSA )?PRIVATE KEY)-----/g;
         while ((match = regex.exec(input)) !== null) {
             // find corresponding end tag
@@ -55,13 +55,13 @@ export class PubKeyFromPrivKey extends Operation {
             }
 
             const privKeyPem = input.substring(match.index, indexFooter + footer.length);
-            let privKey;
+            let privKey: any;
             try {
                 privKey = r.KEYUTIL.getKey(privKeyPem);
             } catch (err) {
                 throw new OperationError(`Unsupported key type: ${err}`);
             }
-            let pubKey;
+            let pubKey: any;
             if (privKey.type && privKey.type === "EC") {
                 pubKey = new r.KJUR.crypto.ECDSA({ curve: privKey.curve });
                 pubKey.setPublicKeyHex(privKey.generatePublicKeyHex());

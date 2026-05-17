@@ -1,4 +1,15 @@
-/* Ported from CyberChef */
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
+ */
 
 /**
  * Emulation of the Typex machine.
@@ -35,12 +46,12 @@ export const REFLECTORS = [
 ];
 
 // Special character handling on Typex keyboard
-const KEYBOARD = {
+const KEYBOARD: {[key: string]: string} = {
     "Q": "1", "W": "2", "E": "3", "R": "4", "T": "5", "Y": "6", "U": "7", "I": "8", "O": "9", "P": "0",
     "A": "-", "S": "/", "D": "Z", "F": "%", "G": "X", "H": "£", "K": "(", "L": ")",
     "C": "V", "B": "'", "N": ",", "M": "."
 };
-const KEYBOARD_REV = {};
+const KEYBOARD_REV: {[key: string]: string} = {};
 for (const i of Object.keys(KEYBOARD)) {
     KEYBOARD_REV[KEYBOARD[i]] = i;
 }
@@ -49,15 +60,18 @@ for (const i of Object.keys(KEYBOARD)) {
  * Typex machine. A lot like the Enigma, but five rotors, of which the first two are static.
  */
 export class TypexMachine extends Enigma.EnigmaBase {
+    keyboard: string;
+
     /**
      * TypexMachine constructor.
      *
-     * @param {Object[]} rotors - List of Rotors.
-     * @param {Object} reflector - A Reflector.
+     * @param {Enigma.Rotor[]} rotors - List of Rotors.
+     * @param {Enigma.Reflector} reflector - A Reflector.
      * @param {Plugboard} plugboard - A Plugboard.
+     * @param {string} keyboard - Keyboard mode.
      */
-    constructor(rotors, reflector, plugboard, keyboard) {
-        super(rotors, reflector, plugboard);
+    constructor(rotors: Enigma.Rotor[], reflector: Enigma.Reflector, plugboard: Plugboard, keyboard: string) {
+        super(rotors, reflector, plugboard as any);
         if (rotors.length !== 5) {
             throw new OperationError("Typex must have 5 rotors");
         }
@@ -68,7 +82,7 @@ export class TypexMachine extends Enigma.EnigmaBase {
      * This is the same as the Enigma step function, it's just that the right-
      * most two rotors are static.
      */
-    step() {
+    step(): void {
         const r0 = this.rotors[2];
         const r1 = this.rotors[3];
         r0.step();
@@ -90,7 +104,7 @@ export class TypexMachine extends Enigma.EnigmaBase {
      * @param {string} input - The data to encrypt/decrypt.
      * @return {string}
      */
-    crypt(input) {
+    crypt(input: string): string {
         let inputMod = input;
         if (this.keyboard === "Encrypt") {
             inputMod = "";
@@ -150,15 +164,15 @@ export class Rotor extends Enigma.Rotor {
      *
      * @param {string} wiring - A 26 character string of the wiring order.
      * @param {string} steps - A 0..26 character string of stepping points.
-     * @param {bool} reversed - Whether to reverse the rotor.
-     * @param {char} ringSetting - Ring setting of the rotor.
-     * @param {char} initialPosition - The initial position of the rotor.
+     * @param {boolean} reversed - Whether to reverse the rotor.
+     * @param {string} ringSetting - Ring setting of the rotor.
+     * @param {string} initialPos - The initial position of the rotor.
      */
-    constructor(wiring, steps, reversed, ringSetting, initialPos) {
+    constructor(wiring: string, steps: string, reversed: boolean, ringSetting: string, initialPos: string) {
         let wiringMod = wiring;
         if (reversed) {
             const outMap = new Array(26);
-            for (let i=0; i<26; i++) {
+            for (let i = 0; i < 26; i++) {
                 // wiring[i] is the original output
                 // Enigma.LETTERS[i] is the original input
                 const input = Utils.mod(26 - Enigma.a2i(wiring[i]), 26);
@@ -184,7 +198,7 @@ export class Plugboard extends Enigma.Rotor {
      *
      * @param {string} wiring - 26 character string of mappings from A-Z, as per rotors, or "".
      */
-    constructor(wiring) {
+    constructor(wiring: string) {
         // Typex input wiring is backwards vs Enigma: that is, letters enter the rotors in a
         // clockwise order, vs. Enigma's anticlockwise (or vice versa depending on which side
         // you're looking at it from). I'm doing the transform here to avoid having to rewrite
@@ -197,12 +211,12 @@ export class Plugboard extends Enigma.Rotor {
             throw new OperationError("Plugboard wiring must be 26 unique uppercase letters");
         }
         const reversed = "AZYXWVUTSRQPONMLKJIHGFEDCB";
-        wiring = wiring.replace(/./g, x => {
+        const transformedWiring = wiring.replace(/./g, x => {
             return reversed[Enigma.a2i(x)];
         });
         try {
-            super(wiring, "", "A", "A");
-        } catch (err) {
+            super(transformedWiring, "", "A", "A");
+        } catch (err: any) {
             throw new OperationError(err.message.replace("Rotor", "Plugboard"));
         }
     }
@@ -213,7 +227,7 @@ export class Plugboard extends Enigma.Rotor {
      * @param {number} c - The character.
      * @returns {number}
      */
-    transform(c) {
+    transform(c: number): number {
         return Utils.mod(this.map[Utils.mod(c + this.pos, 26)] - this.pos, 26);
     }
 
@@ -223,7 +237,7 @@ export class Plugboard extends Enigma.Rotor {
      * @param {number} c - The character.
      * @returns {number}
      */
-    revTransform(c) {
+    revTransform(c: number): number {
         return Utils.mod(this.revMap[Utils.mod(c + this.pos, 26)] - this.pos, 26);
     }
 }

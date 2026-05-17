@@ -114,7 +114,7 @@ export class ECDSAVerify extends Operation {
         let inputBase64;
         if (inputFormat === "Auto") {
             try {
-                inputBase64 = fromBase64(input, "A-Za-z0-9-_", false);
+                inputBase64 = fromBase64(input, "A-Za-z0-9-_", "byteArray", false);
                 inputFormat = "JSON Web Signature";
             } catch {}
         }
@@ -131,8 +131,8 @@ export class ECDSAVerify extends Operation {
                 signatureASN1Hex = r.KJUR.crypto.ECDSA.concatSigToASN1Sig(input);
                 break;
             case "JSON Web Signature":
-                if (!inputBase64) inputBase64 = fromBase64(input, "A-Za-z0-9-_");
-                signatureASN1Hex = r.KJUR.crypto.ECDSA.concatSigToASN1Sig(toHexFast(inputBase64));
+                if (!inputBase64) inputBase64 = fromBase64(input, "A-Za-z0-9-_", "byteArray");
+                signatureASN1Hex = r.KJUR.crypto.ECDSA.concatSigToASN1Sig(toHexFast(inputBase64 as number[]));
                 break;
             case "Raw JSON": {
                 if (!inputJson) inputJson = JSON.parse(input);

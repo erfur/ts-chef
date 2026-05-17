@@ -68,7 +68,7 @@ export class JA3SFingerprint extends Operation {
 
         // Length
         const length = s.readInt(2);
-        if (s.length !== length + 5)
+        if (length === undefined || s.length !== length + 5)
             throw new OperationError("Incorrect handshake length.");
 
         // Handshake type
@@ -78,33 +78,39 @@ export class JA3SFingerprint extends Operation {
 
         // Handshake length
         const handshakeLength = s.readInt(3);
-        if (s.length !== handshakeLength + 9)
+        if (handshakeLength === undefined || s.length !== handshakeLength + 9)
             throw new OperationError("Not enough data in Server Hello.");
 
         // Hello version
         const helloVersion = s.readInt(2);
+        if (helloVersion === undefined) throw new OperationError("Could not read TLS version.");
 
         // Random
         s.moveForwardsBy(32);
 
         // Session ID
         const sessionIDLength = s.readInt(1);
+        if (sessionIDLength === undefined) throw new OperationError("Could not read session ID length.");
         s.moveForwardsBy(sessionIDLength);
 
         // Cipher suite
         const cipherSuite = s.readInt(2);
+        if (cipherSuite === undefined) throw new OperationError("Could not read cipher suite.");
 
         // Compression Method
         s.moveForwardsBy(1);
 
         // Extensions
         const extensionsLength = s.readInt(2);
+        if (extensionsLength === undefined) throw new OperationError("Could not read extensions length.");
         const extensions = s.getBytes(extensionsLength);
+        if (extensions === undefined) throw new OperationError("Could not read extensions.");
         const es = new Stream(extensions);
         const exts = [];
         while (es.hasMore()) {
             const type = es.readInt(2);
             const length = es.readInt(2);
+            if (type === undefined || length === undefined) break;
             es.moveForwardsBy(length);
             exts.push(type);
         }

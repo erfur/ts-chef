@@ -21,6 +21,8 @@ import MagicLib from "../lib/Magic";
  */
 export class Magic extends Operation {
 
+    state: any;
+
     /**
      * Magic constructor
      */
@@ -61,22 +63,19 @@ export class Magic extends Operation {
 
     /**
      * @param {Object} state - The current state of the recipe.
-     * @param {number} state.progress - The current position in the recipe.
-     * @param {Dish} state.dish - The Dish being operated on.
-     * @param {Operation[]} state.opList - The list of operations in the recipe.
      * @returns {Object} The updated state of the recipe.
      */
-    async run(state) {
+    async run(state: any): Promise<any> {
         const ings = state.opList[state.progress].ingValues,
             [depth, intensive, extLang, crib] = ings,
             dish = state.dish,
             magic = new MagicLib(await dish.get(Dish.ARRAY_BUFFER)),
-            cribRegex = (crib && crib.length) ? new RegExp(crib, "i") : null;
+            cribRegex = (crib && (crib as string).length) ? new RegExp(crib as string, "i") : null;
         let options = await magic.speculativeExecution(depth, extLang, intensive, [], false, cribRegex);
 
         // Filter down to results which matched the crib
         if (cribRegex) {
-            options = options.filter(option => option.matchesCrib);
+            options = options.filter((option: any) => option.matchesCrib);
         }
 
         // Record the current state for use when presenting
@@ -90,10 +89,10 @@ export class Magic extends Operation {
      * Displays Magic results in HTML for web apps.
      *
      * @param {JSON} options
-     * @returns {html}
+     * @returns {string}
      */
-    present(options) {
-        const currentRecipeConfig = this.state.opList.map(op => op.config);
+    present(options: any[]): string {
+        const currentRecipeConfig = this.state.opList.map((op: any) => op.config);
 
         let output = `<table
                 class='table table-hover table-sm table-bordered'
@@ -110,7 +109,7 @@ export class Magic extends Operation {
          * @param {number} val
          * @returns {string}
          */
-        function chooseColour(val) {
+        function chooseColour(val: number): string {
             if (val < 3) return "green";
             if (val < 5) return "goldenrod";
             return "red";
@@ -132,11 +131,11 @@ export class Magic extends Operation {
                 validUTF8 = option.isUTF8 ? "<span data-toggle='tooltip' data-container='body' title='The data could be a valid UTF8 string based on its encoding.'>Valid UTF8</span>\n" : "";
 
             if (option.languageScores[0].probability > 0) {
-                let likelyLangs = option.languageScores.filter(l => l.probability > 0);
+                let likelyLangs = option.languageScores.filter((l: any) => l.probability > 0);
                 if (likelyLangs.length < 1) likelyLangs = [option.languageScores[0]];
                 language = "<span data-toggle='tooltip' data-container='body' title='Based on a statistical comparison of the frequency of bytes in various languages. Ordered by likelihood.'>" +
                     "Possible languages:\n    " +
-                    likelyLangs.map(lang => {
+                    likelyLangs.map((lang: any) => {
                         return MagicLib.codeToLanguage(lang.lang);
                     }).join("\n    ") +
                     "</span>\n";
@@ -147,7 +146,7 @@ export class Magic extends Operation {
             }
 
             if (option.matchingOps.length) {
-                matchingOps = `Matching ops: ${[...new Set(option.matchingOps.map(op => op.op))].join(", ")}\n`;
+                matchingOps = `Matching ops: ${[...new Set(option.matchingOps.map((op: any) => op.op))].join(", ")}\n`;
             }
 
             if (option.useful) {

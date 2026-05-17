@@ -62,14 +62,14 @@ export class RandomizeColourPalette extends Operation {
 
         let rgbString, rgbHash, rgbHex;
 
-        parsedImage.scan(0, 0, width, height, function (x, y, idx) {
-            rgbString = this.bitmap.data.slice(idx, idx + 3).join(".");
+        parsedImage.scan(0, 0, width, height, (x, y, idx) => {
+            rgbString = parsedImage.bitmap.data.slice(idx, idx + 3).join(".");
             rgbHash = runHash("md5", Utils.strToArrayBuffer(seed + rgbString));
             rgbHex = rgbHash.substr(0, 6) + "ff";
             parsedImage.setPixelColor(parseInt(rgbHex, 16), x, y);
         });
 
-        const imageBuffer = await parsedImage.getBuffer(parsedImage.mime);
+        const imageBuffer = await parsedImage.getBuffer(parsedImage.mime as "image/jpeg" | "image/gif" | "image/png" | "image/tiff" | "image/bmp" | "image/x-ms-bmp");
 
         return new Uint8Array(imageBuffer).buffer;
     }
@@ -79,7 +79,7 @@ export class RandomizeColourPalette extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const type = isImage(data);
 

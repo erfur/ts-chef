@@ -12,8 +12,8 @@
  */
 
 export class OperationError extends Error {
-    constructor(message: string) {
-        super(message);
+    constructor(message: string | unknown) {
+        super(message instanceof Error ? message.message : String(message));
         this.name = "OperationError";
         Object.setPrototypeOf(this, OperationError.prototype);
     }

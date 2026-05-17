@@ -62,11 +62,11 @@ export class FileTree extends Operation {
         const entryDelim = Utils.charRep(args[1]);
 
         // Store path to print
-        const completedList = [];
+        const completedList: unknown[] = [];
         const printList = [];
 
         // Loop through all entries
-        const filePaths = Array.from(new Set(input.split(entryDelim))).sort();
+        const filePaths = (Array.from(new Set(input.split(entryDelim))) as string[]).sort();
         for (let i = 0; i < filePaths.length; i++) {
             // Split by file delimiter
             let path = filePaths[i].split(fileDelim);

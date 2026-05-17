@@ -36,6 +36,7 @@ export class PEMToJWK extends Operation {
         this.checks = [
             {
                 "pattern": "-----BEGIN ((RSA |EC )?(PRIVATE|PUBLIC) KEY|CERTIFICATE)-----",
+                "flags": "",
                 "args": []
             }
         ];

@@ -42,7 +42,8 @@ export class RenderImage extends Operation {
                 "value": ["Raw", "Base64", "Hex"]
             }
         ];
-        this.checks = [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (this as any).checks = [
             {
                 pattern: "^(?:\\xff\\xd8\\xff|\\x89\\x50\\x4e\\x47|\\x47\\x49\\x46|.{8}\\x57\\x45\\x42\\x50|\\x42\\x4d)",
                 flags: "",

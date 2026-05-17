@@ -13,6 +13,20 @@
 
 import { Utils } from "../Utils";
 import { OperationError } from "../errors/OperationError";
+import CryptoJS from "crypto-js";
+
+/**
+ * CryptoJS format encoders mapped by name, mirroring CyberChef's Ciphers.mjs format object.
+ */
+export const format: Record<string, CryptoJS.lib.WordArray | any> = {
+    "Latin1":  CryptoJS.enc.Latin1,
+    "UTF8":    CryptoJS.enc.Utf8,
+    "UTF16":   CryptoJS.enc.Utf16,
+    "UTF16LE": CryptoJS.enc.Utf16LE,
+    "UTF16BE": CryptoJS.enc.Utf16BE,
+    "Hex":     CryptoJS.enc.Hex,
+    "Base64":  CryptoJS.enc.Base64,
+};
 
 export function affineEncode(input: string, args: number[]): string {
     const alphabet = "abcdefghijklmnopqrstuvwxyz";

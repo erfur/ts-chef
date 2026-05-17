@@ -87,7 +87,7 @@ export class HTTPRequest extends Operation {
         if (url.length === 0) return "";
 
         const headers = new Headers();
-        headersText.split(/\r?\n/).forEach(line => {
+        headersText.split(/\r?\n/).forEach((line: string) => {
             line = line.trim();
 
             if (line.length === 0) return;

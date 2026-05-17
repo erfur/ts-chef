@@ -39,7 +39,7 @@ export class FromCaseInsensitiveRegex extends Operation {
      * @returns {string}
      */
     run(input: any, args: any[]): any {
-        return input.replace(/\[[a-z]{2}\]/ig, m => m[1].toUpperCase() === m[2].toUpperCase() ? m[1] : m);
+        return input.replace(/\[[a-z]{2}\]/ig, (m: string) => m[1].toUpperCase() === m[2].toUpperCase() ? m[1] : m);
     }
 }
 

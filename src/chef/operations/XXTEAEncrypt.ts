@@ -49,7 +49,7 @@ export class XXTEAEncrypt extends Operation {
      */
     run(input: any, args: any[]): any {
         const key = new Uint8Array(Utils.convertToByteArray(args[0].string, args[0].option));
-        return encrypt(new Uint8Array(input), key).buffer;
+        return encrypt(new Uint8Array(input), key)!.buffer;
     }
 
 }

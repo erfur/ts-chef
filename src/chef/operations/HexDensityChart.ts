@@ -16,12 +16,12 @@ import * as d3hexbintemp from "d3-hexbin";
 import * as nodomtemp from "nodom";
 import { getScatterValues, RECORD_DELIMITER_OPTIONS, COLOURS, FIELD_DELIMITER_OPTIONS } from "../lib/Charts";
 
-import { Operation } from "../Operation";
+import { Operation, ArgConfig } from "../Operation";
 import Utils from "../Utils";
 
-const d3 = d3temp.default ? d3temp.default : d3temp;
-const d3hexbin = d3hexbintemp.default ? d3hexbintemp.default : d3hexbintemp;
-const nodom = nodomtemp.default ? nodomtemp.default: nodomtemp;
+const d3 = (d3temp as any).default ? (d3temp as any).default : d3temp;
+const d3hexbin = (d3hexbintemp as any).default ? (d3hexbintemp as any).default : d3hexbintemp;
+const nodom = (nodomtemp as any).default ? (nodomtemp as any).default : nodomtemp;
 
 
 /**
@@ -105,13 +105,13 @@ export class HexDensityChart extends Operation {
      *
      * @param {string} input
      * @param {Object[]} args
-     * @returns {html}
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const recordDelimiter = Utils.charRep(args[0]),
             fieldDelimiter = Utils.charRep(args[1]),
-            packRadius = args[2],
-            drawRadius = args[3],
+            packRadius = args[2] as number,
+            drawRadius = args[3] as number,
             columnHeadingsAreIncluded = args[4],
             drawEdges = args[7],
             minColour = args[8],
@@ -134,7 +134,7 @@ export class HexDensityChart extends Operation {
         }
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
+        let svg: any = document.createElement("svg");
         svg = d3.select(svg)
             .attr("width", "100%")
             .attr("height", "100%")
@@ -153,17 +153,20 @@ export class HexDensityChart extends Operation {
 
         const hexbin = d3hexbin.hexbin()
             .radius(packRadius)
-            .extent([0, 0], [width, height]);
+            .extent([[0, 0], [width, height]]);
 
         const hexPoints = hexbin(values),
-            maxCount = Math.max(...hexPoints.map(b => b.length));
+            maxCount = Math.max(...hexPoints.map((b: any) => b.length));
 
-        const xExtent = d3.extent(hexPoints, d => d.x),
-            yExtent = d3.extent(hexPoints, d => d.y);
-        xExtent[0] -= 2 * packRadius;
-        xExtent[1] += 3 * packRadius;
-        yExtent[0] -= 2 * packRadius;
-        yExtent[1] += 2 * packRadius;
+        const xExtent = d3.extent(hexPoints, (d: any) => d.x) as [number, number],
+            yExtent = d3.extent(hexPoints, (d: any) => d.y) as [number, number];
+
+        if (xExtent[0] !== undefined) {
+            xExtent[0] -= 2 * packRadius;
+            xExtent[1] += 3 * packRadius;
+            yExtent[0] -= 2 * packRadius;
+            yExtent[1] += 2 * packRadius;
+        }
 
         const xAxis = d3.scaleLinear()
             .domain(xExtent)
@@ -188,14 +191,14 @@ export class HexDensityChart extends Operation {
                 .data(this.getEmptyHexagons(hexPoints, packRadius))
                 .enter()
                 .append("path")
-                .attr("d", d => {
+                .attr("d", (d: any) => {
                     return `M${xAxis(d.x)},${yAxis(d.y)} ${hexbin.hexagon(drawRadius)}`;
                 })
-                .attr("fill", (d) => colour(0))
+                .attr("fill", () => colour(0))
                 .attr("stroke", drawEdges ? "black" : "none")
                 .attr("stroke-width", drawEdges ? "0.5" : "none")
                 .append("title")
-                .text(d => {
+                .text((d: any) => {
                     const count = 0,
                         perc = 0,
                         tooltip = `Count: ${count}\n
@@ -213,22 +216,22 @@ export class HexDensityChart extends Operation {
             .data(hexPoints)
             .enter()
             .append("path")
-            .attr("d", d => {
+            .attr("d", (d: any) => {
                 return `M${xAxis(d.x)},${yAxis(d.y)} ${hexbin.hexagon(drawRadius)}`;
             })
-            .attr("fill", (d) => colour(d.length))
+            .attr("fill", (d: any) => colour(d.length))
             .attr("stroke", drawEdges ? "black" : "none")
             .attr("stroke-width", drawEdges ? "0.5" : "none")
             .append("title")
-            .text(d => {
+            .text((d: any) => {
                 const count = d.length,
                     perc = 100.0 * d.length / values.length,
                     CX = d.x,
                     CY = d.y,
-                    xMin = Math.min(...d.map(d => d[0])),
-                    xMax = Math.max(...d.map(d => d[0])),
-                    yMin = Math.min(...d.map(d => d[1])),
-                    yMax = Math.max(...d.map(d => d[1])),
+                    xMin = Math.min(...d.map((p: any) => p[0])),
+                    xMax = Math.max(...d.map((p: any) => p[0])),
+                    yMin = Math.min(...d.map((p: any) => p[1])),
+                    yMax = Math.max(...d.map((p: any) => p[1])),
                     tooltip = `Count: ${count}\n
                                Percentage: ${perc.toFixed(2)}%\n
                                Center: ${CX.toFixed(2)}, ${CY.toFixed(2)}\n
@@ -263,23 +266,27 @@ export class HexDensityChart extends Operation {
             .style("text-anchor", "middle")
             .text(xLabel);
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as HTMLElement).outerHTML;
     }
 
 
     /**
      * Hex Bin chart operation.
      *
-     * @param {Object[]} - centres
-     * @param {number} - radius
+     * @param {Object[]} centres
+     * @param {number} radius
      * @returns {Object[]}
      */
-    getEmptyHexagons(centres, radius) {
-        const emptyCentres = [],
-            boundingRect = [d3.extent(centres, d => d.x), d3.extent(centres, d => d.y)],
+    getEmptyHexagons(centres: any[], radius: number): any[] {
+        const emptyCentres: any[] = [],
+            boundingRect = [d3.extent(centres, (d: any) => d.x), d3.extent(centres, (d: any) => d.y)] as [[number, number], [number, number]],
             hexagonCenterToEdge = Math.cos(2 * Math.PI / 12) * radius,
             hexagonEdgeLength = Math.sin(2 * Math.PI / 12) * radius;
         let indent = false;
+
+        if (boundingRect[0][0] === undefined || boundingRect[1][0] === undefined) {
+            return [];
+        }
 
         for (let y = boundingRect[1][0]; y <= boundingRect[1][1] + radius; y += hexagonEdgeLength + radius) {
             for (let x = boundingRect[0][0]; x <= boundingRect[0][1] + radius; x += 2 * hexagonCenterToEdge) {

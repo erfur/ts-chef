@@ -51,7 +51,7 @@ export class XXTEADecrypt extends Operation {
     run(input: any, args: any[]): any {
         const key = new Uint8Array(Utils.convertToByteArray(args[0].string, args[0].option));
         try {
-            return decrypt(new Uint8Array(input), key).buffer;
+            return decrypt(new Uint8Array(input), key)!.buffer;
         } catch (err) {
             throw new OperationError("Unable to decrypt using this key");
         }

@@ -13,7 +13,17 @@
 
 import { Operation } from "../Operation";
 import CryptoJS from "crypto-js";
-import { format } from "../lib/Ciphers";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const format: Record<string, any> = {
+    "UTF8":   CryptoJS.enc.Utf8,
+    "UTF16":  CryptoJS.enc.Utf16,
+    "UTF16LE": CryptoJS.enc.Utf16LE,
+    "UTF16BE": CryptoJS.enc.Utf16BE,
+    "Latin1": CryptoJS.enc.Latin1,
+    "Hex":    CryptoJS.enc.Hex,
+    "Base64": CryptoJS.enc.Base64,
+};
 
 /**
  * RC4 operation

@@ -47,7 +47,7 @@ export class ParseUserAgent extends Operation {
      * @returns {string}
      */
     run(input: any, args: any[]): any {
-        const ua = UAParser(input);
+        const ua = new UAParser(input).getResult();
         return `Browser
     Name: ${ua.browser.name || "unknown"}
     Version: ${ua.browser.version || "unknown"}

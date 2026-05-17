@@ -16,8 +16,8 @@ import * as nodomtemp from "nodom";
 
 import { Operation } from "../Operation";
 
-const d3 = d3temp.default ? d3temp.default : d3temp;
-const nodom = nodomtemp.default ? nodomtemp.default: nodomtemp;
+const d3 = (d3temp as any).default ? (d3temp as any).default : d3temp;
+const nodom = (nodomtemp as any).default ? (nodomtemp as any).default : nodomtemp;
 
 /**
  * Entropy operation
@@ -47,34 +47,32 @@ export class Entropy extends Operation {
     }
 
     /**
-     * Calculates the frequency of bytes in the input.
+     * Calculates the Shannon entropy of the input.
      *
      * @param {Uint8Array} input
      * @returns {number}
      */
-    calculateShannonEntropy(input) {
-        const prob = [],
+    calculateShannonEntropy(input: Uint8Array): number {
+        const prob: number[] = [],
             occurrences = new Array(256).fill(0);
 
         // Count occurrences of each byte in the input
-        let i;
-        for (i = 0; i < input.length; i++) {
+        for (let i = 0; i < input.length; i++) {
             occurrences[input[i]]++;
         }
 
         // Store probability list
-        for (i = 0; i < occurrences.length; i++) {
+        for (let i = 0; i < occurrences.length; i++) {
             if (occurrences[i] > 0) {
                 prob.push(occurrences[i] / input.length);
             }
         }
 
         // Calculate Shannon entropy
-        let entropy = 0,
-            p;
+        let entropy = 0;
 
-        for (i = 0; i < prob.length; i++) {
-            p = prob[i];
+        for (let i = 0; i < prob.length; i++) {
+            const p = prob[i];
             entropy += p * Math.log(p) / Math.log(2);
         }
 
@@ -85,14 +83,14 @@ export class Entropy extends Operation {
      * Calculates the scanning entropy of the input
      *
      * @param {Uint8Array} inputBytes
-     * @returns {Object}
+     * @returns {any}
      */
-    calculateScanningEntropy(inputBytes) {
-        const entropyData = [];
+    calculateScanningEntropy(inputBytes: Uint8Array): any {
+        const entropyData: number[] = [];
         const binWidth = inputBytes.length < 256 ? 8 : 256;
 
         for (let bytePos = 0; bytePos < inputBytes.length; bytePos += binWidth) {
-            const block = inputBytes.slice(bytePos, bytePos+binWidth);
+            const block = inputBytes.slice(bytePos, bytePos + binWidth);
             entropyData.push(this.calculateShannonEntropy(block));
         }
 
@@ -100,18 +98,19 @@ export class Entropy extends Operation {
     }
 
     /**
-     * Calculates the frequency of bytes in the input.
+     * Creates axes for the SVG.
      *
-     * @param {object} svg
-     * @param {function} xScale
-     * @param {function} yScale
-     * @param {integer} svgHeight
-     * @param {integer} svgWidth
-     * @param {object} margins
+     * @param {any} svg
+     * @param {any} xScale
+     * @param {any} yScale
+     * @param {number} svgHeight
+     * @param {number} svgWidth
+     * @param {any} margins
+     * @param {string} title
      * @param {string} xTitle
      * @param {string} yTitle
      */
-    createAxes(svg, xScale, yScale, svgHeight, svgWidth, margins, title, xTitle, yTitle) {
+    createAxes(svg: any, xScale: any, yScale: any, svgHeight: number, svgWidth: number, margins: any, title: string, xTitle: string, yTitle: string): void {
         // Axes
         const yAxis = d3.axisLeft()
             .scale(yScale);
@@ -154,17 +153,16 @@ export class Entropy extends Operation {
      * @param {Uint8Array} inputBytes
      * @returns {number[]}
      */
-    calculateByteFrequency(inputBytes) {
+    calculateByteFrequency(inputBytes: Uint8Array): number[] {
         const freq = new Array(256).fill(0);
         if (inputBytes.length === 0) return freq;
 
         // Count occurrences of each byte in the input
-        let i;
-        for (i = 0; i < inputBytes.length; i++) {
+        for (let i = 0; i < inputBytes.length; i++) {
             freq[inputBytes[i]]++;
         }
 
-        for (i = 0; i < freq.length; i++) {
+        for (let i = 0; i < freq.length; i++) {
             freq[i] = freq[i] / inputBytes.length;
         }
 
@@ -172,27 +170,28 @@ export class Entropy extends Operation {
     }
 
     /**
-     * Calculates the frequency of bytes in the input.
+     * Creates a byte frequency line histogram
      *
      * @param {number[]} byteFrequency
-     * @returns {HTML}
+     * @returns {string}
      */
-    createByteFrequencyLineHistogram(byteFrequency) {
+    createByteFrequencyLineHistogram(byteFrequency: number[]): string {
         const margins = { top: 30, right: 20, bottom: 50, left: 30 };
 
         const svgWidth = 500,
             svgHeight = 500;
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
+        const svgElement = document.createElement("svg");
 
-        svg = d3.select(svg)
+        const svg = d3.select(svgElement)
             .attr("width", "100%")
             .attr("height", "100%")
             .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
 
+        const maxFreq = d3.max(byteFrequency, (d: number) => d) ?? 0;
         const yScale = d3.scaleLinear()
-            .domain([0, d3.max(byteFrequency, d => d)])
+            .domain([0, maxFreq])
             .range([svgHeight - margins.bottom, margins.top]);
 
         const xScale = d3.scaleLinear()
@@ -200,8 +199,8 @@ export class Entropy extends Operation {
             .range([margins.left, svgWidth - margins.right]);
 
         const line = d3.line()
-            .x((_, i) => xScale(i))
-            .y(d => yScale(d))
+            .x((_: any, i: number) => xScale(i))
+            .y((d: any) => yScale(d))
             .curve(d3.curveMonotoneX);
 
         svg.append("path")
@@ -212,16 +211,16 @@ export class Entropy extends Operation {
 
         this.createAxes(svg, xScale, yScale, svgHeight, svgWidth, margins, "", "Byte", "Byte Frequency");
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as any).outerHTML;
     }
 
     /**
-     * Creates a byte frequency histogram
+     * Creates a byte frequency bar histogram
      *
      * @param {number[]} byteFrequency
-     * @returns {HTML}
+     * @returns {string}
      */
-    createByteFrequencyBarHistogram(byteFrequency) {
+    createByteFrequencyBarHistogram(byteFrequency: number[]): string {
         const margins = { top: 30, right: 20, bottom: 50, left: 30 };
 
         const svgWidth = 500,
@@ -229,13 +228,13 @@ export class Entropy extends Operation {
             binWidth = 1;
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
-        svg = d3.select(svg)
+        const svgElement = document.createElement("svg");
+        const svg = d3.select(svgElement)
             .attr("width", "100%")
             .attr("height", "100%")
             .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
 
-        const yExtent = d3.extent(byteFrequency, d => d);
+        const yExtent = d3.extent(byteFrequency, (d: number) => d) as [number, number];
         const yScale = d3.scaleLinear()
             .domain(yExtent)
             .range([svgHeight - margins.bottom, margins.top]);
@@ -247,38 +246,39 @@ export class Entropy extends Operation {
         svg.selectAll("rect")
             .data(byteFrequency)
             .enter().append("rect")
-            .attr("x", (_, i) => xScale(i) + binWidth)
-            .attr("y", dataPoint => yScale(dataPoint))
+            .attr("x", (_: any, i: number) => xScale(i) + binWidth)
+            .attr("y", (dataPoint: number) => yScale(dataPoint))
             .attr("width", binWidth)
-            .attr("height", dataPoint => yScale(yExtent[0]) - yScale(dataPoint))
+            .attr("height", (dataPoint: number) => yScale(yExtent[0]) - yScale(dataPoint))
             .attr("fill", "blue");
 
         this.createAxes(svg, xScale, yScale, svgHeight, svgWidth, margins, "", "Byte", "Byte Frequency");
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as any).outerHTML;
     }
 
     /**
-     * Creates a byte frequency histogram
+     * Creates an entropy curve
      *
      * @param {number[]} entropyData
-     * @returns {HTML}
+     * @returns {string}
      */
-    createEntropyCurve(entropyData) {
+    createEntropyCurve(entropyData: number[]): string {
         const margins = { top: 30, right: 20, bottom: 50, left: 30 };
 
         const svgWidth = 500,
             svgHeight = 500;
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
-        svg = d3.select(svg)
+        const svgElement = document.createElement("svg");
+        const svg = d3.select(svgElement)
             .attr("width", "100%")
             .attr("height", "100%")
             .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
 
+        const maxEntropy = d3.max(entropyData, (d: number) => d) ?? 0;
         const yScale = d3.scaleLinear()
-            .domain([0, d3.max(entropyData, d => d)])
+            .domain([0, maxEntropy])
             .range([svgHeight - margins.bottom, margins.top]);
 
         const xScale = d3.scaleLinear()
@@ -286,8 +286,8 @@ export class Entropy extends Operation {
             .range([margins.left, svgWidth - margins.right]);
 
         const line = d3.line()
-            .x((_, i) => xScale(i))
-            .y(d => yScale(d))
+            .x((_: any, i: number) => xScale(i))
+            .y((d: any) => yScale(d))
             .curve(d3.curveMonotoneX);
 
         if (entropyData.length > 0) {
@@ -300,16 +300,16 @@ export class Entropy extends Operation {
 
         this.createAxes(svg, xScale, yScale, svgHeight, svgWidth, margins, "Scanning Entropy", "Block", "Entropy");
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as any).outerHTML;
     }
 
     /**
      * Creates an image representation of the entropy
      *
      * @param {number[]} entropyData
-     * @returns {HTML}
+     * @returns {string}
      */
-    createEntropyImage(entropyData) {
+    createEntropyImage(entropyData: number[]): string {
         const svgHeight = 100,
             svgWidth = 100,
             cellSize = 1,
@@ -324,14 +324,15 @@ export class Entropy extends Operation {
         }
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
-        svg = d3.select(svg)
+        const svgElement = document.createElement("svg");
+        const svg = d3.select(svgElement)
             .attr("width", "100%")
             .attr("height", "100%")
             .attr("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
 
+        const maxEntropy = d3.max(entropyData, (d: number) => d) ?? 0;
         const greyScale = d3.scaleLinear()
-            .domain([0, d3.max(entropyData, d => d)])
+            .domain([0, maxEntropy])
             .range(["#000000", "#FFFFFF"])
             .interpolate(d3.interpolateRgb);
 
@@ -339,22 +340,22 @@ export class Entropy extends Operation {
             .selectAll("rect")
             .data(nodes)
             .enter().append("rect")
-            .attr("x", d => d.x * cellSize)
-            .attr("y", d => d.y * cellSize)
+            .attr("x", (d: any) => d.x * cellSize)
+            .attr("y", (d: any) => d.y * cellSize)
             .attr("width", cellSize)
             .attr("height", cellSize)
-            .style("fill", d => greyScale(d.entropy));
+            .style("fill", (d: any) => greyScale(d.entropy));
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as any).outerHTML;
     }
 
     /**
      * Displays the entropy as a scale bar for web apps.
      *
      * @param {number} entropy
-     * @returns {HTML}
+     * @returns {string}
      */
-    createShannonEntropyVisualization(entropy) {
+    createShannonEntropyVisualization(entropy: number): string {
         return `Shannon entropy: ${entropy}
         <br><canvas id='chart-area'></canvas><br>
         - 0 represents no randomness (i.e. all the bytes in the data have the same value) whereas 8, the maximum, represents a completely random string.
@@ -388,34 +389,34 @@ export class Entropy extends Operation {
 
     /**
      * @param {ArrayBuffer} input
-     * @param {Object[]} args
-     * @returns {json}
+     * @param {any[]} args
+     * @returns {any}
      */
-    run(input: any, args: any[]): any {
+    run(input: ArrayBuffer, args: any[]): any {
         const visualizationType = args[0];
-        input = new Uint8Array(input);
+        const inputBytes = new Uint8Array(input);
 
         switch (visualizationType) {
             case "Histogram (Bar)":
             case "Histogram (Line)":
-                return this.calculateByteFrequency(input);
+                return this.calculateByteFrequency(inputBytes);
             case "Curve":
             case "Image":
-                return this.calculateScanningEntropy(input).entropyData;
+                return this.calculateScanningEntropy(inputBytes).entropyData;
             case "Shannon scale":
             default:
-                return this.calculateShannonEntropy(input);
+                return this.calculateShannonEntropy(inputBytes);
         }
     }
 
     /**
      * Displays the entropy in a visualisation for web apps.
      *
-     * @param {json} entropyData
-     * @param {Object[]} args
-     * @returns {html}
+     * @param {any} entropyData
+     * @param {any[]} args
+     * @returns {string}
      */
-    present(entropyData, args) {
+    present(entropyData: any, args: any[]): string {
         const visualizationType = args[0];
 
         switch (visualizationType) {

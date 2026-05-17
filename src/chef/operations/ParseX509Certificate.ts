@@ -18,6 +18,7 @@ import { fromHex, toHex } from "../lib/Hex";
 import { formatByteStr, formatDnObj } from "../lib/PublicKey";
 import { Operation } from "../Operation";
 import Utils from "../Utils";
+import OperationError from "../errors/OperationError";
 
 /**
  * Parse X.509 certificate operation
@@ -54,15 +55,15 @@ export class ParseX509Certificate extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         if (!input.length) {
             return "No input";
         }
 
-        const cert = new r.X509(),
+        const cert = new (r as any).X509(),
             inputFormat = args[0];
 
         let undefinedInputFormat = false;
@@ -76,7 +77,7 @@ export class ParseX509Certificate extends Operation {
                     cert.readCertPEM(input);
                     break;
                 case "Base64":
-                    cert.readCertHex(toHex(fromBase64(input, null, "byteArray"), ""));
+                    cert.readCertHex(toHex(fromBase64(input, undefined, "byteArray") as number[], ""));
                     break;
                 case "Raw":
                     cert.readCertHex(toHex(Utils.strToArrayBuffer(input), ""));
@@ -85,16 +86,16 @@ export class ParseX509Certificate extends Operation {
                     undefinedInputFormat = true;
             }
         } catch (e) {
-            throw "Certificate load error (non-certificate input?)";
+            throw new OperationError("Certificate load error (non-certificate input?)");
         }
-        if (undefinedInputFormat) throw "Undefined input format";
+        if (undefinedInputFormat) throw new OperationError("Undefined input format");
 
         const hex = Utils.strToArrayBuffer(Utils.byteArrayToChars(fromHex(cert.hex))),
             sn = cert.getSerialNumberHex(),
             issuer = cert.getIssuer(),
             subject = cert.getSubject(),
-            pk = cert.getPublicKey(),
-            pkFields = [],
+            pk = cert.getPublicKey() as any,
+            pkFields: { key: string, value: string }[] = [],
             sig = cert.getSignatureValueHex();
 
         let pkStr = "",
@@ -114,7 +115,7 @@ export class ParseX509Certificate extends Operation {
             });
             pkFields.push({
                 key: "Length",
-                value: (((new r.BigInteger(pk.pubKeyHex, 16)).bitLength()-3) /2) + " bits"
+                value: (((new r.BigInteger(pk.pubKeyHex, 16)).bitLength() - 3) / 2) + " bits"
             });
             pkFields.push({
                 key: "pub",
@@ -183,7 +184,7 @@ export class ParseX509Certificate extends Operation {
         // Extensions
         try {
             extensions = cert.getInfo().split("X509v3 Extensions:\n")[1].split("signature")[0];
-        } catch (err) {}
+        } catch (err) { }
 
         const issuerStr = formatDnObj(issuer, 2),
             nbDate = formatDate(cert.getNotBefore()),
@@ -222,7 +223,7 @@ ${extensions}`;
  * @param {string} dateStr
  * @returns {string}
  */
-function formatDate (dateStr) {
+function formatDate(dateStr: string): string {
     if (dateStr.length === 13) { // UTC Time
         dateStr = (dateStr[0] < "5" ? "20" : "19") + dateStr;
     }

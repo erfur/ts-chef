@@ -16,11 +16,12 @@ import {detectFileType} from "../lib/FileType";
 import {FILE_SIGNATURES} from "../lib/FileSignatures";
 
 // Concat all supported extensions into a single flat list
-const exts = [].concat.apply([], Object.keys(FILE_SIGNATURES).map(cat =>
-    [].concat.apply([], FILE_SIGNATURES[cat].map(sig =>
+const _allExts: string[][] = Object.keys(FILE_SIGNATURES).map(cat =>
+    ([] as string[]).concat(...FILE_SIGNATURES[cat].map((sig: {extension: string}) =>
         sig.extension.split(",")
     ))
-)).unique().sort().join(", ");
+);
+const exts = [...new Set(([] as string[]).concat(..._allExts))].sort().join(", ");
 
 /**
  * Detect File Type operation
@@ -56,7 +57,7 @@ export class DetectFileType extends Operation {
      */
     run(input: any, args: any[]): any {
         const data = new Uint8Array(input),
-            categories = [];
+            categories: string[] = [];
 
         args.forEach((cat, i) => {
             if (cat) categories.push(Object.keys(FILE_SIGNATURES)[i]);

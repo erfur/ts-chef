@@ -31,11 +31,11 @@ export class IPv6TransitionAddresses extends Operation {
         this.inputType = "string";
         this.outputType = "string";
         this.args = [
-	    {
+            {
                 "name": "Ignore ranges",
                 "type": "boolean",
-	        "value": true
-	    },
+                "value": true
+            },
             {
                 "name": "Remove headers",
                 "type": "boolean",
@@ -46,36 +46,36 @@ export class IPv6TransitionAddresses extends Operation {
 
     /**
      * @param {string} input
-     * @param {Object[]} args
+     * @param {any[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
-        const XOR = {"0": "2", "1": "3", "2": "0", "3": "1", "4": "6", "5": "7", "6": "4", "7": "5", "8": "a", "9": "b", "a": "8", "b": "9", "c": "e", "d": "f", "e": "c", "f": "d"};
+    run(input: string, args: any[]): string {
+        const XOR: Record<string, string> = {"0": "2", "1": "3", "2": "0", "3": "1", "4": "6", "5": "7", "6": "4", "7": "5", "8": "a", "9": "b", "a": "8", "b": "9", "c": "e", "d": "f", "e": "c", "f": "d"};
 
         /**
-	 * Function to convert to hex
-	 */
-        function hexify(octet) {
+         * Function to convert to hex
+         */
+        function hexify(octet: string | number): string {
             return Number(octet).toString(16).padStart(2, "0");
         }
 
         /**
-	 * Function to convert Hex to Int
-	 */
-        function intify(hex) {
+         * Function to convert Hex to Int
+         */
+        function intify(hex: string): number {
             return parseInt(hex, 16);
         }
 
         /**
-	 * Function converts IPv4 to IPv6 Transtion address
-	 */
-        function ipTransition(input, range) {
+         * Function converts IPv4 to IPv6 Transtion address
+         */
+        const ipTransition = (input: string, range: boolean): string => {
             let output = "";
             const HEXIP = input.split(".");
 
             /**
-	     * 6to4
-	     */
+             * 6to4
+             */
             if (!args[1]) {
                 output += "6to4: ";
             }
@@ -87,8 +87,8 @@ export class IPv6TransitionAddresses extends Operation {
             }
 
             /**
-	     * Mapped
-	     */
+             * Mapped
+             */
             if (!args[1]) {
                 output += "IPv4 Mapped: ";
             }
@@ -100,8 +100,8 @@ export class IPv6TransitionAddresses extends Operation {
             }
 
             /**
-	     * Translated
-	     */
+             * Translated
+             */
             if (!args[1]) {
                 output += "IPv4 Translated: ";
             }
@@ -113,8 +113,8 @@ export class IPv6TransitionAddresses extends Operation {
             }
 
             /**
-	     * Nat64
-	     */
+             * Nat64
+             */
             if (!args[1]) {
                 output += "Nat 64: ";
             }
@@ -126,66 +126,70 @@ export class IPv6TransitionAddresses extends Operation {
             }
 
             return output;
-        }
+        };
 
         /**
-	 * Convert MAC to EUI-64
-	 */
-        function macTransition(input) {
+         * Convert MAC to EUI-64
+         */
+        const macTransition = (input: string): string => {
             let output = "";
             const MACPARTS = input.split(":");
             if (!args[1]) {
                 output += "EUI-64 Interface ID: ";
             }
             const MAC = MACPARTS[0] + MACPARTS[1] + ":" + MACPARTS[2] + "ff:fe" + MACPARTS[3] + ":" + MACPARTS[4] + MACPARTS[5];
-            output += MAC.slice(0, 1) + XOR[MAC.slice(1, 2)] + MAC.slice(2);
+            output += MAC.slice(0, 1) + XOR[MAC.slice(1, 2).toLowerCase()] + MAC.slice(2);
 
             return output;
-        }
+        };
 
 
         /**
-	 * Convert IPv6 address to its original IPv4 or MAC address
-	 */
-        function unTransition(input) {
+         * Convert IPv6 address to its original IPv4 or MAC address
+         */
+        const unTransition = (input: string): string => {
             let output = "";
             let hextets = "";
 
             /**
-	     * 6to4
-	     */
+             * 6to4
+             */
             if (input.startsWith("2002:")) {
                 if (!args[1]) {
                     output += "IPv4: ";
                 }
                 output += String(intify(input.slice(5, 7))) + "." + String(intify(input.slice(7, 9)))+ "." + String(intify(input.slice(10, 12)))+ "." + String(intify(input.slice(12, 14))) + "\n";
             } else if (input.startsWith("::ffff:") || input.startsWith("0000:0000:0000:0000:0000:ffff:") || input.startsWith("::ffff:0000:") || input.startsWith("0000:0000:0000:0000:ffff:0000:") || input.startsWith("64:ff9b::") || input.startsWith("0064:ff9b:0000:0000:0000:0000:")) {
-		/**
-		 * Mapped/Translated/Nat64
-		 */
-                hextets = /:([0-9a-z]{1,4}):[0-9a-z]{1,4}$/.exec(input)[1].padStart(4, "0") + /:([0-9a-z]{1,4})$/.exec(input)[1].padStart(4, "0");
-                if (!args[1]) {
-                    output += "IPv4: ";
+                /**
+                 * Mapped/Translated/Nat64
+                 */
+                const match1 = /:([0-9a-z]{1,4}):[0-9a-z]{1,4}$/.exec(input);
+                const match2 = /:([0-9a-z]{1,4})$/.exec(input);
+                if (match1 && match2) {
+                    hextets = match1[1].padStart(4, "0") + match2[1].padStart(4, "0");
+                    if (!args[1]) {
+                        output += "IPv4: ";
+                    }
+                    output += intify(hextets.slice(-8, -7) +  hextets.slice(-7, -6)) + "." +intify(hextets.slice(-6, -5) +  hextets.slice(-5, -4)) + "." +intify(hextets.slice(-4, -3) +  hextets.slice(-3, -2)) + "." +intify(hextets.slice(-2, -1) +  hextets.slice(-1,)) + "\n";
                 }
-                output += intify(hextets.slice(-8, -7) +  hextets.slice(-7, -6)) + "." +intify(hextets.slice(-6, -5) +  hextets.slice(-5, -4)) + "." +intify(hextets.slice(-4, -3) +  hextets.slice(-3, -2)) + "." +intify(hextets.slice(-2, -1) +  hextets.slice(-1,)) + "\n";
             } else if (input.slice(-12, -7).toUpperCase() === "FF:FE") {
-		/**
-		 * EUI-64
-		 */
+                /**
+                 * EUI-64
+                 */
                 if (!args[1]) {
                     output += "Mac Address: ";
                 }
                 const MAC = (input.slice(-19, -17) + ":" + input.slice(-17, -15) + ":" + input.slice(-14, -12) + ":" + input.slice(-7, -5) + ":" + input.slice(-4, -2) + ":" + input.slice(-2,)).toUpperCase();
-                output += MAC.slice(0, 1) + XOR[MAC.slice(1, 2)] + MAC.slice(2) + "\n";
+                output += MAC.slice(0, 1) + XOR[MAC.slice(1, 2).toLowerCase()] + MAC.slice(2) + "\n";
             }
 
             return output;
-        }
+        };
 
 
         /**
-	 * Main
-	 */
+         * Main
+         */
         let output = "";
         let inputs = input.split("\n");
         // Remove blank rows

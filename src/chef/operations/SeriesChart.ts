@@ -15,11 +15,11 @@ import * as d3temp from "d3";
 import * as nodomtemp from "nodom";
 import { getSeriesValues, RECORD_DELIMITER_OPTIONS, FIELD_DELIMITER_OPTIONS } from "../lib/Charts";
 
-import { Operation } from "../Operation";
+import { Operation, ArgConfig } from "../Operation";
 import Utils from "../Utils";
 
-const d3 = d3temp.default ? d3temp.default : d3temp;
-const nodom = nodomtemp.default ? nodomtemp.default: nodomtemp;
+const d3 = (d3temp as any).default ? (d3temp as any).default : d3temp;
+const nodom = (nodomtemp as any).default ? (nodomtemp as any).default : nodomtemp;
 
 /**
  * Series chart operation
@@ -71,15 +71,15 @@ export class SeriesChart extends Operation {
      *
      * @param {string} input
      * @param {Object[]} args
-     * @returns {html}
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const recordDelimiter = Utils.charRep(args[0]),
             fieldDelimiter = Utils.charRep(args[1]),
-            xLabel = args[2],
-            pipRadius = args[3],
+            xLabel = args[2] as string,
+            pipRadius = args[3] as number,
             // Escape HTML from all colours to prevent reflected XSS. See https://github.com/gchq/CyberChef/issues/1265
-            seriesColours = args[4].split(",").map((colour) => {
+            seriesColours = (args[4] as string).split(",").map((colour) => {
                 return Utils.escapeHtml(colour);
             }),
             svgWidth = 500,
@@ -90,11 +90,11 @@ export class SeriesChart extends Operation {
             seriesWidth = svgWidth - seriesLabelWidth - interSeriesPadding;
 
         const { xValues, series } = getSeriesValues(input, recordDelimiter, fieldDelimiter),
-            allSeriesHeight = Object.keys(series).length * (interSeriesPadding + seriesHeight),
+            allSeriesHeight = series.length * (interSeriesPadding + seriesHeight),
             svgHeight = allSeriesHeight + xAxisHeight + interSeriesPadding;
 
         const document = new nodom.Document();
-        let svg = document.createElement("svg");
+        let svg: any = document.createElement("svg");
         svg = d3.select(svg)
             .attr("width", "100%")
             .attr("height", "100%")
@@ -109,7 +109,7 @@ export class SeriesChart extends Operation {
             .attr("transform", `translate(${seriesLabelWidth}, ${xAxisHeight})`)
             .call(
                 d3.axisTop(xAxis).tickValues(xValues.filter((x, i) => {
-                    return [0, Math.round(xValues.length / 2), xValues.length -1].indexOf(i) >= 0;
+                    return [0, Math.round(xValues.length / 2), xValues.length - 1].indexOf(i) >= 0;
                 }))
             );
 
@@ -119,13 +119,13 @@ export class SeriesChart extends Operation {
             .style("text-anchor", "middle")
             .text(xLabel);
 
-        const tooltipText = {},
+        const tooltipText: { [key: string]: string } = {},
             tooltipAreaWidth = seriesWidth / xValues.length;
 
         xValues.forEach(x => {
-            const tooltip = [];
+            const tooltip: string[] = [];
 
-            series.forEach(serie => {
+            series.forEach((serie: any) => {
                 const y = serie.data[x];
                 if (typeof y === "undefined") return;
 
@@ -144,8 +144,9 @@ export class SeriesChart extends Operation {
             .data(xValues)
             .enter()
             .append("rect")
-            .attr("x", x => {
-                return xAxis(x) - (tooltipAreaWidth / 2);
+            .attr("x", (x: string) => {
+                const val = xAxis(x);
+                return (val !== undefined ? val : 0) - (tooltipAreaWidth / 2);
             })
             .attr("y", 0)
             .attr("width", tooltipAreaWidth)
@@ -153,7 +154,7 @@ export class SeriesChart extends Operation {
             .attr("stroke", "none")
             .attr("fill", "transparent")
             .append("title")
-            .text(x => {
+            .text((x: string) => {
                 return `${x}\n
                     --\n
                     ${tooltipText[x]}\n
@@ -163,8 +164,8 @@ export class SeriesChart extends Operation {
         const yAxesArea = svg.append("g")
             .attr("transform", `translate(0, ${xAxisHeight})`);
 
-        series.forEach((serie, seriesIndex) => {
-            const yExtent = d3.extent(Object.values(serie.data)),
+        series.forEach((serie: any, seriesIndex: number) => {
+            const yExtent = d3.extent(Object.values(serie.data) as number[]) as [number, number],
                 yAxis = d3.scaleLinear()
                     .domain(yExtent)
                     .range([seriesHeight, 0]);
@@ -175,16 +176,18 @@ export class SeriesChart extends Operation {
 
             let path = "";
             xValues.forEach((x, xIndex) => {
-                let nextX = xValues[xIndex + 1],
-                    y = serie.data[x],
-                    nextY= serie.data[nextX];
+                const nextXStr = xValues[xIndex + 1];
+                const yVal = serie.data[x];
+                const nextYVal = serie.data[nextXStr];
 
-                if (typeof y === "undefined" || typeof nextY === "undefined") return;
+                if (typeof yVal === "undefined" || typeof nextYVal === "undefined") return;
 
-                x = xAxis(x); nextX = xAxis(nextX);
-                y = yAxis(y); nextY = yAxis(nextY);
+                const xCoord = xAxis(x);
+                const nextXCoord = xAxis(nextXStr);
+                const yCoord = yAxis(yVal);
+                const nextYCoord = yAxis(nextYVal);
 
-                path += `M ${x} ${y} L ${nextX} ${nextY} z `;
+                path += `M ${xCoord} ${yCoord} L ${nextXCoord} ${nextYCoord} z `;
             });
 
             seriesGroup
@@ -195,17 +198,17 @@ export class SeriesChart extends Operation {
                 .attr("stroke-width", "1");
 
             xValues.forEach(x => {
-                const y = serie.data[x];
-                if (typeof y === "undefined") return;
+                const yVal = serie.data[x];
+                if (typeof yVal === "undefined") return;
 
                 seriesGroup
                     .append("circle")
                     .attr("cx", xAxis(x))
-                    .attr("cy", yAxis(y))
+                    .attr("cy", yAxis(yVal))
                     .attr("r", pipRadius)
                     .attr("fill", seriesColours[seriesIndex % seriesColours.length])
                     .append("title")
-                    .text(d => {
+                    .text(() => {
                         return `${x}\n
                             --\n
                             ${tooltipText[x]}\n
@@ -228,7 +231,7 @@ export class SeriesChart extends Operation {
                 .text(serie.name);
         });
 
-        return svg._groups[0][0].outerHTML;
+        return (svg.node() as HTMLElement).outerHTML;
     }
 
 }

@@ -1,4 +1,15 @@
-/* Ported from CyberChef */
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
+ */
 
 /**
  * Identifier extraction functions
@@ -18,11 +29,17 @@
  *      final list
  * @param {Function} [sortBy=null] - The sorting comparison function to apply
  * @param {boolean} [unique=false] - Whether to unique the results
- * @returns {string}
+ * @returns {string[]}
  */
-export function search(input, searchRegex, removeRegex=null, sortBy=null, unique=false) {
-    let results = [];
-    let match;
+export function search(
+    input: string,
+    searchRegex: RegExp,
+    removeRegex: RegExp | null = null,
+    sortBy: ((a: string, b: string) => number) | null = null,
+    unique: boolean = false
+): string[] {
+    let results: string[] = [];
+    let match: RegExpExecArray | null;
 
     while ((match = searchRegex.exec(input))) {
         // Moves pointer when an empty string is matched (prevents infinite loop)
@@ -41,7 +58,7 @@ export function search(input, searchRegex, removeRegex=null, sortBy=null, unique
     }
 
     if (unique) {
-        results = results.unique();
+        results = [...new Set(results)];
     }
 
     return results;

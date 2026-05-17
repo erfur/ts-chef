@@ -19,7 +19,7 @@ import {
     parseMp3, parseRiffWave, parseFlac, parseOgg,
     parseMp4BestEffort, parseAiffBestEffort,
     parseAacAdts, parseAc3, parseWmaAsf,
-} from "../lib/AudioParsers.mjs";
+} from "../lib/AudioParsers";
 
 /**
  * Extract Audio Metadata operation.
@@ -46,10 +46,10 @@ export class ExtractAudioMetadata extends Operation {
 
     /**
      * @param {ArrayBuffer} input
-     * @param {Object[]} args
-     * @returns {Object}
+     * @param {any[]} args
+     * @returns {any}
      */
-    run(input: any, args: any[]): any {
+    run(input: ArrayBuffer, args: any[]): any {
         const filename = (args?.[0] || "").trim() || null;
         const maxTextBytes = Number.isFinite(args?.[1]) ? Math.max(1024, args[1]) : 1024 * 512;
 
@@ -61,7 +61,7 @@ export class ExtractAudioMetadata extends Operation {
         const report = makeEmptyReport(filename, bytes.length, container);
 
         try {
-            const parsers = {
+            const parsers: Record<string, () => void> = {
                 mp3: () => parseMp3(bytes, report),
                 wav: () => parseRiffWave(bytes, report, maxTextBytes),
                 bw64: () => parseRiffWave(bytes, report, maxTextBytes),
@@ -80,7 +80,7 @@ export class ExtractAudioMetadata extends Operation {
             } else {
                 report.errors.push({ stage: "sniff", message: "Unknown/unsupported container (best-effort scan not implemented)." });
             }
-        } catch (e) {
+        } catch (e: any) {
             report.errors.push({ stage: "parse", message: String(e?.message || e) });
         }
 
@@ -88,29 +88,29 @@ export class ExtractAudioMetadata extends Operation {
     }
 
     /** Renders the extracted metadata as an HTML table. */
-    present(data) {
+    present(data: any): string {
         if (!data || typeof data !== "object") return JSON.stringify(data, null, 4);
 
         const esc = Utils.escapeHtml;
-        const row = (k, v) => `<tr><td>${esc(String(k))}</td><td>${esc(String(v ?? ""))}</td></tr>\n`;
-        const section = (title) => `<tr><th colspan="2" style="background:#e9ecef;text-align:center">${esc(title)}</th></tr>\n`;
-        const objRows = (obj, filter = (v) => v !== null) => {
+        let html = `<table class="table table-hover table-sm table-bordered table-nonfluid">\n`;
+
+        const row = (k: string, v: any) => `<tr><td>${esc(String(k))}</td><td>${esc(String(v ?? ""))}</td></tr>\n`;
+        const section = (title: string) => `<tr><th colspan="2" style="background:#e9ecef;text-align:center">${esc(title)}</th></tr>\n`;
+        const objRows = (obj: any, filter = (v: any) => v !== null) => {
             for (const [k, v] of Object.entries(obj)) {
                 if (filter(v)) html += row(k, v);
             }
         };
-        const objSection = (obj, title, filter) => {
+        const objSection = (obj: any, title: string, filter?: (v: any) => boolean) => {
             if (!obj) return;
             html += section(title);
             objRows(obj, filter);
         };
-        const listSection = (arr, title, fmt) => {
+        const listSection = (arr: any[] | undefined, title: string, fmt: (item: any) => string) => {
             if (!arr?.length) return;
             html += section(title);
             for (const item of arr) html += fmt(item);
         };
-
-        let html = `<table class="table table-hover table-sm table-bordered table-nonfluid">\n`;
 
         html += section("Artifact");
         html += row("Filename", data.artifact?.filename || "(none)");
@@ -133,12 +133,12 @@ export class ExtractAudioMetadata extends Operation {
             html += row("(none)", "No common tags found");
         }
 
-        listSection(data.tags?.raw?.id3v2?.frames, "ID3v2 Frames", (f) => {
+        listSection(data.tags?.raw?.id3v2?.frames, "ID3v2 Frames", (f: any) => {
             const val = typeof f.decoded === "object" ? JSON.stringify(f.decoded) : (f.decoded ?? `(${f.size} bytes)`);
             return row(f.id + (f.description ? ` \u2014 ${f.description}` : ""), val);
         });
-        objSection(data.tags?.raw?.id3v1, "ID3v1", (v) => !!v);
-        listSection(data.tags?.raw?.apev2?.items, "APEv2 Tags", (i) => row(i.key, i.value));
+        objSection(data.tags?.raw?.id3v1, "ID3v1", (v: any) => !!v);
+        listSection(data.tags?.raw?.apev2?.items, "APEv2 Tags", (i: any) => row(i.key, i.value));
 
         if (data.tags?.raw?.vorbis_comments?.comments?.length) {
             html += section("Vorbis Comments");
@@ -148,8 +148,8 @@ export class ExtractAudioMetadata extends Operation {
 
         objSection(data.tags?.raw?.riff?.info, "RIFF INFO", () => true);
         objSection(data.tags?.raw?.riff?.bext, "BWF bext");
-        listSection(data.tags?.raw?.riff?.chunks, "RIFF Chunks", (c) => row(c.id, `${c.size} bytes @ offset ${c.offset}`));
-        listSection(data.tags?.raw?.flac?.blocks, "FLAC Metadata Blocks", (b) => row(b.type, `${b.length} bytes`));
+        listSection(data.tags?.raw?.riff?.chunks, "RIFF Chunks", (c: any) => row(c.id, `${c.size} bytes @ offset ${c.offset}`));
+        listSection(data.tags?.raw?.flac?.blocks, "FLAC Metadata Blocks", (b: any) => row(b.type, `${b.length} bytes`));
 
         if (data.tags?.raw?.mp4?.top_level_atoms?.length) {
             html += section("MP4 Top-Level Atoms");
@@ -158,12 +158,12 @@ export class ExtractAudioMetadata extends Operation {
             if (atoms.length > 50) html += row("...", `${atoms.length - 50} more atoms`);
         }
 
-        listSection(data.tags?.raw?.aiff?.chunks, "AIFF Chunks", (c) => row(c.id, c.value));
+        listSection(data.tags?.raw?.aiff?.chunks, "AIFF Chunks", (c: any) => row(c.id, c.value));
         objSection(data.tags?.raw?.aac, "AAC ADTS");
         objSection(data.tags?.raw?.ac3, "AC3 (Dolby Digital)");
-        objSection(data.tags?.raw?.asf?.content_description, "ASF Content Description", (v) => !!v);
-        listSection(data.tags?.raw?.asf?.extended_content, "ASF Extended Content", (d) => row(d.name, d.value));
-        listSection(data.embedded, "Embedded Objects", (e) => row(e.id, `${e.content_type || "unknown"} \u2014 ${(e.byte_length ?? 0).toLocaleString()} bytes`));
+        objSection(data.tags?.raw?.asf?.content_description, "ASF Content Description", (v: any) => !!v);
+        listSection(data.tags?.raw?.asf?.extended_content, "ASF Extended Content", (d: any) => row(d.name, d.value));
+        listSection(data.embedded, "Embedded Objects", (e: any) => row(e.id, `${e.content_type || "unknown"} \u2014 ${(e.byte_length ?? 0).toLocaleString()} bytes`));
 
         if (data.provenance?.c2pa?.present) {
             html += section("C2PA Provenance");
@@ -172,7 +172,7 @@ export class ExtractAudioMetadata extends Operation {
                 html += row("Carrier", `${emb.carrier} \u2014 ${(emb.byte_length ?? 0).toLocaleString()} bytes`);
         }
 
-        listSection(data.errors, "Errors", (e) => row(e.stage, e.message));
+        listSection(data.errors, "Errors", (e: any) => row(e.stage, e.message));
 
         html += "</table>";
         return html;

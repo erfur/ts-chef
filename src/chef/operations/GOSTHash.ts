@@ -72,7 +72,13 @@ export class GOSTHash extends Operation {
         const [version, length, sBox] = args;
 
         const versionNum = version === "GOST 28147 (1994)" ? 1994 : 2012;
-        const algorithm = {
+        const algorithm: {
+            name: string;
+            version: number;
+            mode: string;
+            sBox?: unknown;
+            length?: number;
+        } = {
             name: versionNum === 1994 ? "GOST 28147" : "GOST R 34.10",
             version: versionNum,
             mode: "HASH"
@@ -89,7 +95,7 @@ export class GOSTHash extends Operation {
 
             return toHexFast(gostDigest.digest(input));
         } catch (err) {
-            throw new OperationError(err);
+            throw new OperationError(err instanceof Error ? err.message : String(err));
         }
     }
 

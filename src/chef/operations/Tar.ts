@@ -12,7 +12,7 @@
  */
 
 import { Operation } from "../Operation";
-import Utils from "../Utils";
+import { Utils } from "../Utils";
 
 /**
  * Tar operation
@@ -42,103 +42,103 @@ export class Tar extends Operation {
 
     /**
      * @param {ArrayBuffer} input
-     * @param {Object[]} args
-     * @returns {byteArray}
+     * @param {any[]} args
+     * @returns {File}
      */
-    run(input: any, args: any[]): any {
-        input = new Uint8Array(input);
+    run(input: ArrayBuffer, args: any[]): File {
+        const inputBytes = new Uint8Array(input);
 
-        const Tarball = function() {
-            this.bytes = new Array(512);
-            this.position = 0;
-        };
+        class Tarball {
+            bytes: number[] = new Array(512).fill(0);
+            position: number = 0;
 
-        Tarball.prototype.addEmptyBlock = function() {
-            const filler = new Array(512);
-            filler.fill(0);
-            this.bytes = this.bytes.concat(filler);
-        };
-
-        Tarball.prototype.writeBytes = function(bytes) {
-            const self = this;
-
-            if (this.position + bytes.length > this.bytes.length) {
-                this.addEmptyBlock();
+            addEmptyBlock() {
+                const filler = new Array(512).fill(0);
+                this.bytes = this.bytes.concat(filler);
             }
 
-            Array.prototype.forEach.call(bytes, function(b, i) {
-                if (typeof b.charCodeAt !== "undefined") {
-                    b = b.charCodeAt();
+            writeBytes(bytes: string | number[] | Uint8Array) {
+                if (this.position + bytes.length > this.bytes.length) {
+                    this.addEmptyBlock();
                 }
 
-                self.bytes[self.position] = b;
-                self.position += 1;
-            });
-        };
+                for (let i = 0; i < bytes.length; i++) {
+                    let b: any = (bytes as any)[i];
+                    if (typeof b === "string") {
+                        b = b.charCodeAt(0);
+                    }
 
-        Tarball.prototype.writeEndBlocks = function() {
-            const numEmptyBlocks = 2;
-            for (let i = 0; i < numEmptyBlocks; i++) {
-                this.addEmptyBlock();
+                    this.bytes[this.position] = b;
+                    this.position += 1;
+                }
             }
-        };
 
-        const fileSize = input.length.toString(8).padStart(11, "0");
+            writeEndBlocks() {
+                const numEmptyBlocks = 2;
+                for (let i = 0; i < numEmptyBlocks; i++) {
+                    this.addEmptyBlock();
+                }
+            }
+        }
+
+        const fileSize = inputBytes.length.toString(8).padStart(11, "0");
         const currentUnixTimestamp = Math.floor(Date.now() / 1000);
         const lastModTime = currentUnixTimestamp.toString(8).padStart(11, "0");
 
-        const file = {
-            fileName: Utils.padBytesRight(args[0], 100),
-            fileMode: Utils.padBytesRight("0000664", 8),
-            ownerUID: Utils.padBytesRight("0", 8),
-            ownerGID: Utils.padBytesRight("0", 8),
-            size: Utils.padBytesRight(fileSize, 12),
-            lastModTime: Utils.padBytesRight(lastModTime, 12),
+        const file: Record<string, number[] | string> = {
+            fileName: Utils.padBytesRight(Utils.strToByteArray(args[0]), 100),
+            fileMode: Utils.padBytesRight(Utils.strToByteArray("0000664"), 8),
+            ownerUID: Utils.padBytesRight(Utils.strToByteArray("0"), 8),
+            ownerGID: Utils.padBytesRight(Utils.strToByteArray("0"), 8),
+            size: Utils.padBytesRight(Utils.strToByteArray(fileSize), 12),
+            lastModTime: Utils.padBytesRight(Utils.strToByteArray(lastModTime), 12),
             checksum: "        ",
             type: "0",
-            linkedFileName: Utils.padBytesRight("", 100),
-            USTARFormat: Utils.padBytesRight("ustar", 6),
+            linkedFileName: Utils.padBytesRight(Utils.strToByteArray(""), 100),
+            USTARFormat: Utils.padBytesRight(Utils.strToByteArray("ustar"), 6),
             version: "00",
-            ownerUserName: Utils.padBytesRight("", 32),
-            ownerGroupName: Utils.padBytesRight("", 32),
-            deviceMajor: Utils.padBytesRight("", 8),
-            deviceMinor: Utils.padBytesRight("", 8),
-            fileNamePrefix: Utils.padBytesRight("", 155),
+            ownerUserName: Utils.padBytesRight(Utils.strToByteArray(""), 32),
+            ownerGroupName: Utils.padBytesRight(Utils.strToByteArray(""), 32),
+            deviceMajor: Utils.padBytesRight(Utils.strToByteArray(""), 8),
+            deviceMinor: Utils.padBytesRight(Utils.strToByteArray(""), 8),
+            fileNamePrefix: Utils.padBytesRight(Utils.strToByteArray(""), 155),
         };
 
         let checksum = 0;
         for (const key in file) {
-            const bytes = file[key];
-            Array.prototype.forEach.call(bytes, function(b) {
-                if (typeof b.charCodeAt !== "undefined") {
-                    checksum += b.charCodeAt();
-                } else {
-                    checksum += b;
+            const val = file[key];
+            if (Array.isArray(val)) {
+                for (let i = 0; i < val.length; i++) {
+                    checksum += val[i];
                 }
-            });
+            } else if (typeof val === "string") {
+                for (let i = 0; i < val.length; i++) {
+                    checksum += val.charCodeAt(i);
+                }
+            }
         }
-        checksum = Utils.padBytesRight(checksum.toString(8).padStart(7, "0"), 8);
-        file.checksum = checksum;
+        const checksumStr = Utils.padBytesRight(Utils.strToByteArray(checksum.toString(8).padStart(7, "0")), 8);
+        file.checksum = Utils.byteArrayToChars(checksumStr);
 
         const tarball = new Tarball();
-        tarball.writeBytes(file.fileName);
-        tarball.writeBytes(file.fileMode);
-        tarball.writeBytes(file.ownerUID);
-        tarball.writeBytes(file.ownerGID);
-        tarball.writeBytes(file.size);
-        tarball.writeBytes(file.lastModTime);
-        tarball.writeBytes(file.checksum);
-        tarball.writeBytes(file.type);
-        tarball.writeBytes(file.linkedFileName);
-        tarball.writeBytes(file.USTARFormat);
-        tarball.writeBytes(file.version);
-        tarball.writeBytes(file.ownerUserName);
-        tarball.writeBytes(file.ownerGroupName);
-        tarball.writeBytes(file.deviceMajor);
-        tarball.writeBytes(file.deviceMinor);
-        tarball.writeBytes(file.fileNamePrefix);
-        tarball.writeBytes(Utils.padBytesRight("", 12));
-        tarball.writeBytes(input);
+        tarball.writeBytes(file.fileName as number[]);
+        tarball.writeBytes(file.fileMode as number[]);
+        tarball.writeBytes(file.ownerUID as number[]);
+        tarball.writeBytes(file.ownerGID as number[]);
+        tarball.writeBytes(file.size as number[]);
+        tarball.writeBytes(file.lastModTime as number[]);
+        tarball.writeBytes(file.checksum as string);
+        tarball.writeBytes(file.type as string);
+        tarball.writeBytes(file.linkedFileName as number[]);
+        tarball.writeBytes(file.USTARFormat as number[]);
+        tarball.writeBytes(file.version as string);
+        tarball.writeBytes(file.ownerUserName as number[]);
+        tarball.writeBytes(file.ownerGroupName as number[]);
+        tarball.writeBytes(file.deviceMajor as number[]);
+        tarball.writeBytes(file.deviceMinor as number[]);
+        tarball.writeBytes(file.fileNamePrefix as number[]);
+        tarball.writeBytes(Utils.padBytesRight(Utils.strToByteArray(""), 12));
+        tarball.writeBytes(inputBytes);
         tarball.writeEndBlocks();
 
         return new File([new Uint8Array(tarball.bytes)], args[0]);
@@ -147,3 +147,4 @@ export class Tar extends Operation {
 }
 
 export default Tar;
+

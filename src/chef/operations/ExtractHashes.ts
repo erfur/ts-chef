@@ -71,7 +71,7 @@ export class ExtractHashes extends Operation {
             const hashCharacterLength = (hashBitLength / 8) * 2;
 
             const regex = new RegExp(`(\\b|^)[a-f0-9]{${hashCharacterLength}}(\\b|$)`, "g");
-            const searchResults = search(input, regex, null, false);
+            const searchResults = search(input, regex, null, null);
 
             hashCount += searchResults.length;
             results.push(...searchResults);

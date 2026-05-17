@@ -36,27 +36,29 @@ export class ExtractFiles extends Operation {
         });
 
         // Flatten categories and remove duplicates
-        supportedExts = [].concat(...supportedExts).unique();
+        const flattenedExts: string[] = [].concat(...supportedExts as any);
+        const uniqueExts = [...new Set(flattenedExts)];
 
         this.name = "Extract Files";
         this.module = "Default";
         this.description = `Performs file carving to attempt to extract files from the input.<br><br>This operation is currently capable of carving out the following formats:
             <ul>
                 <li>
-                ${supportedExts.join("</li><li>")}
+                ${uniqueExts.join("</li><li>")}
                 </li>
             </ul>Minimum File Size can be used to prune small false positives.`;
         this.infoURL = "https://forensics.wiki/file_carving";
         this.inputType = "ArrayBuffer";
         this.outputType = "List<File>";
         this.presentType = "html";
-        this.args = Object.keys(FILE_SIGNATURES).map(cat => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.args = (Object.keys(FILE_SIGNATURES).map(cat => {
             return {
                 name: cat,
                 type: "boolean",
                 value: cat === "Miscellaneous" ? false : true
             };
-        }).concat([
+        }) as any[]).concat([
             {
                 name: "Ignore failed extractions",
                 type: "boolean",
@@ -77,9 +79,9 @@ export class ExtractFiles extends Operation {
      */
     run(input: any, args: any[]): any {
         const bytes = new Uint8Array(input),
-            categories = [],
-            minSize = args.pop(1),
-            ignoreFailedExtractions = args.pop(1);
+            categories: string[] = [],
+            minSize = args.pop(),
+            ignoreFailedExtractions = args.pop();
 
         args.forEach((cat, i) => {
             if (cat) categories.push(Object.keys(FILE_SIGNATURES)[i]);
@@ -89,14 +91,14 @@ export class ExtractFiles extends Operation {
         const detectedFiles = scanForFileTypes(bytes, categories);
 
         // Extract each file that we support
-        const files = [];
-        const errors = [];
+        const files: any[] = [];
+        const errors: string[] = [];
         detectedFiles.forEach(detectedFile => {
             try {
                 const file = extractFile(bytes, detectedFile.fileDetails, detectedFile.offset);
                 if (file.size >= minSize)
                     files.push(file);
-            } catch (err) {
+            } catch (err: any) {
                 if (!ignoreFailedExtractions && err.message.indexOf("No extraction algorithm available") < 0) {
                     errors.push(
                         `Error while attempting to extract ${detectedFile.fileDetails.name} ` +
@@ -121,8 +123,8 @@ export class ExtractFiles extends Operation {
      * @param {File[]} files
      * @returns {html}
      */
-    async present(files) {
-        return await Utils.displayFilesAsHTML(files);
+    async present(files: any[]) {
+        return await (Utils as any).displayFilesAsHTML(files);
     }
 
 }

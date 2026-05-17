@@ -53,7 +53,7 @@ export class Jump extends Operation {
      * @param {number} state.numJumps - The number of jumps taken so far.
      * @returns {Object} The updated state of the recipe.
      */
-    run(state) {
+    run(state: any) {
         const ings = state.opList[state.progress].ingValues;
         const [label, maxJumps] = ings;
         const jmpIndex = getLabelIndex(label, state);

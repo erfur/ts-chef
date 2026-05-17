@@ -52,7 +52,7 @@ export class ProtobufEncode extends Operation {
         try {
             return Protobuf.encode(input, args);
         } catch (error) {
-            throw new OperationError(error);
+            throw new OperationError(error instanceof Error ? error.message : String(error));
         }
     }
 

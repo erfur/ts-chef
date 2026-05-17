@@ -36,11 +36,7 @@ export class DefangIPAddresses extends Operation {
             {
                 pattern: "^\\s*(([0-9]{1,3}\\.){3}[0-9]{1,3}|([0-9a-f]{4}:){7}[0-9a-f]{4})\\s*$",
                 flags: "i",
-                args: [],
-                output: {
-                    pattern: "^\\s*(([0-9]{1,3}\\[\\.\\]){3}[0-9]{1,3}|([0-9a-f]{4}\\[\\:\\]){7}[0-9a-f]{4})\\s*$",
-                    flags: "i"
-                }
+                args: []
             }
         ];
     }
@@ -50,7 +46,7 @@ export class DefangIPAddresses extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         input = input.replace(IPV4_REGEX, x => {
             return x.replace(/\./g, "[.]");
         });

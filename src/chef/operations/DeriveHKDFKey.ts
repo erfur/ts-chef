@@ -122,7 +122,7 @@ export class DeriveHKDFKey extends Operation {
             throw new OperationError("L too large (maximum length for " + args[2] + " is " + (255 * HashLen) + ")");
         }
 
-        const hmacHash = function(key, data) {
+        const hmacHash = function(key: string, data: string) {
             hasher.reset();
             const mac = CryptoApi.getHmac(key, hasher);
             mac.update(data);

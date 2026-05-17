@@ -1,11 +1,14 @@
-/* Ported from CyberChef */
-
-/**
- * Character encoding resources.
- *
- * @author n1474335 [n1474335@gmail.com]
- * @copyright Crown Copyright 2016
- * @license Apache-2.0
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
  */
 
 import cptable from "codepage";
@@ -13,7 +16,7 @@ import cptable from "codepage";
 /**
  * Character encoding format mappings.
  */
-export const CHR_ENC_CODE_PAGES = {
+export const CHR_ENC_CODE_PAGES: {[name: string]: number} = {
     "UTF-8 (65001)": 65001,
     "UTF-7 (65000)": 65000,
     "UTF-16LE (1200)": 1200,
@@ -169,14 +172,16 @@ export const CHR_ENC_CODE_PAGES = {
 };
 
 
-export const CHR_ENC_SIMPLE_LOOKUP = {};
-export const CHR_ENC_SIMPLE_REVERSE_LOOKUP = {};
+export const CHR_ENC_SIMPLE_LOOKUP: {[simpleName: string]: number} = {};
+export const CHR_ENC_SIMPLE_REVERSE_LOOKUP: {[page: string]: string} = {};
 
 for (const name in CHR_ENC_CODE_PAGES) {
-    const simpleName = name.match(/(^.+)\([\d/]+\)$/)[1];
-
-    CHR_ENC_SIMPLE_LOOKUP[simpleName] = CHR_ENC_CODE_PAGES[name];
-    CHR_ENC_SIMPLE_REVERSE_LOOKUP[CHR_ENC_CODE_PAGES[name]] = simpleName;
+    const match = name.match(/(^.+)\([\d/]+\)$/);
+    if (match) {
+        const simpleName = match[1];
+        CHR_ENC_SIMPLE_LOOKUP[simpleName] = CHR_ENC_CODE_PAGES[name];
+        CHR_ENC_SIMPLE_REVERSE_LOOKUP[CHR_ENC_CODE_PAGES[name].toString()] = simpleName;
+    }
 }
 
 
@@ -188,7 +193,7 @@ for (const name in CHR_ENC_CODE_PAGES) {
  * @param {number} page - The codepage number
  * @returns {number}
  */
-export function chrEncWidth(page) {
+export function chrEncWidth(page: number): number {
     if (typeof page !== "number") return 0;
 
     // Raw Bytes have a width of 1
@@ -201,18 +206,18 @@ export function chrEncWidth(page) {
 
     // Statically defined code pages
     if (Object.prototype.hasOwnProperty.call(cptable, pageStr))
-        return cptable[pageStr].dec.length > 256 ? 2 : 1;
+        return (cptable as any)[pageStr].dec.length > 256 ? 2 : 1;
 
     // Cached code pages
-    if (cptable.utils.cache.sbcs.includes(pageStr))
+    if ((cptable as any).utils.cache.sbcs.includes(pageStr))
         return 1;
-    if (cptable.utils.cache.dbcs.includes(pageStr))
+    if ((cptable as any).utils.cache.dbcs.includes(pageStr))
         return 2;
 
     // Dynamically generated code pages
-    if (Object.prototype.hasOwnProperty.call(cptable.utils.magic, pageStr)) {
+    if (Object.prototype.hasOwnProperty.call((cptable as any).utils.magic, pageStr)) {
         // Generate a single character and measure it
-        const a = cptable.utils.encode(page, "a");
+        const a = (cptable as any).utils.encode(page, "a");
         return a.length;
     }
 
@@ -232,11 +237,11 @@ export const UNICODE_NORMALISATION_FORMS = ["NFD", "NFC", "NFKD", "NFKC"];
 /**
  * Detects whether the input buffer is valid UTF8.
  *
- * @param {ArrayBuffer} data
+ * @param {ArrayBuffer | Uint8Array} data
  * @returns {number} - 0 = not UTF8, 1 = ASCII, 2 = UTF8
  */
-export function isUTF8(data) {
-    const bytes = new Uint8Array(data);
+export function isUTF8(data: ArrayBuffer | Uint8Array): number {
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
     let i = 0;
     let onlyASCII = true;
     while (i < bytes.length) {

@@ -87,7 +87,7 @@ export class FrequencyDistribution extends Operation {
      * @param {json} freq
      * @returns {html}
      */
-    present(freq, args) {
+    present(freq: any, args: any[]) {
         const [showZeroes, showAscii] = args;
 
         // Print

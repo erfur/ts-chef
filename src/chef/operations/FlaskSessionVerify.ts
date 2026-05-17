@@ -105,9 +105,9 @@ export class FlaskSessionVerify extends Operation {
         const view = new DataView(bytes.buffer);
         const timestamp = view.getInt32(0, false);
 
-        let payloadJson;
+        let payloadJson: string;
         try {
-            payloadJson = fromBase64(padded);
+            payloadJson = fromBase64(padded) as string;
         } catch (e) {
             throw new OperationError("Invalid Base64 payload");
         }
@@ -134,7 +134,8 @@ export class FlaskSessionVerify extends Operation {
                 };
             }
         } catch (e) {
-            throw new OperationError("Unable to decode JSON payload: " + e.message);
+            const errMsg = e instanceof Error ? e.message : String(e);
+            throw new OperationError("Unable to decode JSON payload: " + errMsg);
         }
 
     }

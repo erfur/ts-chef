@@ -41,6 +41,17 @@ import OperationError from "../errors/OperationError";
  */
 export class GenerateAllHashes extends Operation {
 
+    hashes: {
+        name: string,
+        algo: Operation,
+        inputType: string,
+        params?: any[]
+    }[];
+
+    inputArrayBuffer: ArrayBuffer = new ArrayBuffer(0);
+    inputStr: string = "";
+    inputByteArray: Uint8Array = new Uint8Array(0);
+
     /**
      * GenerateAllHashes constructor
      */
@@ -119,7 +130,7 @@ export class GenerateAllHashes extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: ArrayBuffer, args: any[]): string {
         const [length, includeNames] = args;
         this.inputArrayBuffer = input;
         this.inputStr = Utils.arrayBufferToStr(input, false);
@@ -127,7 +138,7 @@ export class GenerateAllHashes extends Operation {
 
         let digest, output = "";
         // iterate over each of the hashes
-        this.hashes.forEach(hash => {
+        this.hashes.forEach((hash) => {
             digest = this.executeAlgo(hash.algo, hash.inputType, hash.params || []);
             output += this.formatDigest(digest, length, includeNames, hash.name);
         });
@@ -138,13 +149,13 @@ export class GenerateAllHashes extends Operation {
     /**
      * Executes a hash or checksum algorithm
      *
-     * @param {Function} algo - The hash or checksum algorithm
+     * @param {Operation} algo - The hash or checksum algorithm
      * @param {string} inputType
-     * @param {Object[]} [params=[]]
+     * @param {any[]} [params=[]]
      * @returns {string}
      */
-    executeAlgo(algo, inputType, params=[]) {
-        let digest = null;
+    executeAlgo(algo: Operation, inputType: string, params: any[] = []): string {
+        let digest = "";
         switch (inputType) {
             case "arrayBuffer":
                 digest = algo.run(this.inputArrayBuffer, params);
@@ -170,7 +181,7 @@ export class GenerateAllHashes extends Operation {
      * @param {string} name
      * @returns {string}
      */
-    formatDigest(digest, length, includeNames, name) {
+    formatDigest(digest: string, length: string, includeNames: boolean, name: string): string {
         if (length !== "All" && (digest.length * 4) !== parseInt(length, 10))
             return "";
 

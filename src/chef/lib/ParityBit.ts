@@ -1,22 +1,24 @@
-/* Ported from CyberChef */
-
-/**
- * Parity Bit functions.
- *
- * @author j83305 [awz22@protonmail.com]
- * @copyright Crown Copyright 2020
- * @license Apache-2.0
- *
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
  */
 
 import OperationError from "../errors/OperationError";
 
 /**
  * Function to take the user input and encode using the given arguments
- * @param input string of binary
- * @param args array
+ * @param {string} input - string of binary
+ * @param {any[]} args - array
  */
-export function calculateParityBit(input, args) {
+export function calculateParityBit(input: string, args: any[]): string {
     let count1s = 0;
     for (let i = 0; i < input.length; i++) {
         const character = input.charAt(i);
@@ -40,10 +42,10 @@ export function calculateParityBit(input, args) {
 
 /**
  * just removes the parity bit to return the original data
- * @param input string of binary, encoded
- * @param args array
+ * @param {string} input - string of binary, encoded
+ * @param {any[]} args - array
  */
-export function decodeParityBit(input, args) {
+export function decodeParityBit(input: string, args: any[]): string {
     if (args[1] === "End") {
         return input.slice(0, -1);
     } else {

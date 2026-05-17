@@ -58,7 +58,7 @@ export class JPathExpression extends Operation {
         try {
             jsonObj = JSON.parse(input);
         } catch (err) {
-            throw new OperationError(`Invalid input JSON: ${err.message}`);
+            throw new OperationError(`Invalid input JSON: ${err instanceof Error ? err.message : String(err)}`);
         }
 
         try {
@@ -67,7 +67,7 @@ export class JPathExpression extends Operation {
                 json: jsonObj
             });
         } catch (err) {
-            throw new OperationError(`Invalid JPath expression: ${err.message}`);
+            throw new OperationError(`Invalid JPath expression: ${err instanceof Error ? err.message : String(err)}`);
         }
 
         return results.map(result => JSON.stringify(result)).join(delimiter);

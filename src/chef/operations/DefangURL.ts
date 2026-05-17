@@ -65,15 +65,15 @@ export class DefangURL extends Operation {
 
         switch (process) {
             case "Valid domains and full URLs":
-                input = input.replace(URL_REGEX, x => {
+                input = input.replace(URL_REGEX, (x: string) => {
                     return defangURL(x, dots, http, slashes);
                 });
-                input = input.replace(DOMAIN_REGEX, x => {
+                input = input.replace(DOMAIN_REGEX, (x: string) => {
                     return defangURL(x, dots, http, slashes);
                 });
                 break;
             case "Only full URLs":
-                input = input.replace(URL_REGEX, x => {
+                input = input.replace(URL_REGEX, (x: string) => {
                     return defangURL(x, dots, http, slashes);
                 });
                 break;
@@ -97,7 +97,7 @@ export class DefangURL extends Operation {
  * @param {boolean} slashes
  * @returns {string}
  */
-function defangURL(url, dots, http, slashes) {
+function defangURL(url: string, dots: boolean, http: boolean, slashes: boolean): string {
     if (dots) url = url.replace(/\./g, "[.]");
     if (http) url = url.replace(/http/gi, "hxxp");
     if (slashes) url = url.replace(/:\/\//g, "[://]");

@@ -20,13 +20,13 @@ import { isWorkerEnvironment } from "../Utils";
 
 /**
  * Convenience method for flattening the preset ROTORS object into a newline-separated string.
- * @param {Object[]} - Preset rotors object
+ * @param {any[]} rotors - Preset rotors object
  * @param {number} s - Start index
  * @param {number} n - End index
  * @returns {string}
  */
-function rotorsFormat(rotors, s, n) {
-    const res = [];
+function rotorsFormat(rotors: any[], s: number, n: number): string {
+    const res: string[] = [];
     for (const i of rotors.slice(s, n)) {
         res.push(i.value);
     }
@@ -37,9 +37,9 @@ function rotorsFormat(rotors, s, n) {
  * Combinatorics choose function
  * @param {number} n
  * @param {number} k
- * @returns number
+ * @returns {number}
  */
-function choose(n, k) {
+function choose(n: number, k: number): number {
     let res = 1;
     for (let i=1; i<=k; i++) {
         res *= (n + 1 - i) / i;
@@ -146,15 +146,16 @@ export class MultipleBombe extends Operation {
      * @param {number} nLoops - Number of loops in the menu
      * @param {number} nStops - How many stops so far
      * @param {number} progress - Progress (as a float in the range 0..1)
+     * @param {number} start - Start time
      */
-    updateStatus(nLoops, nStops, progress, start) {
+    updateStatus(nLoops: number, nStops: number, progress: number, start: number): void {
         const elapsed = Date.now() - start;
         const remaining = (elapsed / progress) * (1 - progress) / 1000;
         const hours = Math.floor(remaining / 3600);
         const minutes = `0${Math.floor((remaining % 3600) / 60)}`.slice(-2);
         const seconds = `0${Math.floor(remaining % 60)}`.slice(-2);
         const msg = `Bombe run with ${nLoops} loop${nLoops === 1 ? "" : "s"} in menu (2+ desirable): ${nStops} stops, ${Math.floor(100 * progress)}% done, ${hours}:${minutes}:${seconds} remaining`;
-        self.sendStatusMessage(msg);
+        (self as any).sendStatusMessage(msg);
     }
 
     /**
@@ -163,7 +164,7 @@ export class MultipleBombe extends Operation {
      * @param {string} rstr - The rotor description string
      * @returns {string} - Rotor description with stepping stripped, if any
      */
-    validateRotor(rstr) {
+    validateRotor(rstr: string): string {
         // The Bombe doesn't take stepping into account so we'll just ignore it here
         if (rstr.includes("<")) {
             rstr = rstr.split("<", 2)[0];
@@ -182,18 +183,18 @@ export class MultipleBombe extends Operation {
     /**
      * @param {string} input
      * @param {Object[]} args
-     * @returns {string}
+     * @returns {Object}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): any {
         const mainRotorsStr = args[1];
         const fourthRotorsStr = args[2];
         const reflectorsStr = args[3];
         let crib = args[4];
         const offset = args[5];
         const check = args[6];
-        const rotors = [];
-        const fourthRotors = [];
-        const reflectors = [];
+        const rotors: string[] = [];
+        const fourthRotors: string[] = [];
+        const reflectors: Reflector[] = [];
         for (let rstr of mainRotorsStr.split("\n")) {
             rstr = this.validateRotor(rstr);
             rotors.push(rstr);
@@ -227,14 +228,14 @@ export class MultipleBombe extends Operation {
         input = input.replace(/[^A-Za-z]/g, "").toUpperCase();
         crib = crib.replace(/[^A-Za-z]/g, "").toUpperCase();
         const ciphertext = input.slice(offset);
-        let update;
+        let update: ((nLoops: number, nStops: number, progress: number, start: number) => void) | undefined;
         if (isWorkerEnvironment()) {
-            update = this.updateStatus;
+            update = this.updateStatus.bind(this);
         } else {
             update = undefined;
         }
-        let bombe = undefined;
-        const output = {bombeRuns: []};
+        let bombe: BombeMachine | undefined = undefined;
+        const output: any = {bombeRuns: []};
         // I could use a proper combinatorics algorithm here... but it would be more code to
         // write one, and we don't seem to have one in our existing libraries, so massively nested
         // for loop it is
@@ -266,7 +267,7 @@ export class MultipleBombe extends Operation {
                             }
                             const result = bombe.run();
                             nStops += result.length;
-                            if (update !== undefined) {
+                            if (update !== undefined && bombe !== undefined) {
                                 update(bombe.nLoops, nStops, nRuns / totalRuns, start);
                             }
                             if (result.length > 0) {
@@ -290,10 +291,10 @@ export class MultipleBombe extends Operation {
      *
      * @param {Object} output
      * @param {number} output.nLoops
-     * @param {Array[]} output.result
-     * @returns {html}
+     * @param {any[]} output.bombeRuns
+     * @returns {string}
      */
-    present(output) {
+    present(output: any): string {
         let html = `Bombe run on menu with ${output.nLoops} loop${output.nLoops === 1 ? "" : "s"} (2+ desirable). Note: Rotors and rotor positions are listed left to right, ignore stepping and the ring setting, and positions start at the beginning of the crib. Some plugboard settings are determined. A decryption preview starting at the beginning of the crib and ignoring stepping is also provided.\n`;
 
         for (const run of output.bombeRuns) {

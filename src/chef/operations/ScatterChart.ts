@@ -16,10 +16,10 @@ import * as nodomtemp from "nodom";
 import { getScatterValues, getScatterValuesWithColour, RECORD_DELIMITER_OPTIONS, COLOURS, FIELD_DELIMITER_OPTIONS } from "../lib/Charts";
 
 import { Operation } from "../Operation";
-import Utils from "../Utils";
+import { Utils } from "../Utils";
 
-const d3 = d3temp.default ? d3temp.default : d3temp;
-const nodom = nodomtemp.default ? nodomtemp.default: nodomtemp;
+const d3 = (d3temp as any).default ? (d3temp as any).default : d3temp;
+const nodom = (nodomtemp as any).default ? (nodomtemp as any).default: nodomtemp;
 
 /**
  * Scatter chart operation
@@ -86,10 +86,10 @@ export class ScatterChart extends Operation {
      * Scatter chart operation.
      *
      * @param {string} input
-     * @param {Object[]} args
-     * @returns {html}
+     * @param {any[]} args
+     * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const recordDelimiter = Utils.charRep(args[0]),
             fieldDelimiter = Utils.charRep(args[1]),
             columnHeadingsAreIncluded = args[2],
@@ -132,15 +132,15 @@ export class ScatterChart extends Operation {
             marginedSpace = svg.append("g")
                 .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-        const xExtent = d3.extent(values, d => d[0]),
-            xDelta = xExtent[1] - xExtent[0],
-            yExtent = d3.extent(values, d => d[1]),
-            yDelta = yExtent[1] - yExtent[0],
+        const xExtent: [any, any] = d3.extent(values, (d: any[]) => d[0]),
+            xDelta = (xExtent[1] || 0) - (xExtent[0] || 0),
+            yExtent: [any, any] = d3.extent(values, (d: any[]) => d[1]),
+            yDelta = (yExtent[1] || 0) - (yExtent[0] || 0),
             xAxis = d3.scaleLinear()
-                .domain([xExtent[0] - (0.1 * xDelta), xExtent[1] + (0.1 * xDelta)])
+                .domain([(xExtent[0] || 0) - (0.1 * xDelta), (xExtent[1] || 0) + (0.1 * xDelta)])
                 .range([0, width]),
             yAxis = d3.scaleLinear()
-                .domain([yExtent[0] - (0.1 * yDelta), yExtent[1] + (0.1 * yDelta)])
+                .domain([(yExtent[0] || 0) - (0.1 * yDelta), (yExtent[1] || 0) + (0.1 * yDelta)])
                 .range([height, 0]);
 
         marginedSpace.append("clipPath")
@@ -156,16 +156,16 @@ export class ScatterChart extends Operation {
             .data(values)
             .enter()
             .append("circle")
-            .attr("cx", (d) => xAxis(d[0]))
-            .attr("cy", (d) => yAxis(d[1]))
-            .attr("r", d => radius)
-            .attr("fill", d => {
+            .attr("cx", (d: any[]) => xAxis(d[0]))
+            .attr("cy", (d: any[]) => yAxis(d[1]))
+            .attr("r", (d: any[]) => radius)
+            .attr("fill", (d: any[]) => {
                 return colourInInput ? d[2] : fillColour;
             })
             .attr("stroke", "rgba(0, 0, 0, 0.5)")
             .attr("stroke-width", "0.5")
             .append("title")
-            .text(d => {
+            .text((d: any[]) => {
                 const x = d[0],
                     y = d[1],
                     tooltip = `X: ${x}\n
@@ -197,7 +197,7 @@ export class ScatterChart extends Operation {
             .style("text-anchor", "middle")
             .text(xLabel);
 
-        return svg._groups[0][0].outerHTML;
+        return (svg as any)._groups[0][0].outerHTML;
     }
 
 }

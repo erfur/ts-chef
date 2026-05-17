@@ -70,14 +70,14 @@ export class ConvertImageFormat extends Operation {
      */
     async run(input: any, args: any[]): Promise<any> {
         const [format, jpegQuality, pngFilterType, pngDeflateLevel] = args;
-        const formatMap = {
+        const formatMap: Record<string, string> = {
             JPEG: JimpMime.jpeg,
             PNG: JimpMime.png,
             BMP: JimpMime.bmp,
             TIFF: JimpMime.tiff,
         };
 
-        const pngFilterMap = {
+        const pngFilterMap: Record<string, number> = {
             Auto: PNGFilterType.AUTO,
             None: PNGFilterType.NONE,
             Sub: PNGFilterType.SUB,
@@ -101,18 +101,18 @@ export class ConvertImageFormat extends Operation {
             let buffer;
             switch (mime) {
                 case JimpMime.jpeg:
-                    buffer = await image.getBuffer(mime, {
+                    buffer = await image.getBuffer(mime as any, {
                         quality: jpegQuality,
                     });
                     break;
                 case JimpMime.png:
-                    buffer = await image.getBuffer(mime, {
-                        filterType: pngFilterMap[pngFilterType],
+                    buffer = await image.getBuffer(mime as any, {
+                        filterType: pngFilterMap[pngFilterType] as any,
                         deflateLevel: pngDeflateLevel,
                     });
                     break;
                 default:
-                    buffer = await image.getBuffer(mime);
+                    buffer = await image.getBuffer(mime as any);
                     break;
             }
 
@@ -128,7 +128,7 @@ export class ConvertImageFormat extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

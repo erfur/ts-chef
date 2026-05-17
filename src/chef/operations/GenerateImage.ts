@@ -81,7 +81,7 @@ export class GenerateImage extends Operation {
             Bits: 1 / 8,
         };
 
-        const bytesPerPixel = bytePerPixelMap[mode];
+        const bytesPerPixel = bytePerPixelMap[mode as keyof typeof bytePerPixelMap];
 
         if (bytesPerPixel > 0 && input.length % bytesPerPixel !== 0) {
             throw new OperationError(
@@ -182,7 +182,7 @@ export class GenerateImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

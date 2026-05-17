@@ -130,7 +130,16 @@ export class GOSTEncrypt extends Operation {
 
         const sBoxVal = versionNum === 1989 ? sBox : null;
 
-        const algorithm = {
+        const algorithm: {
+            version: number;
+            length: number;
+            mode: string;
+            sBox: unknown;
+            block: unknown;
+            keyMeshing: unknown;
+            padding: unknown;
+            iv?: unknown;
+        } = {
             version: versionNum,
             length: blockLength,
             mode: "ES",
@@ -149,7 +158,7 @@ export class GOSTEncrypt extends Operation {
 
             return outputType === "Hex" ? out : Utils.byteArrayToChars(fromHex(out));
         } catch (err) {
-            throw new OperationError(err);
+            throw new OperationError(err instanceof Error ? err.message : String(err));
         }
     }
 

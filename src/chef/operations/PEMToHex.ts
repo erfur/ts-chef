@@ -37,6 +37,7 @@ export class PEMToHex extends Operation {
         this.checks = [
             {
                 "pattern": "----BEGIN ([A-Z][A-Z ]+[A-Z])-----",
+                "flags": "",
                 "args": []
             }
         ];
@@ -62,7 +63,7 @@ export class PEMToHex extends Operation {
 
             // decode base64 content
             const base64 = input.substring(indexBase64, indexFooter);
-            const bytes = fromBase64(base64, "A-Za-z0-9+/=", "byteArray", true);
+            const bytes = fromBase64(base64, "A-Za-z0-9+/=", "byteArray", true) as number[];
             const hex = toHexFast(bytes);
             output.push(hex);
         }

@@ -89,7 +89,7 @@ export class CoverImage extends Operation {
     async run(input: any, args: any[]): Promise<any> {
         const [width, height, hAlign, vAlign, alg] = args;
 
-        const resizeMap = {
+        const resizeMap: Record<string, ResizeStrategy> = {
             "Nearest Neighbour": ResizeStrategy.NEAREST_NEIGHBOR,
             Bilinear: ResizeStrategy.BILINEAR,
             Bicubic: ResizeStrategy.BICUBIC,
@@ -97,7 +97,7 @@ export class CoverImage extends Operation {
             Bezier: ResizeStrategy.BEZIER,
         };
 
-        const alignMap = {
+        const alignMap: Record<string, number> = {
             Left: HorizontalAlign.LEFT,
             Center: HorizontalAlign.CENTER,
             Right: HorizontalAlign.RIGHT,
@@ -117,17 +117,17 @@ export class CoverImage extends Operation {
             throw new OperationError(`Error loading image. (${err})`);
         }
         try {
-                        image.cover({
+            image.cover({
                 w: width,
                 h: height,
-                align: alignMap[hAlign] | alignMap[vAlign],
+                align: (alignMap[hAlign] as any) | (alignMap[vAlign] as any),
                 mode: resizeMap[alg],
             });
             let imageBuffer;
             if (image.mime === "image/gif") {
-                imageBuffer = await image.getBuffer(JimpMime.png);
+                imageBuffer = await image.getBuffer(JimpMime.png as any);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as any);
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -140,7 +140,7 @@ export class CoverImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 

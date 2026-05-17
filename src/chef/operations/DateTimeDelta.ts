@@ -78,7 +78,7 @@ export class DateTimeDelta extends Operation {
      * @param {Object[]} args
      * @returns {string}
      */
-    run(input: any, args: any[]): any {
+    run(input: string, args: any[]): string {
         const inputTimezone = "UTC";
         const inputFormat = args[1];
         const operationType = args[2];
@@ -86,15 +86,17 @@ export class DateTimeDelta extends Operation {
         const hoursDelta = args[4];
         const minutesDelta = args[5];
         const secondsDelta = args[6];
-        let date = "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let date: any;
 
         try {
             date = moment.tz(input, inputFormat, inputTimezone);
-            if (!date || date.format() === "Invalid date") throw Error;
+            if (!date || date.format() === "Invalid date") throw Error();
         } catch (err) {
             return `Invalid format.\n\n${FORMAT_EXAMPLES}`;
         }
-        let newDate;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let newDate: any;
         if (operationType === "Add") {
             newDate = date.add(daysDelta, "days")
                 .add(hoursDelta, "hours")

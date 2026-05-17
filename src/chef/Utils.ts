@@ -282,6 +282,36 @@ export class Utils {
         return str.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
     }
 
+    /**
+     * Replaces whitespace characters with their Private Use Area equivalents.
+     * @param str - String to escape
+     * @returns Escaped string
+     */
+    static escapeWhitespace(str: string): string {
+        return str.replace(/[\x09-\x10]/g, (c) => {
+            return String.fromCharCode(0xe000 + c.charCodeAt(0));
+        });
+    }
+
+    /**
+     * Returns a new array with duplicate elements removed.
+     * @param arr - Array to unique
+     * @returns Uniqued array
+     */
+    static unique<T>(arr: T[]): T[] {
+        const u: Record<string, number> = {};
+        const a: T[] = [];
+        for (let i = 0, l = arr.length; i < l; i++) {
+            const key = String(arr[i]);
+            if (Object.prototype.hasOwnProperty.call(u, key)) {
+                continue;
+            }
+            a.push(arr[i]);
+            u[key] = 1;
+        }
+        return a;
+    }
+
     static expandAlphRange(alphStr: string): string[] {
         const alphArr: string[] = [];
         for (let i = 0; i < alphStr.length; i++) {
@@ -464,6 +494,22 @@ export class Utils {
 
         return lines;
     }
+
+    static encodeURIFragment(str: string): string {
+        return encodeURIComponent(str).replace(/%20/g, "+");
+    }
+
+    static generatePrettyRecipe(recipeConfig: unknown, newLine = false): string {
+        if (!Array.isArray(recipeConfig)) return String(recipeConfig);
+        return (recipeConfig as Array<{ op: string; args?: unknown[] }>)
+            .map(op => op.op + (op.args?.length ? `(${op.args.join(", ")})` : ""))
+            .join(newLine ? "\n" : " / ");
+    }
+}
+
+export function sendStatusMessage(msg: string): void {
+    // no-op in extension context; original CyberChef uses this for worker messages
+    void msg;
 }
 
 export default Utils;

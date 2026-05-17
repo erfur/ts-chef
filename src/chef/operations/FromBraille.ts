@@ -40,7 +40,7 @@ export class FromBraille extends Operation {
      * @returns {string}
      */
     run(input: any, args: any[]): any {
-        return input.split("").map(b => {
+        return input.split("").map((b: string) => {
             const idx = BRAILLE_LOOKUP.dot6.indexOf(b);
             return idx < 0 ? b : BRAILLE_LOOKUP.ascii[idx];
         }).join("");

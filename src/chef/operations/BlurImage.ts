@@ -82,7 +82,7 @@ export class BlurImage extends Operation {
             if (image.mime === "image/gif") {
                 imageBuffer = await image.getBuffer(JimpMime.png);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as any);
             }
             return imageBuffer.buffer;
         } catch (err) {
@@ -96,7 +96,7 @@ export class BlurImage extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer) {
         if (!data.byteLength) return "";
         const dataArray = new Uint8Array(data);
 
