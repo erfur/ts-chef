@@ -84,7 +84,7 @@ export class ResizeImage extends Operation {
             height = args[1];
         const unit = args[2],
             aspect = args[3],
-            resizeAlg = args[4];
+            resizeAlg = args[4] as keyof typeof resizeMap;
 
         const resizeMap = {
             "Nearest Neighbour": ResizeStrategy.NEAREST_NEIGHBOR,
@@ -130,7 +130,7 @@ export class ResizeImage extends Operation {
             if (image.mime === "image/gif") {
                 imageBuffer = await image.getBuffer(JimpMime.png);
             } else {
-                imageBuffer = await image.getBuffer(image.mime);
+                imageBuffer = await image.getBuffer(image.mime as "image/jpeg" | "image/gif" | "image/png" | "image/tiff" | "image/bmp" | "image/x-ms-bmp");
             }
             return imageBuffer.buffer;
         } catch (err) {

@@ -68,7 +68,7 @@ export class PGPDecrypt extends Operation {
         const encryptedMessage = input,
             [privateKey, passphrase] = args,
             keyring = new kbpgp.keyring.KeyRing();
-        let plaintextMessage;
+        let plaintextMessage: any;
 
         if (!privateKey) throw new OperationError("Enter the private key of the recipient.");
 

@@ -83,7 +83,6 @@ export class EscapeString extends Operation {
             quotes: quotes.toLowerCase(),
             es6: es6Compat,
             escapeEverything: level === "Everything",
-            minimal: level === "Minimal",
             json: jsonCompat,
             lowercaseHex: lowercaseHex,
         });

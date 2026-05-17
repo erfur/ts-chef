@@ -32,7 +32,7 @@ export class SQLBeautify extends Operation {
         const bindRegex = /:\w+/g;
         const bindMap: Record<string, string> = {};
         let bindCounter = 0;
-        const placeholderInput = input.replace(bindRegex, (match) => {
+        const placeholderInput = input.replace(bindRegex, (match: string) => {
             const placeholder = `__BIND_${bindCounter++}__`;
             bindMap[placeholder] = match;
             return placeholder;
@@ -42,7 +42,7 @@ export class SQLBeautify extends Operation {
             tabWidth: indentStr === "\t" ? 4 : indentStr.length || 4,
             useTabs: indentStr === "\t",
         });
-        formatted = formatted.replace(/__BIND_\d+__/g, (match) => bindMap[match] || match);
+        formatted = formatted.replace(/__BIND_\d+__/g, (match: string) => bindMap[match] || match);
         return formatted;
     }
 }

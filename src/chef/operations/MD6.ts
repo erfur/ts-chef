@@ -64,7 +64,7 @@ export class MD6 extends Operation {
         if (levels < 0)
             throw new OperationError("Levels must be greater than 0");
 
-        return NodeMD6.getHashOfText(input, size, key, levels);
+        return (NodeMD6 as any)(input, size, key, levels);
     }
 
 }

@@ -15,9 +15,7 @@ import { Operation } from "../Operation";
 import kbpgp from "kbpgp";
 import { getSubkeySize, ASP } from "../lib/PGP";
 import { cryptNotice } from "../lib/Crypt";
-import * as es6promisify from "es6-promisify";
-const promisify = es6promisify.default ? es6promisify.default.promisify : es6promisify.promisify;
-
+import promisify from "es6-promisify";
 
 /**
  * Generate PGP Key Pair operation
@@ -106,15 +104,15 @@ export class GeneratePGPKeyPair extends Operation {
 
         return new Promise(async (resolve, reject) => {
             try {
-                const unsignedKey = await promisify(kbpgp.KeyManager.generate)(keyGenerationOptions);
+                const unsignedKey: any = await promisify(kbpgp.KeyManager.generate)(keyGenerationOptions);
                 await promisify(unsignedKey.sign.bind(unsignedKey))({});
 
                 const signedKey = unsignedKey,
-                    privateKeyExportOptions = {};
+                    privateKeyExportOptions: any = {};
 
                 if (password) privateKeyExportOptions.passphrase = password;
-                const privateKey = await promisify(signedKey.export_pgp_private.bind(signedKey))(privateKeyExportOptions);
-                const publicKey = await promisify(signedKey.export_pgp_public.bind(signedKey))({});
+                const privateKey: any = await promisify(signedKey.export_pgp_private.bind(signedKey))(privateKeyExportOptions);
+                const publicKey: any = await promisify(signedKey.export_pgp_public.bind(signedKey))({});
                 resolve(privateKey + "\n" + publicKey.trim());
             } catch (err) {
                 reject(`Error whilst generating key pair: ${err}`);

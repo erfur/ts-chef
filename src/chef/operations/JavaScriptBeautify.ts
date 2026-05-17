@@ -87,10 +87,10 @@ export class JavaScriptBeautify extends Operation {
             };
 
             if (options.comment)
-                AST = escodegen.attachComments(AST, AST.comments, AST.tokens);
+                AST = escodegen.attachComments(AST, AST.comments || [], AST.tokens || []);
 
             result = escodegen.generate(AST, options);
-        } catch (e) {
+        } catch (e: any) {
             // Leave original error so the user can see the detail
             throw new OperationError("Unable to parse JavaScript.<br>" + e.message);
         }

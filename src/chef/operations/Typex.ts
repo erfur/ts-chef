@@ -170,7 +170,7 @@ export class Typex extends Operation {
      * @param {number} i - For error messages, the number of this rotor.
      * @returns {string[]}
      */
-    parseRotorStr(rotor, i) {
+    parseRotorStr(rotor: string, i: number) {
         if (rotor === "") {
             throw new OperationError(`Rotor ${i} must be provided.`);
         }
@@ -192,7 +192,7 @@ export class Typex extends Operation {
         const removeOther = args[23];
         const rotors = [];
         for (let i=0; i<5; i++) {
-            const [rotorwiring, rotorsteps] = this.parseRotorStr(args[i*4]);
+            const [rotorwiring, rotorsteps] = this.parseRotorStr(args[i*4], i + 1);
             rotors.push(new Rotor(rotorwiring, rotorsteps, args[i*4 + 1], args[i*4+2], args[i*4+3]));
         }
         // Rotors are handled in reverse

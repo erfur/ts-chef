@@ -94,7 +94,7 @@ export class Register extends Operation {
             // Replace references to registers ($Rn) with contents of registers
             return str.replace(/(\\*)\$R(\d{1,2})/g, (match: string, slashes: string, regNum: string) => {
                 const index = parseInt(regNum, 10) + 1;
-                if (index <= state.numRegisters || index >= state.numRegisters + registers.length)
+                if (!registers || index <= state.numRegisters || index >= state.numRegisters + registers.length)
                     return match;
                 if (slashes.length % 2 !== 0) return match.slice(1); // Remove escape
                 return slashes + registers[index - state.numRegisters];
@@ -109,11 +109,11 @@ export class Register extends Operation {
             args = args.map((arg: unknown) => {
                 if (typeof arg !== "string" && typeof arg !== "object") return arg;
 
-                if (typeof arg === "object" && Object.prototype.hasOwnProperty.call(arg, "string")) {
-                    arg.string = replaceRegister(arg.string);
+                if (typeof arg === "object" && arg !== null && "string" in arg && typeof (arg as { string: unknown }).string === "string") {
+                    (arg as { string: string }).string = replaceRegister((arg as { string: string }).string);
                     return arg;
                 }
-                return replaceRegister(arg);
+                return typeof arg === "string" ? replaceRegister(arg) : arg;
             });
             state.opList[i].ingValues = args;
         }

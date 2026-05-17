@@ -127,8 +127,8 @@ export class SplitColourChannels extends Operation {
      * @param {File[]} files
      * @returns {html}
      */
-    async present(files) {
-        return await Utils.displayFilesAsHTML(files);
+    async present(files: File[]) {
+        return await (Utils as any).displayFilesAsHTML(files);
     }
 }
 

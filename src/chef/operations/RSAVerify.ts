@@ -72,14 +72,14 @@ export class RSAVerify extends Operation {
             // Load public key
             const pubKey = forge.pki.publicKeyFromPem(pemKey);
             // Generate message digest
-            const md = MD_ALGORITHMS[mdAlgo].create();
+            const md = MD_ALGORITHMS[mdAlgo as keyof typeof MD_ALGORITHMS].create();
             const messageStr = Utils.convertToByteString(message, format);
             md.update(messageStr, "raw");
             // Compare signed message digest and generated message digest
             const result = pubKey.verify(md.digest().bytes(), input);
             return result ? "Verified OK" : "Verification Failure";
-        } catch (err) {
-            if (err.message === "Encrypted message length is invalid.") {
+        } catch (err: any) {
+            if (err && err.message === "Encrypted message length is invalid.") {
                 throw new OperationError(`Signature length (${err.length}) does not match expected length based on key (${err.expected}).`);
             }
             throw new OperationError(err);

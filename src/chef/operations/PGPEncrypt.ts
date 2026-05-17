@@ -68,11 +68,11 @@ export class PGPEncrypt extends Operation {
         const key = await importPublicKey(plainPubKey);
 
         try {
-            encryptedMessage = await promisify(kbpgp.box)({
+            encryptedMessage = await (promisify(kbpgp.box)({
                 "msg": plaintextMessage,
                 "encrypt_for": key,
                 "asp": ASP
-            });
+            }) as Promise<any>);
         } catch (err) {
             throw new OperationError(`Couldn't encrypt message with provided public key: ${err}`);
         }

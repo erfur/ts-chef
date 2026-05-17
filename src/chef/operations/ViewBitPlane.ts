@@ -97,7 +97,7 @@ export class ViewBitPlane extends Operation {
      * @param {ArrayBuffer} data
      * @returns {html}
      */
-    present(data) {
+    present(data: ArrayBuffer): string {
         if (!data.byteLength) return "";
         const type = isImage(data);
 

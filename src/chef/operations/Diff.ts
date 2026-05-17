@@ -87,8 +87,8 @@ export class Diff extends Operation {
             diff;
 
         // Node and Webpack load modules slightly differently
-        const jsdiff = JsDiff.default ? JsDiff.default : JsDiff;
-
+        const jsdiff = JsDiff;
+        
         if (!samples || samples.length !== 2) {
             throw new OperationError("Incorrect number of samples, perhaps you need to modify the sample delimiter or add more samples?");
         }

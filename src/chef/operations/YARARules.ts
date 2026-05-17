@@ -83,7 +83,7 @@ export class YARARules extends Operation {
             self.sendStatusMessage("Instantiating YARA...");
         const [rules, showStrings, showLengths, showMeta, showCounts, showRuleWarns, showConsole] = args;
         return new Promise((resolve, reject) => {
-            Yara().then(yara => {
+            Yara().then((yara: { run: (arg0: Uint8Array<any>, arg1: any) => any; }) => {
                 if (isWorkerEnvironment()) self.sendStatusMessage("Converting data for YARA.");
                 let matchString = "";
 

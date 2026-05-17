@@ -89,7 +89,7 @@ export class SeriesChart extends Operation {
             seriesHeight = 100,
             seriesWidth = svgWidth - seriesLabelWidth - interSeriesPadding;
 
-        const { xValues, series } = getSeriesValues(input, recordDelimiter, fieldDelimiter),
+        const { xValues, series } = getSeriesValues(input, recordDelimiter, fieldDelimiter, true),
             allSeriesHeight = series.length * (interSeriesPadding + seriesHeight),
             svgHeight = allSeriesHeight + xAxisHeight + interSeriesPadding;
 

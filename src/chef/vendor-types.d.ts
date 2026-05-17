@@ -450,6 +450,7 @@ declare module "terser" {
         keep_fnames?: boolean;
     }
     interface MinifyOutput {
+        [x: string]: any;
         code?: string;
         map?: string;
         decoded_map?: unknown;

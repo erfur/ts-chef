@@ -56,7 +56,7 @@ export class EncodeText extends Operation {
     run(input: any, args: any[]): any {
         const format = CHR_ENC_CODE_PAGES[args[0]];
         const encoded = cptable.utils.encode(format, input);
-        return new Uint8Array(encoded).buffer;
+        return new Uint8Array(encoded as number[]).buffer;
     }
 
 }

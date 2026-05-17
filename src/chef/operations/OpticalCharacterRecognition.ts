@@ -68,7 +68,7 @@ export class OpticalCharacterRecognition extends Operation {
             throw new OperationError("Unsupported file type (supported: jpg,png,pbm,bmp) or no file provided");
         }
 
-        const assetDir = `${self.docURL}/assets/`;
+        const assetDir = `${(self as any).docURL}/assets/`;
         const oem = OEM_MODES.indexOf(oemChoice);
 
         try {
@@ -78,7 +78,7 @@ export class OpticalCharacterRecognition extends Operation {
                 workerPath: `${assetDir}tesseract/worker.min.js`,
                 langPath: `${assetDir}tesseract/lang-data`,
                 corePath: `${assetDir}tesseract/tesseract-core.wasm.js`,
-                logger: progress => {
+                logger: (progress: { status: string; progress: string; }) => {
                     if (isWorkerEnvironment()) {
                         self.sendStatusMessage(`Status: ${progress.status}${progress.status === "recognizing text" ? ` - ${(parseFloat(progress.progress)*100).toFixed(2)}%`: "" }`);
                     }

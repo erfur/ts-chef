@@ -66,9 +66,10 @@ export class GenerateTOTP extends Operation {
             algorithm: "SHA1",
             digits: args[1],
             period: args[3],
-            epoch: args[2] * 1000, // Convert seconds to milliseconds
             secret: OTPAuth.Secret.fromBase32(secret)
         });
+
+        (totp as any).epoch = args[2] * 1000;
 
         const uri = totp.toString();
         const code = totp.generate();

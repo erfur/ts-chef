@@ -70,11 +70,11 @@ export class PGPVerify extends Operation {
         keyring.add_key_manager(pubKey);
 
         try {
-            unboxedLiterals = await promisify(kbpgp.unbox)({
+            unboxedLiterals = await (promisify(kbpgp.unbox)({
                 armored: signedMessage,
                 keyfetch: keyring,
                 asp: ASP
-            });
+            }) as Promise<any>);
             const ds = unboxedLiterals[0].get_data_signer();
             if (ds) {
                 const km = ds.get_key_manager();

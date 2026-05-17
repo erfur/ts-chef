@@ -19,7 +19,7 @@ import OperationError from "../errors/OperationError";
 /**
  * Convert text to BigInt (big-endian byte interpretation)
  */
-function textToBigInt(text) {
+function textToBigInt(text: string) {
     if (text.length === 0) return 0n;
 
     let result = 0n;
@@ -38,7 +38,7 @@ function textToBigInt(text) {
 /**
  * Convert BigInt to text (big-endian byte interpretation)
  */
-function bigIntToText(value) {
+function bigIntToText(value: bigint) {
     if (value === 0n) return "";
 
     const bytes = [];
@@ -102,7 +102,7 @@ export class TextIntegerConverter extends Operation {
 
         if (!trimmed) {
             // Null input - treat as zero
-            bigIntValue = 0;
+            bigIntValue = 0n;
         } else if (/^0x[0-9a-f]+$/i.test(trimmed) ||
             /^[+-]?[0-9]+$/.test(trimmed)) {
             // Hex or decimal integer

@@ -12,7 +12,7 @@
  */
 
 import { Operation } from "../Operation";
-import {smbhash} from "ntlm";
+import * as ntlm from "ntlm";
 
 /**
  * LM Hash operation
@@ -40,7 +40,7 @@ export class LMHash extends Operation {
      * @returns {string}
      */
     run(input: any, args: any[]): any {
-        return smbhash.lmhash(input);
+        return (ntlm as any).smbhash.lmhash(input);
     }
 
 }

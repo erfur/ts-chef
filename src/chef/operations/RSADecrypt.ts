@@ -81,7 +81,7 @@ export class RSADecrypt extends Operation {
         }
         try {
             const privKey = forge.pki.decryptRsaPrivateKey(pemKey, password);
-            const dMsg = privKey.decrypt(input, scheme, {md: MD_ALGORITHMS[md].create()});
+            const dMsg = privKey.decrypt(input, scheme, {md: MD_ALGORITHMS[md as keyof typeof MD_ALGORITHMS].create()});
             return forge.util.decodeUtf8(dMsg);
         } catch (err) {
             throw new OperationError(err);

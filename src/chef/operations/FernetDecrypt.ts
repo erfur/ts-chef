@@ -38,9 +38,9 @@ export class FernetDecrypt extends Operation {
                 "value": ""
             },
         ];
-        this.patterns = [
+        this.checks = [
             {
-                match: "^[A-Z\\d\\-_=]{20,}$",
+                pattern: "^[A-Z\\d\\-_=]{20,}$",
                 flags: "i",
                 args: []
             },
@@ -57,8 +57,7 @@ export class FernetDecrypt extends Operation {
             const secret = new fernet.Secret(secretInput);
             const token = new fernet.Token({
                 secret: secret,
-                token: input,
-                ttl: 0
+                token: input
             });
             return token.decode();
         } catch (err) {

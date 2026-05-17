@@ -46,9 +46,7 @@ class Magic {
     }
 
     async speculativeExecution(
-        depth: number,
-        extLang: boolean,
-        crib: string,
+depth: number, extLang: boolean, crib: string, p0: never[], p1: boolean, cribRegex: RegExp | null,
     ): Promise<MagicResult[]> {
         void depth; void extLang; void crib;
         return [];

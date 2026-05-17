@@ -54,12 +54,12 @@ export class LZMACompress extends Operation {
     async run(input: any, args: any[]): Promise<any> {
         const mode = Number(args[0]);
         return new Promise((resolve, reject) => {
-            compress(new Uint8Array(input), mode, (result, error) => {
+            compress(new Uint8Array(input), mode, (result, error: any) => {
                 if (error) {
-                    reject(new OperationError(`Failed to compress input: ${error.message}`));
+                    reject(new OperationError(`Failed to compress input: ${error?.message || error}`));
                 }
                 // The compression returns as an Int8Array, but we can just get the unsigned data from the buffer
-                resolve(new Int8Array(result).buffer);
+                resolve(new Int8Array(result as number[]).buffer);
             }, (percent) => {
                 if (isWorkerEnvironment()) self.sendStatusMessage(`Compressing input: ${(percent*100).toFixed(2)}%`);
             });

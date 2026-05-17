@@ -42,16 +42,16 @@ export class LZMADecompress extends Operation {
      */
     async run(input: any, args: any[]): Promise<any> {
         return new Promise((resolve, reject) => {
-            decompress(new Uint8Array(input), (result, error) => {
+            decompress(new Uint8Array(input), (result, error: any) => {
                 if (error) {
-                    reject(new OperationError(`Failed to decompress input: ${error.message}`));
+                    reject(new OperationError(`Failed to decompress input: ${error?.message || error}`));
                 }
                 // The decompression returns either a String or an untyped unsigned int8 array, but we can just get the unsigned data from the buffer
 
                 if (typeof result == "string") {
                     resolve(Utils.strToArrayBuffer(result));
                 } else {
-                    resolve(new Int8Array(result).buffer);
+                    resolve(new Int8Array(result as unknown as number[]).buffer);
                 }
             }, (percent) => {
                 if (isWorkerEnvironment()) self.sendStatusMessage(`Decompressing input: ${(percent*100).toFixed(2)}%`);

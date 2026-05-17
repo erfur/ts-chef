@@ -78,7 +78,7 @@ export class ParityBit extends Operation {
          * @param input input to be encoded or decoded
          * @param args array
          */
-        const method = (input, args) => args[2] === "Encode" ? calculateParityBit(input, args) : decodeParityBit(input, args);
+        const method = (input: string, args: any[]) => args[2] === "Encode" ? calculateParityBit(input, args) : decodeParityBit(input, args);
         if (args[3].length > 0) {
             const byteStrings = input.split(args[3]);
             for (let byteStringsArrayIndex = 0; byteStringsArrayIndex < byteStrings.length; byteStringsArrayIndex++) {

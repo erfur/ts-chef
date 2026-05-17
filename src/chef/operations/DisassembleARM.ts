@@ -150,16 +150,20 @@ export class DisassembleARM extends Operation {
         }
 
         let instructions;
-        try {
-            instructions = disassembler.disasm(bytes, startAddress);
-        } catch (e) {
-            disassembler.close();
-            // Check if it's a "no valid instructions" error (code 0 means OK but nothing decoded)
-            if (e && e.includes && e.includes("code 0:")) {
-                throw new OperationError(`No valid ${architecture} instructions found in input. The bytes may be for a different architecture or mode.`);
-            }
-            throw new OperationError(`Disassembly failed: ${e}`);
-        }
+                try {
+                    instructions = disassembler.disasm(bytes, startAddress);
+                } catch (e) {
+                    disassembler.close();
+                    
+                    // Fehler typsicher in einen String extrahieren
+                    const errorMessage = e instanceof Error ? e.message : String(e);
+
+                    // Check if it's a "no valid instructions" error (code 0 means OK but nothing decoded)
+                    if (errorMessage.includes("code 0:")) {
+                        throw new OperationError(`No valid ${architecture} instructions found in input. The bytes may be for a different architecture or mode.`);
+                    }
+                    throw new OperationError(`Disassembly failed: ${errorMessage}`);
+                }
 
         // Format output
         const output = [];

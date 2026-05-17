@@ -56,7 +56,7 @@ export class TextEncodingBruteForce extends Operation {
      * @returns {json}
      */
     run(input: any, args: any[]): any {
-        const output = {},
+        const output: Record<string, string> = {},
             charsets = Object.keys(CHR_ENC_CODE_PAGES),
             mode = args[0];
 
@@ -65,7 +65,7 @@ export class TextEncodingBruteForce extends Operation {
                 if (mode === "Decode") {
                     output[charset] = cptable.utils.decode(CHR_ENC_CODE_PAGES[charset], input);
                 } else {
-                    output[charset] = Utils.arrayBufferToStr(cptable.utils.encode(CHR_ENC_CODE_PAGES[charset], input));
+                    output[charset] = Utils.arrayBufferToStr((cptable.utils.encode(CHR_ENC_CODE_PAGES[charset], input) as unknown as Uint8Array).buffer as ArrayBuffer);
                 }
             } catch (err) {
                 output[charset] = "Could not decode.";
@@ -81,7 +81,7 @@ export class TextEncodingBruteForce extends Operation {
      * @param {Object[]} encodings
      * @returns {html}
      */
-    present(encodings) {
+    present(encodings: Record<string, string>) {
         let table = "<table class='table table-hover table-sm table-bordered table-nonfluid'><tr><th>Encoding</th><th>Value</th></tr>";
 
         for (const enc in encodings) {
