@@ -30,10 +30,8 @@ ts-chef brings the power of [CyberChef](https://gchq.github.io/CyberChef/) into 
 ---
 
 ## Demo
-<video controls width="100%">
-  <source src="./assets/Clip1.mp4" type="video/mp4">
-  Not Suported Media Format
-</video>
+
+![Demo-Video](assets/Clip1.mp4)
 
 
 
