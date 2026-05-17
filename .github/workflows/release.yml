@@ -3,41 +3,47 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]*"   # matches v1.0.0, v1.2.3-beta.1, etc.
+      - "v[0-9]+.[0-9]+.[0-9]*"   # v1.0.0  v1.2.3-beta.1  etc.
 
 jobs:
   build-and-release:
     name: Build & publish VSIX
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to create the GitHub Release
+      contents: write   # required to create GitHub Releases
 
     steps:
       # ── 1. Source ──────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Runtime ─────────────────────────────────────────────────────────
+      # ── 2. Node ────────────────────────────────────────────────────────────
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      # ── 3. Version ─────────────────────────────────────────────────────────
-      - name: Extract semver from tag
+      # ── 3. Version from tag ────────────────────────────────────────────────
+      - name: Extract version
         id: ver
-        # GITHUB_REF_NAME is e.g. "v1.2.3" → strip the leading "v"
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION"         >> "$GITHUB_OUTPUT"
           echo "VSIX=vscode-ts-chef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
 
-      - name: Write version into package.json
-        # keeps package.json in sync without creating a git commit
-        run: npm version "${{ steps.ver.outputs.VERSION }}" --no-git-tag-version
+      - name: Sync version in package.json
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          TARGET="${{ steps.ver.outputs.VERSION }}"
+          if [ "$CURRENT" != "$TARGET" ]; then
+            npm version "$TARGET" --no-git-tag-version
+            echo "Bumped $CURRENT → $TARGET"
+          else
+            echo "package.json already at $TARGET, nothing to do"
+          fi
 
-      # ── 4. Build ───────────────────────────────────────────────────────────
+      # ── 4. Install & build ─────────────────────────────────────────────────
       - name: Install dependencies
         run: npm ci
 
@@ -51,37 +57,32 @@ jobs:
             --no-dependencies \
             --out "${{ steps.ver.outputs.VSIX }}"
 
-      # ── 6. Sanity check ────────────────────────────────────────────────────
-      - name: Inspect VSIX contents
+      - name: Show VSIX info
         run: |
-          echo "=== VSIX size ==="
+          echo "── size ──────────────────────────────────"
           ls -lh "${{ steps.ver.outputs.VSIX }}"
-          echo "=== Packaged files ==="
-          npx --yes @vscode/vsce ls 2>/dev/null | head -40 || true
 
-      # ── 7. Release ─────────────────────────────────────────────────────────
+      # ── 6. GitHub Release ─────────────────────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "ts-chef ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           files: ${{ steps.ver.outputs.VSIX }}
-          # tags like v1.0.0-beta.1 → pre-release
           prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
             ## ts-chef ${{ github.ref_name }}
 
             ### Install
 
-            **Option A — VS Code UI**
-            1. Download `${{ steps.ver.outputs.VSIX }}` from the assets below.
-            2. Open VS Code → **Extensions** (⇧⌘X) → **⋯** → **Install from VSIX…**
+            **VS Code UI**
+            1. Download **`${{ steps.ver.outputs.VSIX }}`** from the assets below.
+            2. VS Code → **Extensions** (⇧⌘X) → **⋯** → **Install from VSIX…**
 
-            **Option B — command line**
+            **Command line**
             ```bash
             code --install-extension ${{ steps.ver.outputs.VSIX }}
             ```
 
             ---
-
-            > ⚠️ This project is in early development. Bugs are expected — please [open an issue](../../issues/new) if something breaks.
+            > ⚠️ Early development — bugs possible. Please [open an issue](../../issues/new) if something breaks.
