@@ -1,0 +1,33 @@
+# Build inputs — not needed at runtime (esbuild bundles everything into dist/extension.js)
+src/**
+scripts/**
+out/**
+test/**
+
+# Intermediate TypeScript compilation output — already bundled into dist/extension.js
+dist/chef/**
+dist/**/*.d.ts
+dist/**/*.d.ts.map
+
+# Node modules — bundled by esbuild, not shipped separately
+node_modules/**
+
+# TypeScript config
+tsconfig*.json
+
+# Source maps (comment out to keep maps for debugging)
+**/*.map
+
+# Dev & CI tooling
+.vscode/**
+.github/**
+.claude/**
+.gitignore
+.eslintrc*
+.prettierrc*
+
+# Misc
+report.md
+
+# Large demo assets (referenced via the repo URL in the README, not from inside the VSIX)
+assets/Clip1.mp4

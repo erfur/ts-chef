@@ -1,0 +1,136 @@
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
+ */
+
+import { Operation, ArgConfig } from "../Operation";
+import BigNumber from "bignumber.js";
+
+export class ConvertDataUnits extends Operation {
+    name = "Convert data units";
+    module = "Default";
+    description = "Converts a unit of data to another format.";
+    infoURL = "https://wikipedia.org/wiki/Orders_of_magnitude_(data)";
+    inputType = "string";
+    outputType = "string";
+    args: ArgConfig[] = [
+        {
+            name: "Input units",
+            type: "option",
+            value: DATA_UNITS,
+        },
+        {
+            name: "Output units",
+            type: "option",
+            value: DATA_UNITS,
+        },
+    ];
+
+    run(input: string, args: any[]): string {
+        const [inputUnits, outputUnits] = args;
+        const bnInput = new BigNumber(input);
+
+        const result = bnInput.times(DATA_FACTOR[inputUnits]).div(DATA_FACTOR[outputUnits]);
+        return result.toString();
+    }
+}
+
+const DATA_UNITS = [
+    "Bits (b)",
+    "Nibbles",
+    "Octets",
+    "Bytes (B)",
+    "[Binary bits (2^n)]",
+    "Kibibits (Kib)",
+    "Mebibits (Mib)",
+    "Gibibits (Gib)",
+    "Tebibits (Tib)",
+    "Pebibits (Pib)",
+    "Exbibits (Eib)",
+    "Zebibits (Zib)",
+    "Yobibits (Yib)",
+    "[/Binary bits (2^n)]",
+    "[Decimal bits (10^n)]",
+    "Decabits",
+    "Hectobits",
+    "Kilobits (Kb)",
+    "Megabits (Mb)",
+    "Gigabits (Gb)",
+    "Terabits (Tb)",
+    "Petabits (Pb)",
+    "Exabits (Eb)",
+    "Zettabits (Zb)",
+    "Yottabits (Yb)",
+    "[/Decimal bits (10^n)]",
+    "[Binary bytes (8 x 2^n)]",
+    "Kibibytes (KiB)",
+    "Mebibytes (MiB)",
+    "Gibibytes (GiB)",
+    "Tebibytes (TiB)",
+    "Pebibytes (PiB)",
+    "Exbibytes (EiB)",
+    "Zebibytes (ZiB)",
+    "Yobibytes (YiB)",
+    "[/Binary bytes (8 x 2^n)]",
+    "[Decimal bytes (8 x 10^n)]",
+    "Kilobytes (KB)",
+    "Megabytes (MB)",
+    "Gigabytes (GB)",
+    "Terabytes (TB)",
+    "Petabytes (PB)",
+    "Exabytes (EB)",
+    "Zettabytes (ZB)",
+    "Yottabytes (YB)",
+    "[/Decimal bytes (8 x 10^n)]",
+];
+
+const DATA_FACTOR: Record<string, number | string> = {
+    "Bits (b)": 1,
+    Nibbles: 4,
+    Octets: 8,
+    "Bytes (B)": 8,
+    "Kibibits (Kib)": 1024,
+    "Mebibits (Mib)": 1048576,
+    "Gibibits (Gib)": 1073741824,
+    "Tebibits (Tib)": 1099511627776,
+    "Pebibits (Pib)": 1125899906842624,
+    "Exbibits (Eib)": "1152921504606846976",
+    "Zebibits (Zib)": "1180591620717411303424",
+    "Yobibits (Yib)": "1208925819614629174706176",
+    Decabits: 10,
+    Hectobits: 100,
+    "Kilobits (Kb)": 1e3,
+    "Megabits (Mb)": 1e6,
+    "Gigabits (Gb)": 1e9,
+    "Terabits (Tb)": 1e12,
+    "Petabits (Pb)": 1e15,
+    "Exabits (Eb)": 1e18,
+    "Zettabits (Zb)": 1e21,
+    "Yottabits (Yb)": 1e24,
+    "Kibibytes (KiB)": 8192,
+    "Mebibytes (MiB)": 8388608,
+    "Gibibytes (GiB)": 8589934592,
+    "Tebibytes (TiB)": 8796093022208,
+    "Pebibytes (PiB)": 9007199254740992,
+    "Exbibytes (EiB)": "9223372036854775808",
+    "Zebibytes (ZiB)": "9444732965739290427392",
+    "Yobibytes (YiB)": "9671406556917033397649408",
+    "Kilobytes (KB)": 8e3,
+    "Megabytes (MB)": 8e6,
+    "Gigabytes (GB)": 8e9,
+    "Terabytes (TB)": 8e12,
+    "Petabytes (PB)": 8e15,
+    "Exabytes (EB)": 8e18,
+    "Zettabytes (ZB)": 8e21,
+    "Yottabytes (YB)": 8e24,
+};
+
+export default ConvertDataUnits;
