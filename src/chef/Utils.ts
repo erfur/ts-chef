@@ -21,7 +21,13 @@ import { OperationError } from "./errors/OperationError";
 
 export const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+export function isWorkerEnvironment(): boolean {
+    return typeof (global as any).importScripts === "function";
+}
+
 export class Utils {
+    static isWorkerEnvironment = isWorkerEnvironment;
+
     static chr(o: number): string {
         if (o > 0xffff) {
             o -= 0x10000;

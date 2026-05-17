@@ -1,0 +1,57 @@
+/*
+ * -----------------------------------------------------------------------------
+ * Project:     ts-chef
+ * Model:       Qwen 3.5 Coder Next (Local)
+ * Version:     1.0.0
+ * Author:      Michael Weiss
+ * Source:      Ported from GCHQ's CyberChef (JavaScript)
+ * License:     Apache License 2.0
+ * Description: TypeScript implementation of CyberChef modules.
+ * Note:        First Port done by Local Model, Cleanup and fixes by Author
+ * -----------------------------------------------------------------------------
+ */
+
+import BigNumber from "bignumber.js";
+import { Operation } from "../Operation";
+import { div, createNumArray } from "../lib/Arithmetic";
+import { ARITHMETIC_DELIM_OPTIONS } from "../lib/Delim";
+
+
+/**
+ * Divide operation
+ */
+export class Divide extends Operation {
+
+    /**
+     * Divide constructor
+     */
+    constructor() {
+        super();
+
+        this.name = "Divide";
+        this.module = "Default";
+        this.description = "Divides a list of numbers. If an item in the string is not a number it is excluded from the list.<br><br>e.g. <code>0x0a 8 .5</code> becomes <code>2.5</code>";
+        this.inputType = "string";
+        this.outputType = "BigNumber";
+        this.args = [
+            {
+                "name": "Delimiter",
+                "type": "option",
+                "value": ARITHMETIC_DELIM_OPTIONS,
+            }
+        ];
+    }
+
+    /**
+     * @param {string} input
+     * @param {Object[]} args
+     * @returns {BigNumber}
+     */
+    run(input: any, args: any[]): any {
+        const val = div(createNumArray(input, args[0]));
+        return BigNumber.isBigNumber(val) ? val : new BigNumber(NaN);
+    }
+
+}
+
+export default Divide;
