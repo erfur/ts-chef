@@ -31,7 +31,7 @@ ts-chef brings the power of [CyberChef](https://gchq.github.io/CyberChef/) into 
 
 ## Demo
 
-![Demo-Video](assets/Clip1.mp4)
+![Demo-Video](assets/Clip1.gif)
 
 
 
