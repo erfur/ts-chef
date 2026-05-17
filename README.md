@@ -19,16 +19,6 @@
 
 ---
 
-> [!WARNING]
-> **Early Development — Expect Rough Edges**
->
-> ts-chef is in a very early stage. Things may break, behave unexpectedly, or be missing entirely.
-> If you run into a bug or something doesn't work as expected, please [open an issue](../../issues/new) with a short description and, if possible, the input that caused the problem — every report helps.
->
-> Contributions, ideas, and pull requests are genuinely welcome. This project is a side project built out of curiosity, not a finished product.
-
----
-
 ## What is ts-chef?
 
 ts-chef brings the power of [CyberChef](https://gchq.github.io/CyberChef/) into your editor. Select any piece of text — a Base64 blob, a hex string, an AES-encrypted value, a JWT — and decode, transform, or analyse it without ever leaving VS Code.
@@ -112,20 +102,6 @@ $aes-key          →  replaces with the stored value before the operation runs
 
 Variables persist in `.vscode/ts-chef/variables.json` (or `.ts-chef/variables.json` when no `.vscode/` folder exists).
 
----
-
-### 🔢 From / To Radix
-
-Two general-purpose encoding operations cover every base from 2 to 36:
-
-| Operation | Example input | Example output |
-|---|---|---|
-| **From Radix** (base 2, Comma) | `01100001,00110000,01100100,00110011` | `a0d3` |
-| **From Radix** (base 16, Colon) | `61:30:64:33` | `a0d3` |
-| **From Radix** (base 10, Space) | `97 48 100 51` | `a0d3` |
-| **To Radix** (base 2, Space) | bytes `a0d3` | `01100001 00110000 01100100 00110011` |
-
-The **Auto** delimiter option detects comma, semicolon, colon, newline, or space automatically.
 
 ---
 
@@ -227,43 +203,11 @@ src/
 
 ---
 
-## A word on CyberChef
-
-ts-chef is built on top of operations ported from [**GCHQ's CyberChef**](https://gchq.github.io/CyberChef/) — a brilliant, battle-tested tool that has been indispensable to security researchers, CTF players, and developers for years.
-
-> If you haven't tried CyberChef yet, [go check it out](https://gchq.github.io/CyberChef/). It is the original, far more complete, and runs right in your browser. ts-chef is not a replacement — it is simply a convenience wrapper that lets you use a subset of those operations without leaving VS Code.
-
-Please consider [starring the CyberChef repository](https://github.com/gchq/CyberChef) and supporting the project.
-
----
-
-## Contributing
-
-Found a bug? Have an idea?
-
-- **Bug report:** [Open an issue](../../issues/new?template=bug_report.md) and describe what happened, what you expected, and (if possible) the input that triggered it.
-- **Feature request:** [Open an issue](../../issues/new?template=feature_request.md) with your idea — especially if there's a CyberChef operation that's missing or broken.
-- **Pull request:** Fork the repo, make your change, and open a PR. Even small fixes — typos, edge cases, better error messages — are welcome.
-
-There is no strict contribution guide yet. If in doubt, just open an issue first.
-
----
-
 ## License
 
-[Apache License 2.0](LICENSE)
+Apache License 2.0 — see [LICENSE](LICENSE).
 
-```
-Copyright 2024 Michael Weiss
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-```
-
-Operation implementations ported from [GCHQ CyberChef](https://github.com/gchq/CyberChef), also Apache 2.0.
+Operations ported from [GCHQ CyberChef](https://github.com/gchq/CyberChef) (Apache 2.0).
 
 ---
 
