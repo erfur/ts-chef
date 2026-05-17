@@ -1,18 +1,18 @@
 {
   "name": "vscode-ts-chef",
-  "displayName": "ts-chef",
+  "displayName": "tschef",
   "description": "CyberChef-style data transformations directly in VS Code",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "icon": "assets/logo.jpg",
   "publisher": "michaelweiss",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michaelweiss/vscode-ts-chef.git"
+    "url": "https://github.com/michaelweiss/ts-chef.git"
   },
   "bugs": {
-    "url": "https://github.com/michaelweiss/vscode-ts-chef/issues"
+    "url": "https://github.com/michaelweiss/ts-chef/issues"
   },
-  "homepage": "https://github.com/michaelweiss/vscode-ts-chef#readme",
+  "homepage": "https://github.com/michaelweiss/ts-chef#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
