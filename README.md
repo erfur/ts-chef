@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/VS%20Code-%5E1.85-007ACC?logo=visual-studio-code&logoColor=white" alt="VS Code">
   <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/operations-239-4CAF50" alt="Operations">
+  <img src="https://img.shields.io/badge/operations-400+-4CAF50" alt="Operations">
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License">
 </p>
 
