@@ -140,21 +140,22 @@ export class AddTextToImage extends Operation {
             throw new OperationError(`Error loading image. (${err})`);
         }
 
+      const fontsMap: {[key: string]: any} = {};
         
-        const fontsMap: {[key: string]: any} = {};
+        /* WORKAROUND: temporary deactivated TODO later
         try {
             const fonts = [
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/Roboto72White.fnt"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/Roboto72White.fnt"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoBlack72White.fnt"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoBlack72White.fnt"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoMono72White.fnt"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoMono72White.fnt"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoSlab72White.fnt"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoSlab72White.fnt"
                 ),
             ];
 
@@ -167,21 +168,22 @@ export class AddTextToImage extends Operation {
             // Make Webpack load the png font images
             await Promise.all([
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/Roboto72White.png"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/Roboto72White.png"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoSlab72White.png"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoSlab72White.png"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoMono72White.png"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoMono72White.png"
                 ),
                 import(
-                    /* webpackMode: "eager" */ "../../web/static/fonts/bmfonts/RobotoBlack72White.png"
+                    // webpackMode: "eager" "../../web/static/fonts/bmfonts/RobotoBlack72White.png"
                 ),
             ]);
         } catch (err) {
             throw new OperationError(`Error preparing fonts. (${err})`);
         }
+        */
 
         let jimpFont;
         try {

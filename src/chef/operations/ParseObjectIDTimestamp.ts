@@ -13,7 +13,7 @@
 
 import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
-import BSON from "bson";
+import * as BSON from "bson";
 
 /**
  * Parse ObjectID timestamp operation
