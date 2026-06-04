@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/chef/Operation.ts", "src/chef/operations/"],
+  "out": "docs/api",
+  "plugin": ["typedoc-plugin-markdown"],
+  "hideGenerator": true,
+  "theme": "default",
+  "name": "ts-chef API Documentation",
+  "excludeExternals": true,
+  "githubPages": false,
+  "readme": "README.md"
+}

@@ -27,6 +27,7 @@ ts-chef brings the power of [CyberChef](https://gchq.github.io/CyberChef/) into 
 - **No context switching** — the pipeline editor, variable store, and pattern scanner live in the sidebar.
 - **No internet required** — everything runs locally in the extension host.
 
+You can find the Documentation [Here](docs/api/README.md)
 ---
 
 ## Demo

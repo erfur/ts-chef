@@ -170,7 +170,17 @@
     "compile": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:argon2 --external:libbzip2-wasm --platform=node --format=cjs --sourcemap",
     "build": "npm run build:chef && npm run generate-ops && npm run compile",
     "watch": "npm run compile -- --watch",
-    "verify-ops": "node scripts/verifyOps.js"
+    "verify-ops": "node scripts/verifyOps.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\" \"test/**/*.{ts,js,json}\"",
+    "docs": "typedoc",
+    "package": "vsce package",
+    "release": "npm run build && npm run test && vsce package",
+    "upload": "vsce publish"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
@@ -203,6 +213,7 @@
     "@types/vscode": "^1.85.0",
     "@types/xmldom": "^0.1.34",
     "@types/xregexp": "^4.3.0",
+    "@vscode/vsce": "^3.9.2",
     "babel-jest": "^30.4.1",
     "esbuild": "^0.20.0",
     "eslint": "^10.4.0",
@@ -210,6 +221,8 @@
     "prettier": "^3.0.0",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.2",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.12.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.59.3"
   },
