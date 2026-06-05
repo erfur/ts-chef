@@ -5,6 +5,14 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
-  verbose: true
+  coverageReporters: ['text', 'lcov', 'html'],
+  verbose: true,
+  reporters: [
+    'default',
+    ['jest-html-reporters', {
+      publicPath: './test-report',
+      filename: 'index.html',
+      expand: true,
+    }]
+  ]
 };

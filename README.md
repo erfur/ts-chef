@@ -12,8 +12,8 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=michaelweiss.ts-chef">
     <img src="https://img.shields.io/visual-studio-marketplace/v/michaelweiss.ts-chef?style=flat-square&color=blue" alt="Version" />
   </a>
-  <a href="https://github.com/michaelweiss/ts-chef/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/michaelweiss/ts-chef/docs.yml?branch=main&style=flat-square" alt="Build Status" />
+  <a href="https://github.com/michaelweiss/ts-chef/actions/workflows/ci.yml">
+    <img src="https://github.com/michaelweiss/ts-chef/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/github/license/michaelweiss/ts-chef?style=flat-square&color=green" alt="License" />
@@ -28,14 +28,14 @@
 
 Whether you're analyzing malware, debugging network protocols, or just need to pretty-print a messy JSON, `ts-chef` has you covered.
 
-## 📚 Documentation
+## 📚 Documentation & Reports
 
-Our documentation is structured to help you get the most out of `ts-chef`:
+Detailed documentation and automated execution reports are available in the [GitHub Wiki](https://github.com/michaelweiss/ts-chef/wiki):
 
 -   **[Usage Guide](docs/usage.md)** - How to use the extension, editor, and scanning features.
--   **[Operations & Formatters](docs/operations.md)** - Highlights of included beautifiers and minifiers.
--   **[GitHub Wiki](https://github.com/michaelweiss/ts-chef/wiki)** - Full API Reference and complete Operations Index.
--   **[Contributing](docs/contributing.md)** - Guide for developers wanting to extend or fix `ts-chef`.
+-   **[Operations Index](https://github.com/michaelweiss/ts-chef/wiki/Operations)** - Full list of all 480+ transformations.
+-   **[Test & Coverage Reports](https://github.com/michaelweiss/ts-chef/wiki/test-report)** - Latest CI execution results and code coverage metrics.
+-   **[Contributing Guide](docs/contributing.md)** - Guide for developers.
 
 ---
 
