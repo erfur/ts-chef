@@ -14,7 +14,7 @@
 import Operation from "../Operation";
 import OperationError from "../errors/OperationError";
 import {decompress} from "@blu3r4y/lzma";
-import Utils, {isWorkerEnvironment} from "../Utils";
+import Utils from "../Utils";
 
 /**
  * LZMA Decompress operation
@@ -53,8 +53,8 @@ export class LZMADecompress extends Operation {
                 } else {
                     resolve(new Int8Array(result as unknown as number[]).buffer);
                 }
-            }, (percent) => {
-                if (isWorkerEnvironment()) self.sendStatusMessage(`Decompressing input: ${(percent*100).toFixed(2)}%`);
+            }, () => {
+                // Progress updates disabled in VS Code extension context
             });
         });
     }

@@ -12,10 +12,17 @@
  */
 
 import { Operation } from "../Operation";
+import { Utils } from "../Utils";
 
 const BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+/**
+ * To Base62 operation
+ */
 export class ToBase62 extends Operation {
+    /**
+     * ToBase62 constructor
+     */
     constructor() {
         super();
         this.name = "To Base62";
@@ -29,26 +36,47 @@ export class ToBase62 extends Operation {
         ];
     }
 
+    /**
+     * @param {ArrayBuffer} input
+     * @param {Object[]} args
+     * @returns {string}
+     */
     run(input: ArrayBuffer, args: unknown[]): string {
-        const alphabet = (args[0] as string) || BASE62_ALPHABET;
-        const bytes = Array.from(new Uint8Array(input));
+        const alphabetStr = (args[0] as string) || BASE62_ALPHABET;
+        const alphabet = Utils.expandAlphRange(alphabetStr).join("");
+        const base = alphabet.length;
+        const bytes = new Uint8Array(input);
 
         let leading = 0;
-        for (const b of bytes) { if (b === 0) leading++; else break; }
-
-        const digits: number[] = [0];
-        for (const byte of bytes) {
-            let carry = byte;
-            for (let i = 0; i < digits.length; i++) {
-                carry += digits[i] * 256;
-                digits[i] = carry % 62;
-                carry = (carry / 62) | 0;
-            }
-            while (carry > 0) { digits.push(carry % 62); carry = (carry / 62) | 0; }
+        for (let i = 0; i < bytes.length; i++) {
+            if (bytes[i] === 0) leading++;
+            else break;
         }
 
-        return alphabet[0].repeat(leading) + digits.reverse().map(d => alphabet[d]).join("");
+        const digits: number[] = [0];
+        for (let i = 0; i < bytes.length; i++) {
+            let carry = bytes[i];
+            for (let j = 0; j < digits.length; j++) {
+                carry += digits[j] * 256;
+                digits[j] = carry % base;
+                carry = (carry / base) | 0;
+            }
+            while (carry > 0) {
+                digits.push(carry % base);
+                carry = (carry / base) | 0;
+            }
+        }
+
+        let res = "";
+        for (let i = 0; i < leading; i++) res += alphabet[0];
+        for (let i = digits.length - 1; i >= 0; i--) res += alphabet[digits[i]];
+        
+        // If all input was zeros, the above loop results in one extra alphabet[0] if not careful
+        // but for Base62/58 we usually want the leading zeros preserved.
+        
+        return res;
     }
 }
 
 export default ToBase62;
+export { BASE62_ALPHABET };

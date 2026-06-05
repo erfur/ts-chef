@@ -12,7 +12,6 @@
  */
 
 import { FILE_SIGNATURES, FileSignature, SignatureMatch } from "./FileSignatures";
-import { sendStatusMessage } from "../Utils";
 
 /**
  * Checks whether a signature matches a buffer.
@@ -116,8 +115,7 @@ export function scanForFileTypes(buf: Uint8Array, categories: string[] = Object.
                 let pos = 0;
                 while ((pos = locatePotentialSig(buf, sig, pos)) >= 0) {
                     if (bytesMatch(sig, buf, pos)) {
-                        sendStatusMessage(`Found potential signature for ${filetype.name} at pos ${pos}`);
-                        foundFiles.push({
+                                                foundFiles.push({
                             offset: pos,
                             fileDetails: filetype
                         });
@@ -190,8 +188,7 @@ export function isImage(buf: Uint8Array | ArrayBuffer): string | false {
  */
 export function extractFile(bytes: Uint8Array, fileDetail: FileSignature, offset: number): any {
     if (fileDetail.extractor) {
-        sendStatusMessage(`Attempting to extract ${fileDetail.name} at pos ${offset}...`);
-        const fileData = fileDetail.extractor(bytes, offset);
+                const fileData = fileDetail.extractor(bytes, offset);
         const ext = fileDetail.extension.split(",")[0];
         return {
             data: fileData,

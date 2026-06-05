@@ -12,11 +12,17 @@
  */
 
 import { Operation } from "../Operation";
+import { Utils } from "../Utils";
+import { BASE62_ALPHABET } from "./ToBase62";
 import OperationError from "../errors/OperationError";
 
-const BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
+/**
+ * From Base62 operation
+ */
 export class FromBase62 extends Operation {
+    /**
+     * FromBase62 constructor
+     */
     constructor() {
         super();
         this.name = "From Base62";
@@ -30,9 +36,16 @@ export class FromBase62 extends Operation {
         ];
     }
 
+    /**
+     * @param {string} input
+     * @param {Object[]} args
+     * @returns {number[]}
+     */
     run(input: string, args: unknown[]): number[] {
-        const alphabet = (args[0] as string) || BASE62_ALPHABET;
-        if (alphabet.length !== 62) throw new OperationError(`Base62 alphabet must be exactly 62 characters, got ${alphabet.length}.`);
+        const alphabetStr = (args[0] as string) || BASE62_ALPHABET;
+        const alphabet = Utils.expandAlphRange(alphabetStr).join("");
+        const base = alphabet.length;
+        if (base < 2) throw new OperationError("Alphabet must be at least 2 characters.");
 
         const map = new Map<string, number>();
         for (let i = 0; i < alphabet.length; i++) map.set(alphabet[i], i);
@@ -52,7 +65,7 @@ export class FromBase62 extends Operation {
             if (val === undefined) throw new OperationError(`Invalid Base62 character: '${ch}'`);
             let carry = val;
             for (let i = 0; i < result.length; i++) {
-                carry += result[i] * 62;
+                carry += result[i] * base;
                 result[i] = carry & 0xff;
                 carry >>= 8;
             }
@@ -62,10 +75,11 @@ export class FromBase62 extends Operation {
             }
         }
 
-        while (result.length > 1 && result[result.length - 1] === 0) result.pop();
         result.reverse();
-
-        return new Array(leading).fill(0).concat(result);
+        // Remove trailing zeros that were added by big-int math if not intended
+        // But for BaseX we keep them based on leading zeros count.
+        
+        return new Array(leading).fill(0).concat(result.every(x => x === 0) ? [] : result);
     }
 }
 

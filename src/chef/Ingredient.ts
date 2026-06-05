@@ -17,28 +17,57 @@ import { OperationError } from "./errors/OperationError";
 import { ArgConfig } from "./Operation";
 
 /**
- * The arguments to operations.
+ * An Ingredient represents a single argument value for an operation.
+ * 
+ * It handles value parsing, validation, and conversion based on the argument type.
  */
 export class Ingredient {
+    /** The display name of the argument. */
     name: string = "";
+
+    /** The data type of the argument. */
     type: string = "";
+
+    /** Internal storage for the argument value. */
     private _value: any = null;
+
+    /** Whether the argument is disabled. */
     disabled: boolean = false;
+
+    /** A hint or tooltip describing the purpose of the argument. */
     hint: string | boolean = "";
+
+    /** Number of rows for textarea-like arguments. */
     rows: number | boolean = 0;
+
+    /** Optional values for 'option' or 'editableOption' type arguments. */
     toggleValues: string[] = [];
+
+    /** Target indices for dynamic arguments. */
     target: number | number[] | null = null;
+
+    /** Default index for selection-based arguments. */
     defaultIndex: number = 0;
+
+    /** Maximum length for string-based arguments. */
     maxLength: number | null = null;
+
+    /** Minimum value for numeric arguments. */
     min: number | null = null;
+
+    /** Maximum value for numeric arguments. */
     max: number | null = null;
+
+    /** Step value for numeric arguments. */
     step: number = 1;
+
+    /** The initial default value of the argument. */
     defaultValue: any;
 
     /**
-     * Ingredient constructor
+     * Ingredient constructor.
      *
-     * @param {ArgConfig} [ingredientConfig]
+     * @param ingredientConfig - Configuration object for the ingredient.
      */
     constructor(ingredientConfig?: ArgConfig) {
         if (ingredientConfig) {
@@ -49,8 +78,7 @@ export class Ingredient {
     /**
      * Reads and parses the given config.
      *
-     * @private
-     * @param {ArgConfig} ingredientConfig
+     * @param ingredientConfig - The configuration to parse.
      */
     private _parseConfig(ingredientConfig: ArgConfig): void {
         this.name = ingredientConfig.name;
@@ -69,9 +97,7 @@ export class Ingredient {
     }
 
     /**
-     * Returns the value of the Ingredient as it should be displayed in a recipe config.
-     *
-     * @returns {*}
+     * Returns the value of the Ingredient as it should be stored in a recipe configuration.
      */
     get config(): any {
         return this._value;
@@ -79,29 +105,32 @@ export class Ingredient {
 
     /**
      * Sets the value of the Ingredient.
+     * Automatically prepares and validates the value based on the ingredient's type.
      *
-     * @param {*} value
+     * @param value - The new value.
      */
     set value(value: any) {
         this._value = Ingredient.prepare(value, this.type);
     }
 
     /**
-     * Gets the value of the Ingredient.
-     *
-     * @returns {*}
+     * Gets the current value of the Ingredient.
      */
     get value(): any {
         return this._value;
     }
 
     /**
-     * Most values will be strings when they are entered. This function converts them to the correct
-     * type.
+     * Prepares and validates a value based on the specified argument type.
+     * 
+     * Converts strings to numbers, parses escaped characters, or transforms
+     * hex strings into byte arrays as needed.
      *
-     * @param {*} data
-     * @param {string} type - The name of the data type.
-    */
+     * @param data - The raw data value.
+     * @param type - The name of the data type.
+     * @returns The prepared and validated value.
+     * @throws {OperationError} If the value is invalid for the specified type.
+     */
     static prepare(data: any, type: string): any {
         let number: number;
 

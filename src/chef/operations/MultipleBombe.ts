@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import { BombeMachine } from "../lib/Bombe";
 import { ROTORS, ROTORS_FOURTH, REFLECTORS, Reflector } from "../lib/Enigma";
-import { isWorkerEnvironment } from "../Utils";
 
 
 /**
@@ -142,23 +141,6 @@ export class MultipleBombe extends Operation {
     }
 
     /**
-     * Format and send a status update message.
-     * @param {number} nLoops - Number of loops in the menu
-     * @param {number} nStops - How many stops so far
-     * @param {number} progress - Progress (as a float in the range 0..1)
-     * @param {number} start - Start time
-     */
-    updateStatus(nLoops: number, nStops: number, progress: number, start: number): void {
-        const elapsed = Date.now() - start;
-        const remaining = (elapsed / progress) * (1 - progress) / 1000;
-        const hours = Math.floor(remaining / 3600);
-        const minutes = `0${Math.floor((remaining % 3600) / 60)}`.slice(-2);
-        const seconds = `0${Math.floor(remaining % 60)}`.slice(-2);
-        const msg = `Bombe run with ${nLoops} loop${nLoops === 1 ? "" : "s"} in menu (2+ desirable): ${nStops} stops, ${Math.floor(100 * progress)}% done, ${hours}:${minutes}:${seconds} remaining`;
-        (self as any).sendStatusMessage(msg);
-    }
-
-    /**
      * Early rotor description string validation.
      * Drops stepping information.
      * @param {string} rstr - The rotor description string
@@ -228,21 +210,12 @@ export class MultipleBombe extends Operation {
         input = input.replace(/[^A-Za-z]/g, "").toUpperCase();
         crib = crib.replace(/[^A-Za-z]/g, "").toUpperCase();
         const ciphertext = input.slice(offset);
-        let update: ((nLoops: number, nStops: number, progress: number, start: number) => void) | undefined;
-        if (isWorkerEnvironment()) {
-            update = this.updateStatus.bind(this);
-        } else {
-            update = undefined;
-        }
+        
         let bombe: BombeMachine | undefined = undefined;
         const output: any = {bombeRuns: []};
         // I could use a proper combinatorics algorithm here... but it would be more code to
         // write one, and we don't seem to have one in our existing libraries, so massively nested
         // for loop it is
-        const totalRuns = choose(rotors.length, 3) * 6 * fourthRotors.length * reflectors.length;
-        let nRuns = 0;
-        let nStops = 0;
-        const start = Date.now();
         for (const rotor1 of rotors) {
             for (const rotor2 of rotors) {
                 if (rotor2 === rotor1) {
@@ -254,7 +227,6 @@ export class MultipleBombe extends Operation {
                     }
                     for (const rotor4 of fourthRotors) {
                         for (const reflector of reflectors) {
-                            nRuns++;
                             const runRotors = [rotor1, rotor2, rotor3];
                             if (rotor4 !== "") {
                                 runRotors.push(rotor4);
@@ -266,10 +238,6 @@ export class MultipleBombe extends Operation {
                                 bombe.changeRotors(runRotors, reflector);
                             }
                             const result = bombe.run();
-                            nStops += result.length;
-                            if (update !== undefined && bombe !== undefined) {
-                                update(bombe.nLoops, nStops, nRuns / totalRuns, start);
-                            }
                             if (result.length > 0) {
                                 output.bombeRuns.push({
                                     rotors: runRotors,

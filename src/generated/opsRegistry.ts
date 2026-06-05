@@ -204,6 +204,7 @@ const registry: OpMeta[] = [
     { opName: "JSONBeautify", displayName: "JSON Beautify", module: "Code", factory: () => { const m = require("../chef/operations/JSONBeautify"); return new (m.JSONBeautify || m.default)(); } },
     { opName: "JSONMinify", displayName: "JSON Minify", module: "Code", factory: () => { const m = require("../chef/operations/JSONMinify"); return new (m.JSONMinify || m.default)(); } },
     { opName: "JSONToCSV", displayName: "JSON to CSV", module: "Default", factory: () => { const m = require("../chef/operations/JSONToCSV"); return new (m.JSONToCSV || m.default)(); } },
+    { opName: "JSONtoYAML", displayName: "JSON to YAML", module: "Default", factory: () => { const m = require("../chef/operations/JSONtoYAML"); return new (m.JSONtoYAML || m.default)(); } },
     { opName: "Jump", displayName: "Jump", module: "Default", factory: () => { const m = require("../chef/operations/Jump"); return new (m.Jump || m.default)(); } },
     { opName: "JWKToPem", displayName: "JWK to PEM", module: "PublicKey", factory: () => { const m = require("../chef/operations/JWKToPem"); return new (m.JWKToPem || m.default)(); } },
     { opName: "JWTDecode", displayName: "JWT Decode", module: "Crypto", factory: () => { const m = require("../chef/operations/JWTDecode"); return new (m.JWTDecode || m.default)(); } },

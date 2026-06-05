@@ -14,6 +14,16 @@
 import { Utils } from "../Utils";
 import { OperationError } from "../errors/OperationError";
 
+/**
+ * Encodes data to a Base64 string.
+ * 
+ * Supports custom alphabets and automatic handling of various input types.
+ * 
+ * @param data - The data to encode (byte array, Uint8Array, ArrayBuffer, or string).
+ * @param alphabet - The Base64 alphabet to use (default: 'A-Za-z0-9+/=').
+ * @returns The encoded Base64 string.
+ * @throws {OperationError} If the alphabet length is invalid.
+ */
 export function toBase64(
     data: number[] | Uint8Array | ArrayBuffer | string,
     alphabet: string = "A-Za-z0-9+/="
@@ -63,6 +73,17 @@ export function toBase64(
     return output;
 }
 
+/**
+ * Decodes a Base64 string into its original form.
+ * 
+ * @param data - The Base64 encoded string.
+ * @param alphabet - The Base64 alphabet used for encoding (default: 'A-Za-z0-9+/=').
+ * @param returnType - Whether to return a 'string' or a 'byteArray' (default: 'string').
+ * @param removeNonAlphChars - Whether to remove non-alphabet characters before decoding (default: true).
+ * @param strictMode - Whether to perform strict validation of padding and input length (default: false).
+ * @returns The decoded data as a string or byte array.
+ * @throws {OperationError} If the alphabet or input is invalid (especially in strict mode).
+ */
 export function fromBase64(
     data: string,
     alphabet: string = "A-Za-z0-9+/=",

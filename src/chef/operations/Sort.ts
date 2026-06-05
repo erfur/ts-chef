@@ -19,8 +19,7 @@ import {
     ipSort,
     numericSort,
     hexadecimalSort,
-    lengthSort,
-} from "../lib/Sort";
+    lengthSort } from "../lib/Sort";
 
 export class Sort extends Operation {
     constructor() {

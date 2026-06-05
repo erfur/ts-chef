@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import { isImage } from "../lib/FileType";
 import { toBase64 } from "../lib/Base64";
-import { isWorkerEnvironment } from "../Utils";
 import { Jimp, JimpMime } from "jimp";
 
 /**
@@ -62,9 +61,7 @@ export class FlipImage extends Operation {
             throw new OperationError(`Error loading image. (${err})`);
         }
         try {
-            if (isWorkerEnvironment())
-                self.sendStatusMessage("Flipping image...");
-            switch (flipAxis) {
+                        switch (flipAxis) {
                 case "Horizontal":
                     image.flip({
                         horizontal: true,

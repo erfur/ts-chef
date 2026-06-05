@@ -14,7 +14,7 @@
 import cptable from "codepage";
 
 /**
- * Character encoding format mappings.
+ * Map of character encoding names to their corresponding Windows codepage numbers.
  */
 export const CHR_ENC_CODE_PAGES: {[name: string]: number} = {
     "UTF-8 (65001)": 65001,
@@ -172,7 +172,13 @@ export const CHR_ENC_CODE_PAGES: {[name: string]: number} = {
 };
 
 
+/**
+ * Internal lookup for simplified encoding names.
+ */
 export const CHR_ENC_SIMPLE_LOOKUP: {[simpleName: string]: number} = {};
+/**
+ * Internal reverse lookup for simplified encoding names.
+ */
 export const CHR_ENC_SIMPLE_REVERSE_LOOKUP: {[page: string]: string} = {};
 
 for (const name in CHR_ENC_CODE_PAGES) {

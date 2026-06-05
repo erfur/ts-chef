@@ -20,8 +20,7 @@ import {
     JimpMime,
     ResizeStrategy,
     HorizontalAlign,
-    VerticalAlign,
-} from "jimp";
+    VerticalAlign } from "jimp";
 
 /**
  * Cover Image operation

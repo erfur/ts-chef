@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import { isImage } from "../lib/FileType";
 import { toBase64 } from "../lib/Base64";
-import { isWorkerEnvironment } from "../Utils";
 import { Jimp, JimpMime, ResizeStrategy } from "jimp";
 
 /**
@@ -110,8 +109,6 @@ export class ResizeImage extends Operation {
                 height = image.height * (height / 100);
             }
 
-            if (isWorkerEnvironment())
-                self.sendStatusMessage("Resizing image...");
             if (aspect) {
                 image.scaleToFit({
                     w: width,

@@ -21,13 +21,22 @@ import { OperationError } from "./errors/OperationError";
 
 export const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-export function isWorkerEnvironment(): boolean {
-    return typeof (global as any).importScripts === "function";
-}
 
+/**
+ * Utility class providing common helper functions for CyberChef operations.
+ * 
+ * Includes methods for character encoding, byte array manipulation, 
+ * numeric conversions, and data parsing.
+ */
 export class Utils {
-    static isWorkerEnvironment = isWorkerEnvironment;
-
+    
+    /**
+     * Converts a Unicode code point to a string.
+     * Handles surrogate pairs for characters outside the Basic Multilingual Plane (BMP).
+     * 
+     * @param o - The code point to convert.
+     * @returns The resulting string.
+     */
     static chr(o: number): string {
         if (o > 0xffff) {
             o -= 0x10000;
@@ -38,6 +47,13 @@ export class Utils {
         return String.fromCharCode(o);
     }
 
+    /**
+     * Returns the Unicode code point of the first character in a string.
+     * Handles surrogate pairs for characters outside the BMP.
+     * 
+     * @param c - The character or string.
+     * @returns The Unicode code point.
+     */
     static ord(c: string): number {
         if (c.length === 2) {
             const high = c.charCodeAt(0);
@@ -50,10 +66,12 @@ export class Utils {
     }
 
     /**
-     * Map a letter to a number in 0..25.
-     * @param c - Character to convert
-     * @param permissive - If true, allow case insensitivity; don't throw errors on other chars.
-     * @returns Number in 0..25, or -1 if permissive and not a letter
+     * Map a letter to its position in the alphabet (0-25).
+     * 
+     * @param c - The character to convert (should be A-Z).
+     * @param permissive - If true, allow lowercase and return -1 for non-letters instead of throwing.
+     * @returns Number in range 0-25, or -1 if permissive and input is invalid.
+     * @throws {OperationError} If character is invalid and permissive is false.
      */
     static a2i(c: string, permissive: boolean = false): number {
         const i = Utils.ord(c);
@@ -70,9 +88,11 @@ export class Utils {
     }
 
     /**
-     * Map a number in 0..25 to a letter.
-     * @param i - Number to convert
-     * @returns Character
+     * Map a number (0-25) to its corresponding uppercase letter (A-Z).
+     * 
+     * @param i - The index in the alphabet.
+     * @returns The uppercase character.
+     * @throws {OperationError} If index is outside 0-25.
      */
     static i2a(i: number): string {
         if (i >= 0 && i < 26) {
@@ -81,16 +101,38 @@ export class Utils {
         throw new OperationError("i2a called on value outside 0..25");
     }
 
+    /**
+     * Converts a character or number to its hexadecimal representation.
+     * 
+     * @param c - The character or numeric value.
+     * @param length - The desired minimum length of the hex string (padded with zeros).
+     * @returns The hexadecimal string.
+     */
     static hex(c: string | number, length: number = 2): string {
         const n = typeof c === "string" ? Utils.ord(c) : c;
         return n.toString(16).padStart(length, "0");
     }
 
+    /**
+     * Converts a character or number to its binary representation.
+     * 
+     * @param c - The character or numeric value.
+     * @param length - The desired minimum length of the binary string (padded with zeros).
+     * @returns The binary string.
+     */
     static bin(c: string | number, length: number = 8): string {
         const n = typeof c === "string" ? Utils.ord(c) : c;
         return n.toString(2).padStart(length, "0");
     }
 
+    /**
+     * Truncates a string to a maximum length and appends a suffix.
+     * 
+     * @param str - The string to truncate.
+     * @param max - The maximum allowed length.
+     * @param suffix - The string to append if truncation occurs (e.g., "...").
+     * @returns The truncated string.
+     */
     static truncate(str: string, max: number, suffix: string = "..."): string {
         if (str.length > max) {
             str = str.slice(0, max - suffix.length) + suffix;
@@ -98,14 +140,28 @@ export class Utils {
         return str;
     }
 
+    /**
+     * Pads a byte array on the right with a specific byte value.
+     * 
+     * @param arr - The original byte array.
+     * @param numBytes - The target length of the array.
+     * @param padByte - The byte value to use for padding.
+     * @returns A new array of the specified length.
+     */
     static padBytesRight(arr: number[], numBytes: number, padByte: number = 0): number[] {
         const paddedBytes = new Array(numBytes).fill(padByte);
         arr.forEach((b, i) => {
-            paddedBytes[i] = b;
+            if (i < numBytes) paddedBytes[i] = b;
         });
         return paddedBytes;
     }
 
+    /**
+     * Returns the literal string representation for common separator tokens.
+     * 
+     * @param token - The token name (e.g., 'Space', 'Comma', 'Line feed').
+     * @returns The corresponding string value.
+     */
     static charRep(token: string): string {
         const map: Record<string, string> = {
             Space: " ",
@@ -126,6 +182,12 @@ export class Utils {
         return map[token] ?? "";
     }
 
+    /**
+     * Returns a Regular Expression for splitting or searching based on a separator token.
+     * 
+     * @param token - The token name.
+     * @returns The corresponding RegExp.
+     */
     static regexRep(token: string): RegExp {
         const map: Record<string, RegExp> = {
             Space: /\s+/g,
@@ -145,6 +207,13 @@ export class Utils {
         return map[token] ?? /\s+/g;
     }
 
+    /**
+     * Converts a string to an array of byte values (0-255).
+     * Falls back to UTF-8 encoding if the string contains non-Latin1 characters.
+     * 
+     * @param str - The input string.
+     * @returns An array of numbers.
+     */
     static strToByteArray(str: string): number[] {
         if (!str) return [];
         const byteArray = new Array(str.length);
@@ -156,12 +225,24 @@ export class Utils {
         return byteArray;
     }
 
+    /**
+     * Converts a string to a UTF-8 encoded byte array.
+     * 
+     * @param str - The input string.
+     * @returns An array of numbers representing UTF-8 bytes.
+     */
     static strToUtf8ByteArray(str: string): number[] {
         if (!str) return [];
         const encoder = new TextEncoder();
         return Array.from(encoder.encode(str));
     }
 
+    /**
+     * Converts a string to an array of Unicode code points.
+     * 
+     * @param str - The input string.
+     * @returns An array of numbers.
+     */
     static strToCharcode(str: string): number[] {
         if (!str) return [];
         const charcode: number[] = [];
@@ -173,16 +254,35 @@ export class Utils {
         return charcode;
     }
 
+    /**
+     * Converts a byte array to a string using character codes.
+     * 
+     * @param byteArray - The array of numbers (0-255).
+     * @returns The resulting string.
+     */
     static byteArrayToChars(byteArray: number[]): string {
         if (!byteArray || byteArray.length === 0) return "";
         return byteArray.map((b) => String.fromCharCode(b)).join("");
     }
 
+    /**
+     * Decodes a byte array as a UTF-8 string.
+     * 
+     * @param byteArray - The UTF-8 encoded bytes.
+     * @returns The decoded string.
+     */
     static byteArrayToUtf8(byteArray: number[]): string {
         const buf = Buffer.from(byteArray);
         return buf.toString("utf8");
     }
 
+    /**
+     * Converts a byte array to an integer value.
+     * 
+     * @param byteArray - The bytes representing the number.
+     * @param byteorder - The endianness ('big' or 'little').
+     * @returns The numeric value.
+     */
     static byteArrayToInt(byteArray: number[], byteorder: string): number {
         let value = 0;
         if (byteorder === "big") {
@@ -197,6 +297,14 @@ export class Utils {
         return value;
     }
 
+    /**
+     * Converts an integer value to a byte array.
+     * 
+     * @param value - The number to convert.
+     * @param length - The desired number of bytes.
+     * @param byteorder - The endianness ('big' or 'little').
+     * @returns The resulting byte array.
+     */
     static intToByteArray(value: number, length: number, byteorder: string): number[] {
         const arr = new Array(length);
         if (byteorder === "little") {
@@ -213,6 +321,13 @@ export class Utils {
         return arr;
     }
 
+    /**
+     * Converts a string to an ArrayBuffer.
+     * Uses UTF-8 encoding if non-Latin1 characters are present.
+     * 
+     * @param str - The input string.
+     * @returns The resulting ArrayBuffer.
+     */
     static strToArrayBuffer(str: string): ArrayBuffer {
         if (!str) return new ArrayBuffer(0);
         const arr = new Uint8Array(str.length);
@@ -224,6 +339,13 @@ export class Utils {
         return arr.buffer;
     }
 
+    /**
+     * Converts an ArrayBuffer to a string.
+     * 
+     * @param arrayBuffer - The buffer to convert.
+     * @param utf8 - Whether to decode as UTF-8 (default: true).
+     * @returns The resulting string.
+     */
     static arrayBufferToStr(arrayBuffer: ArrayBuffer, utf8: boolean = true): string {
         const arr = new Uint8Array(arrayBuffer);
         if (utf8) {
@@ -232,6 +354,12 @@ export class Utils {
         return Utils.byteArrayToChars(Array.from(arr));
     }
 
+    /**
+     * Parses escaped characters (like \n, \x41, \u1234) in a string.
+     * 
+     * @param str - The string containing escapes.
+     * @returns The unescaped string.
+     */
     static parseEscapedChars(str: string): string {
         return str.replace(
             /\\([abfnrtv'"\\]|[0-3][0-7]{2}|[0-7]{1,2}|x[\da-fA-F]{2}|u[\da-fA-F]{4}|u\{[\da-fA-F]{1,6}\})/g,
@@ -278,14 +406,22 @@ export class Utils {
         );
     }
 
+    /**
+     * Escapes special characters for use in a Regular Expression.
+     * 
+     * @param str - The string to escape.
+     * @returns The escaped string.
+     */
     static escapeRegex(str: string): string {
         return str.replace(/([.*+?^=!:${}()|[\]/\\])/g, "\\$1");
     }
 
     /**
      * Replaces whitespace characters with their Private Use Area equivalents.
-     * @param str - String to escape
-     * @returns Escaped string
+     * Used for preserving whitespace during certain transformations.
+     * 
+     * @param str - String to escape.
+     * @returns Escaped string.
      */
     static escapeWhitespace(str: string): string {
         return str.replace(/[\x09-\x10]/g, (c) => {
@@ -295,8 +431,9 @@ export class Utils {
 
     /**
      * Returns a new array with duplicate elements removed.
-     * @param arr - Array to unique
-     * @returns Uniqued array
+     * 
+     * @param arr - Array to unique.
+     * @returns Uniqued array.
      */
     static unique<T>(arr: T[]): T[] {
         const u: Record<string, number> = {};
@@ -312,6 +449,12 @@ export class Utils {
         return a;
     }
 
+    /**
+     * Expands an alphabet range string (e.g., "a-z", "0-9") into individual characters.
+     * 
+     * @param alphStr - The range string.
+     * @returns An array of characters.
+     */
     static expandAlphRange(alphStr: string): string[] {
         const alphArr: string[] = [];
         for (let i = 0; i < alphStr.length; i++) {
@@ -332,26 +475,51 @@ export class Utils {
         return alphArr;
     }
 
+    /**
+     * Replaces non-printable characters with dots.
+     * 
+     * @param str - The input string.
+     * @param preserveWs - Whether to preserve common whitespace (tabs, newlines).
+     * @returns The printable string.
+     */
     static printable(str: string, preserveWs: boolean = false): string {
-        // Replace non-printable characters with dots
-        const re =
-            // eslint-disable-next-line no-control-regex
-            /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g;
+        const re = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g;
         const wsRe = /[\x09-\x0d]/g;
         str = str.replace(re, ".");
         if (!preserveWs) str = str.replace(wsRe, ".");
         return str;
     }
 
+    /**
+     * Mathematical modulo operation that always returns a positive result.
+     * 
+     * @param x - The dividend.
+     * @param y - The divisor.
+     * @returns The positive remainder.
+     */
     static mod(x: number, y: number): number {
         return ((x % y) + y) % y;
     }
 
+    /**
+     * Calculates the Greatest Common Divisor (GCD) of two numbers.
+     * 
+     * @param x - First number.
+     * @param y - Second number.
+     * @returns The GCD.
+     */
     static gcd(x: number, y: number): number {
         if (!y) return x;
         return Utils.gcd(y, x % y);
     }
 
+    /**
+     * Calculates the Modular Multiplicative Inverse of a number.
+     * 
+     * @param x - The number.
+     * @param y - The modulus.
+     * @returns The inverse.
+     */
     static modInv(x: number, y: number): number {
         x %= y;
         for (let i = 1; i < y; i++) {
@@ -360,8 +528,14 @@ export class Utils {
         return 1;
     }
 
+    /**
+     * Converts a string to a byte array based on a specified type.
+     * 
+     * @param str - The input string.
+     * @param type - The data type (e.g., 'hex', 'base64', 'utf8').
+     * @returns The resulting byte array.
+     */
     static convertToByteArray(str: string, type: string): number[] {
-        // Lazy-load to avoid circular dependency
         if (!_fromBase64) _fromBase64 = require("./lib/Base64").fromBase64;
         if (!_fromHex) _fromHex = require("./lib/Hex").fromHex;
         if (!_fromDecimal) _fromDecimal = require("./lib/Decimal").fromDecimal;
@@ -384,6 +558,13 @@ export class Utils {
         }
     }
 
+    /**
+     * Converts a string to a raw byte string based on a specified type.
+     * 
+     * @param str - The input string.
+     * @param type - The data type (e.g., 'hex', 'base64').
+     * @returns The resulting byte string.
+     */
     static convertToByteString(str: string, type: string): string {
         if (!_fromBase64) _fromBase64 = require("./lib/Base64").fromBase64;
         if (!_fromHex) _fromHex = require("./lib/Hex").fromHex;
@@ -411,10 +592,22 @@ export class Utils {
         }
     }
 
+    /**
+     * Removes all HTML tags from a string.
+     * 
+     * @param str - The input string.
+     * @returns The plain text string.
+     */
     static stripHtmlTags(str: string): string {
         return str.replace(/<[^>]*>/g, "");
     }
 
+    /**
+     * Escapes HTML special characters in a string.
+     * 
+     * @param str - The string to escape.
+     * @returns The escaped string.
+     */
     static escapeHtml(str: string): string {
         return str
             .replace(/&/g, "&amp;")
@@ -424,6 +617,12 @@ export class Utils {
             .replace(/'/g, "&#x27;");
     }
 
+    /**
+     * Generator that yields chunks of an iterable.
+     * 
+     * @param iterable - The collection to chunk.
+     * @param chunksize - The maximum size of each chunk.
+     */
     static *chunked<T>(iterable: Iterable<T>, chunksize: number): Generator<T[]> {
         const iterator = iterable[Symbol.iterator]();
         while (true) {
@@ -438,6 +637,15 @@ export class Utils {
         }
     }
 
+    /**
+     * Parses a CSV string into a 2D array.
+     * Supports quoted strings and escaped quotes.
+     * 
+     * @param data - The CSV data.
+     * @param cellDelims - Array of characters that delimit cells (default: [',']).
+     * @param lineDelims - Array of characters that delimit lines (default: ['\n', '\r']).
+     * @returns A 2D array of strings.
+     */
     static parseCSV(
         data: string,
         cellDelims: string[] = [","],
@@ -451,7 +659,6 @@ export class Utils {
             line: string[] = [];
         const lines: string[][] = [];
 
-        // Remove BOM, often present in Excel CSV files
         if (data.length && data.charCodeAt(0) === 0xfeff) {
             data = data.slice(1);
         }
@@ -478,7 +685,6 @@ export class Utils {
                 cell = "";
                 lines.push(line);
                 line = [];
-                // Skip next byte if it is also a line delim (e.g. \r\n)
                 if (lineDelims.indexOf(next) >= 0 && next !== b) {
                     i++;
                 }
@@ -495,10 +701,23 @@ export class Utils {
         return lines;
     }
 
+    /**
+     * Encodes a string for use in a URI fragment, following CyberChef's specific encoding.
+     * 
+     * @param str - The string to encode.
+     * @returns The encoded string.
+     */
     static encodeURIFragment(str: string): string {
         return encodeURIComponent(str).replace(/%20/g, "+");
     }
 
+    /**
+     * Generates a human-readable representation of a recipe configuration.
+     * 
+     * @param recipeConfig - The recipe configuration object.
+     * @param newLine - Whether to separate operations with newlines (default: false).
+     * @returns The pretty-printed recipe string.
+     */
     static generatePrettyRecipe(recipeConfig: unknown, newLine = false): string {
         if (!Array.isArray(recipeConfig)) return String(recipeConfig);
         return (recipeConfig as Array<{ op: string; args?: unknown[] }>)
@@ -507,9 +726,5 @@ export class Utils {
     }
 }
 
-export function sendStatusMessage(msg: string): void {
-    // no-op in extension context; original CyberChef uses this for worker messages
-    void msg;
-}
 
 export default Utils;

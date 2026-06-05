@@ -14,7 +14,6 @@
 import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import Yara from "libyara-wasm";
-import { isWorkerEnvironment } from "../Utils";
 
 /**
  * YARA Rules operation
@@ -79,22 +78,17 @@ export class YARARules extends Operation {
      * @returns {string}
      */
     async run(input: any, args: any[]): Promise<any> {
-        if (isWorkerEnvironment())
-            self.sendStatusMessage("Instantiating YARA...");
-        const [rules, showStrings, showLengths, showMeta, showCounts, showRuleWarns, showConsole] = args;
+                const [rules, showStrings, showLengths, showMeta, showCounts, showRuleWarns, showConsole] = args;
         return new Promise((resolve, reject) => {
             Yara().then((yara: { run: (arg0: Uint8Array<any>, arg1: any) => any; }) => {
-                if (isWorkerEnvironment()) self.sendStatusMessage("Converting data for YARA.");
-                let matchString = "";
+                                let matchString = "";
 
                 const inpArr = new Uint8Array(input); // Turns out embind knows that JS uint8array <==> C++ std::string
 
-                if (isWorkerEnvironment()) self.sendStatusMessage("Running YARA matching.");
-
+                
                 const resp = yara.run(inpArr, rules);
 
-                if (isWorkerEnvironment()) self.sendStatusMessage("Processing data.");
-
+                
                 if (resp.compileErrors.size() > 0) {
                     for (let i = 0; i < resp.compileErrors.size(); i++) {
                         const compileError = resp.compileErrors.get(i);

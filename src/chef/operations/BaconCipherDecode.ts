@@ -19,8 +19,7 @@ import {
     BACON_TRANSLATIONS,
     BACON_CLEARER_MAP,
     BACON_NORMALIZE_MAP,
-    swapZeroAndOne,
-} from "../lib/Bacon";
+    swapZeroAndOne } from "../lib/Bacon";
 
 export class BaconCipherDecode extends Operation {
     constructor() {

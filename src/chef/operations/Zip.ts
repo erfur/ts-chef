@@ -58,7 +58,7 @@ export class Zip extends Operation {
 
         let data: Uint8Array;
         if (typeof input === "string") {
-            const { Utils } = await import("../Utils");
+            const { Utils } = await import("../Utils.js");
             data = new Uint8Array(Utils.strToArrayBuffer(input));
         } else {
             data = new Uint8Array(input);

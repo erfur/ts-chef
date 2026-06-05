@@ -12,10 +12,17 @@
  */
 
 import { Operation } from "../Operation";
+import { Utils } from "../Utils";
 
 const BASE45_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
 
+/**
+ * To Base45 operation
+ */
 export class ToBase45 extends Operation {
+    /**
+     * ToBase45 constructor
+     */
     constructor() {
         super();
         this.name = "To Base45";
@@ -30,8 +37,14 @@ export class ToBase45 extends Operation {
         ];
     }
 
+    /**
+     * @param {ArrayBuffer} input
+     * @param {Object[]} args
+     * @returns {string}
+     */
     run(input: ArrayBuffer, args: unknown[]): string {
-        const alphabet = (args[0] as string) || BASE45_ALPHABET;
+        const alphabetStr = (args[0] as string) || BASE45_ALPHABET;
+        const alphabet = Utils.expandAlphRange(alphabetStr).join("");
         const bytes = new Uint8Array(input);
         let result = "";
 
@@ -55,3 +68,4 @@ export class ToBase45 extends Operation {
 }
 
 export default ToBase45;
+export { BASE45_ALPHABET };

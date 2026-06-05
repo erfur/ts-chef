@@ -15,7 +15,6 @@ import Operation from "../Operation";
 import OperationError from "../errors/OperationError";
 
 import { compress } from "@blu3r4y/lzma";
-import {isWorkerEnvironment} from "../Utils";
 
 /**
  * LZMA Compress operation
@@ -60,8 +59,8 @@ export class LZMACompress extends Operation {
                 }
                 // The compression returns as an Int8Array, but we can just get the unsigned data from the buffer
                 resolve(new Int8Array(result as number[]).buffer);
-            }, (percent) => {
-                if (isWorkerEnvironment()) self.sendStatusMessage(`Compressing input: ${(percent*100).toFixed(2)}%`);
+            }, () => {
+                // Progress updates disabled in VS Code extension context
             });
         });
     }

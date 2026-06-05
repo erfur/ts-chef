@@ -16,7 +16,6 @@ import OperationError from "../errors/OperationError";
 import Utils from "../Utils";
 import { isImage } from "../lib/FileType";
 import { toBase64 } from "../lib/Base64";
-import { isWorkerEnvironment } from "../Utils";
 import { Jimp, JimpMime, ResizeStrategy, rgbaToInt } from "jimp";
 
 /**
@@ -92,9 +91,7 @@ export class GenerateImage extends Operation {
         const height = Math.ceil(input.length / bytesPerPixel / width);
         const image = new Jimp({ width, height });
 
-        if (isWorkerEnvironment())
-            self.sendStatusMessage("Generating image from data...");
-
+        
         if (mode === "Bits") {
             let index = 0;
             for (let j = 0; j < input.length; j++) {
@@ -159,9 +156,7 @@ export class GenerateImage extends Operation {
         }
 
         if (scale !== 1) {
-            if (isWorkerEnvironment())
-                self.sendStatusMessage("Scaling image...");
-
+            
             image.scaleToFit({
                 w: width * scale,
                 h: height * scale,

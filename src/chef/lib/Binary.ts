@@ -14,6 +14,15 @@
 import { Utils } from "../Utils";
 import { OperationError } from "../errors/OperationError";
 
+/**
+ * Converts data to its binary string representation.
+ * 
+ * @param data - The data to convert (byte array, Uint8Array, or a single number).
+ * @param delim - The delimiter to use between binary groups (default: 'Space').
+ * @param padding - The number of bits to pad each byte to (default: 8).
+ * @returns The binary string representation.
+ * @throws {OperationError} If input data is empty or invalid.
+ */
 export function toBinary(
     data: number[] | Uint8Array | number,
     delim: string = "Space",
@@ -38,6 +47,14 @@ export function toBinary(
         .join(delimStr);
 }
 
+/**
+ * Parses a binary string into an array of byte values.
+ * 
+ * @param data - The binary string to parse.
+ * @param delim - The delimiter used in the binary string. If omitted, it tries to auto-detect.
+ * @param byteLen - The expected length of each binary group (default: 8).
+ * @returns An array of numbers representing the bytes.
+ */
 export function fromBinary(data: string, delim?: string, byteLen: number = 8): number[] {
     if (!data) return [];
 

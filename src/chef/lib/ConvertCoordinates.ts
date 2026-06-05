@@ -230,7 +230,7 @@ export function convertCoordinates(
             convLat = geohash.encode(latlon.lat, latlon.lon, precision);
             break;
         case "Military Grid Reference System":
-            utm = new LatLonMgrs(latlon.lat, latlon.lon).toUtm();
+            utm = (new (LatLonMgrs as any)(latlon.lat, latlon.lon)).toUtm();
             mgrs = utm.toMgrs();
             if (precision % 2 !== 0) {
                 precision = precision + 1;
@@ -241,7 +241,7 @@ export function convertCoordinates(
             convLat = mgrs.toString(precision);
             break;
         case "Ordnance Survey National Grid":
-            osng = new LatLonOs(latlon.lat, latlon.lon).toOsGrid();
+            osng = (new (LatLonOs as any)(latlon.lat, latlon.lon)).toOsGrid();
             if (osng.toString() === "") {
                 throw new OperationError(
                     "Could not convert co-ordinates to OS National Grid. Are the co-ordinates in range?"
@@ -256,7 +256,7 @@ export function convertCoordinates(
             convLat = osng.toString(precision);
             break;
         case "Universal Transverse Mercator":
-            utm = new LatLonUtm(latlon.lat, latlon.lon).toUtm();
+            utm = (new (LatLonUtm as any)(latlon.lat, latlon.lon)).toUtm();
             convLat = utm.toString(precision);
             break;
     }

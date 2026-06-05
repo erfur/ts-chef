@@ -21,8 +21,7 @@ import {
     ResizeStrategy,
     measureText,
     measureTextHeight,
-    loadFont,
-} from "jimp";
+    loadFont } from "jimp";
 
 /**
  * Add Text To Image operation

@@ -93,7 +93,7 @@ export class RC6Encrypt extends Operation {
     run(input: any, args: any[]): any {
         const key = Utils.convertToByteArray(args[0].string, args[0].option),
             iv = Utils.convertToByteArray(args[1].string, args[1].option),
-            [,, mode, inputType, outputType, padding, wordSize, rounds] = args;
+            [, mode, inputType, outputType, padding, wordSize, rounds] = args;
 
         // Validate word size
         if (!Number.isInteger(wordSize) || wordSize < 8 || wordSize > 256 || wordSize % 8 !== 0)

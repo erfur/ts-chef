@@ -15,24 +15,19 @@ import OperationError from "../errors/OperationError";
 import Utils from "../Utils";
 
 /**
- * @constant
- * @default
+ * Available options for record delimiters in chart data.
  */
 export const RECORD_DELIMITER_OPTIONS: string[] = ["Line feed", "CRLF"];
 
 
 /**
- * @constant
- * @default
+ * Available options for field delimiters in chart data.
  */
 export const FIELD_DELIMITER_OPTIONS: string[] = ["Space", "Comma", "Semi-colon", "Colon", "Tab"];
 
 
 /**
- * Default from colour
- *
- * @constant
- * @default
+ * Default color range for charts.
  */
 export const COLOURS: { min: string, max: string } = {
     min: "white",
@@ -41,7 +36,15 @@ export const COLOURS: { min: string, max: string } = {
 
 
 /**
- * Gets values from input for a plot.
+ * Parses input string into headings and a 2D array of values.
+ * 
+ * @param input - The raw chart data string.
+ * @param recordDelimiter - String used to separate records (rows).
+ * @param fieldDelimiter - String used to separate fields (columns).
+ * @param columnHeadingsAreIncluded - Whether the first row contains headings.
+ * @param length - The expected number of fields per record.
+ * @returns An object containing optional headings and the 2D array of values.
+ * @throws {OperationError} If a row does not match the expected length.
  */
 export function getValues(input: string, recordDelimiter: string, fieldDelimiter: string, columnHeadingsAreIncluded: boolean, length: number): { headings?: string[], values: string[][] } {
     let headings: string[] | undefined;
@@ -65,7 +68,14 @@ export function getValues(input: string, recordDelimiter: string, fieldDelimiter
 
 
 /**
- * Gets values from input for a scatter plot.
+ * Parses input string for a scatter plot (X and Y values).
+ * 
+ * @param input - The raw chart data string.
+ * @param recordDelimiter - Record separator.
+ * @param fieldDelimiter - Field separator.
+ * @param columnHeadingsAreIncluded - Whether headings are present.
+ * @returns Object with optional typed headings and numeric value pairs.
+ * @throws {OperationError} If values are not valid numbers.
  */
 export function getScatterValues(input: string, recordDelimiter: string, fieldDelimiter: string, columnHeadingsAreIncluded: boolean): { headings?: { x: string, y: string }, values: number[][] } {
     let { headings, values } = getValues(
@@ -96,7 +106,14 @@ export function getScatterValues(input: string, recordDelimiter: string, fieldDe
 
 
 /**
- * Gets values from input for a scatter plot with colour from the third column.
+ * Parses input string for a scatter plot with an additional color column.
+ * 
+ * @param input - The raw chart data string.
+ * @param recordDelimiter - Record separator.
+ * @param fieldDelimiter - Field separator.
+ * @param columnHeadingsAreIncluded - Whether headings are present.
+ * @returns Object with optional typed headings and (number|string) value triples.
+ * @throws {OperationError} If X or Y values are not valid numbers.
  */
 export function getScatterValuesWithColour(input: string, recordDelimiter: string, fieldDelimiter: string, columnHeadingsAreIncluded: boolean): { headings?: { x: string, y: string }, values: (number | string)[][] } {
     let { headings, values } = getValues(
@@ -126,7 +143,14 @@ export function getScatterValuesWithColour(input: string, recordDelimiter: strin
 }
 
 /**
- * Gets values from input for a time series plot.
+ * Parses input string for a time series plot with multiple series.
+ * 
+ * @param input - The raw chart data string.
+ * @param recordDelimiter - Record separator.
+ * @param fieldDelimiter - Field separator.
+ * @param columnHeadingsAreIncluded - Whether headings are present.
+ * @returns Object containing X values and the series data.
+ * @throws {OperationError} If data values are not valid numbers.
  */
 export function getSeriesValues(input: string, recordDelimiter: string, fieldDelimiter: string, columnHeadingsAreIncluded: boolean): { xValues: string[], series: { name: string, data: { [key: string]: number } }[] } {
     const { values } = getValues(

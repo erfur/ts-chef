@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import { isImage } from "../lib/FileType";
 import { toBase64 } from "../lib/Base64";
-import { isWorkerEnvironment } from "../Utils";
 
 import { createWorker } from "tesseract.js";
 
@@ -61,30 +60,21 @@ export class OpticalCharacterRecognition extends Operation {
     async run(input: any, args: any[]): Promise<any> {
         const [showConfidence, oemChoice] = args;
 
-        if (!isWorkerEnvironment()) throw new OperationError("This operation only works in a browser");
-
         const type = isImage(input);
         if (!type) {
             throw new OperationError("Unsupported file type (supported: jpg,png,pbm,bmp) or no file provided");
         }
 
-        const assetDir = `${(self as any).docURL}/assets/`;
+        const assetDir = `${(global as any).docURL || ""}/assets/`;
         const oem = OEM_MODES.indexOf(oemChoice);
 
         try {
-            self.sendStatusMessage("Spinning up Tesseract worker...");
             const image = `data:${type};base64,${toBase64(input)}`;
             const worker = await createWorker("eng", oem, {
                 workerPath: `${assetDir}tesseract/worker.min.js`,
                 langPath: `${assetDir}tesseract/lang-data`,
                 corePath: `${assetDir}tesseract/tesseract-core.wasm.js`,
-                logger: (progress: { status: string; progress: string; }) => {
-                    if (isWorkerEnvironment()) {
-                        self.sendStatusMessage(`Status: ${progress.status}${progress.status === "recognizing text" ? ` - ${(parseFloat(progress.progress)*100).toFixed(2)}%`: "" }`);
-                    }
-                }
-            });
-            self.sendStatusMessage("Finding text...");
+                logger: () => {}            });
             const result = await worker.recognize(image);
 
             if (showConfidence) {

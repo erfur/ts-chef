@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import { isImage } from "../lib/FileType";
 import { toBase64 } from "../lib/Base64";
-import { isWorkerEnvironment } from "../Utils";
 import { Jimp, JimpMime } from "jimp";
 
 /**
@@ -79,21 +78,11 @@ export class SharpenImage extends Operation {
         }
 
         try {
-            if (isWorkerEnvironment())
-                (self as any).sendStatusMessage("Sharpening image... (Cloning image)");
-            const blurMask = image.clone();
+                        const blurMask = image.clone();
 
-            if (isWorkerEnvironment())
-                (self as any).sendStatusMessage(
-                    "Sharpening image... (Blurring cloned image)",
-                );
-            const blurImage = image.clone().gaussian(radius);
+                        const blurImage = image.clone().gaussian(radius);
 
-            if (isWorkerEnvironment())
-                (self as any).sendStatusMessage(
-                    "Sharpening image... (Creating unsharp mask)",
-                );
-            blurMask.scan(
+                        blurMask.scan(
                 0,
                 0,
                 blurMask.bitmap.width,
@@ -117,11 +106,7 @@ export class SharpenImage extends Operation {
                 },
             );
 
-            if (isWorkerEnvironment())
-                (self as any).sendStatusMessage(
-                    "Sharpening image... (Merging with unsharp mask)",
-                );
-            image.scan(
+                        image.scan(
                 0,
                 0,
                 image.bitmap.width,

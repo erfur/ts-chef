@@ -14,7 +14,6 @@
 import { Operation } from "../Operation";
 import XRegExp from "xregexp";
 import Dish from "../Dish";
-import { isWorkerEnvironment } from "../Utils";
 
 /**
  * Register operation
@@ -65,7 +64,14 @@ export class Register extends Operation {
      * @param {Operation[]} state.opList - The list of operations in the recipe.
      * @returns {Object} The updated state of the recipe.
      */
-    async run(state: { progress: number; dish: { get(type: number): Promise<string> }; opList: Array<{ ingValues: unknown[]; disabled?: boolean }>; forkOffset: number; numRegisters: number }) {
+    async run(state: { 
+        progress: number; 
+        dish: Dish; 
+        opList: Array<{ ingValues: unknown[]; disabled?: boolean }>; 
+        forkOffset: number; 
+        numRegisters: number; 
+        setRegisters: (offset: number, num: number, regs: string[]) => void;
+    }) {
         const ings = state.opList[state.progress].ingValues;
         const [extractorStr, i, m, s] = ings;
 
@@ -74,15 +80,13 @@ export class Register extends Operation {
         if (m) modifiers += "m";
         if (s) modifiers += "s";
 
-        const extractor = new XRegExp(extractorStr, modifiers),
-            input = await state.dish.get(Dish.STRING),
+        const extractor = new XRegExp(extractorStr as string, modifiers),
+            input = (await state.dish.get(Dish.STRING)) as string,
             registers = input.match(extractor);
 
         if (!registers) return state;
 
-        if (isWorkerEnvironment()) {
-            (self as unknown as { setRegisters: (...args: unknown[]) => void }).setRegisters(state.forkOffset + state.progress, state.numRegisters, registers.slice(1));
-        }
+        state.setRegisters(state.forkOffset + state.progress, state.numRegisters, registers.slice(1));
 
         /**
          * Replaces references to registers (e.g. $R0) with the contents of those registers.
@@ -90,22 +94,22 @@ export class Register extends Operation {
          * @param {string} str
          * @returns {string}
          */
-        function replaceRegister(str: string): string {
+        const replaceRegister = (str: string): string => {
             // Replace references to registers ($Rn) with contents of registers
             return str.replace(/(\\*)\$R(\d{1,2})/g, (match: string, slashes: string, regNum: string) => {
                 const index = parseInt(regNum, 10) + 1;
-                if (!registers || index <= state.numRegisters || index >= state.numRegisters + registers.length)
+                if (!registers || index < 1 || index >= registers.length)
                     return match;
                 if (slashes.length % 2 !== 0) return match.slice(1); // Remove escape
-                return slashes + registers[index - state.numRegisters];
+                return slashes + registers[index];
             });
-        }
+        };
 
         // Step through all subsequent ops and replace registers in args with extracted content
-        for (let i = state.progress + 1; i < state.opList.length; i++) {
-            if (state.opList[i].disabled) continue;
+        for (let j = state.progress + 1; j < state.opList.length; j++) {
+            if (state.opList[j].disabled) continue;
 
-            let args = state.opList[i].ingValues;
+            let args = state.opList[j].ingValues;
             args = args.map((arg: unknown) => {
                 if (typeof arg !== "string" && typeof arg !== "object") return arg;
 
@@ -115,7 +119,7 @@ export class Register extends Operation {
                 }
                 return typeof arg === "string" ? replaceRegister(arg) : arg;
             });
-            state.opList[i].ingValues = args;
+            state.opList[j].ingValues = args;
         }
 
         state.numRegisters += registers.length - 1;

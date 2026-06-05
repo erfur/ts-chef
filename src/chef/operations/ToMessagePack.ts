@@ -14,7 +14,6 @@
 import { Operation } from "../Operation";
 import OperationError from "../errors/OperationError";
 import notepack from "notepack.io";
-import { isWorkerEnvironment } from "../Utils";
 
 /**
  * To MessagePack operation
@@ -43,13 +42,9 @@ export class ToMessagePack extends Operation {
      */
     run(input: any, args: any[]): any {
         try {
-            if (isWorkerEnvironment()) {
-                return notepack.encode(input);
-            } else {
-                const res = notepack.encode(input);
-                // Safely convert from Node Buffer to ArrayBuffer using the correct view of the data
-                return (new Uint8Array(res)).buffer;
-            }
+            const res = notepack.encode(input);
+            // Safely convert from Node Buffer to ArrayBuffer using the correct view of the data
+            return (new Uint8Array(res)).buffer;
         } catch (err) {
             throw new OperationError(`Could not encode JSON to MessagePack: ${err}`);
         }

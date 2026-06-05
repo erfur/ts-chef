@@ -1,6 +1,27 @@
+# Dependencies
 node_modules/
-dist/
-out/
+
+# Build outputs
+/dist/
+/out/
+/coverage/
+/.vscode-test/
 *.vsix
 *.js.map
+
+# Temporary files
+/build/
+/internal/
+*.log
 .DS_Store
+
+# IDE files
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+.history/
+.claude/
+
+# Documentation
+/docs/api/

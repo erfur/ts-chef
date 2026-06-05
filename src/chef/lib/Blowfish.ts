@@ -262,10 +262,21 @@ function decryptBlock(inblock: number[], outblock: number[], box: any) {
     outblock[1] = o.right;
 }
 
+/**
+ * Blowfish encryption algorithm implementation.
+ * 
+ * Provides block cipher operations and key schedule initialization.
+ */
 export class BlowfishAlgorithm {
     box: any;
     mode: any;
 
+    /**
+     * Creates a new Blowfish instance with the given key and mode.
+     * 
+     * @param key - The encryption key as a string or byte array.
+     * @param modeName - The cipher mode (e.g., 'ECB', 'CBC', 'CFB', 'OFB', 'CTR').
+     */
     constructor(key: string | number[], modeName: string) {
         this.initialize({ key });
         const _box = this.box;
@@ -303,6 +314,11 @@ export class BlowfishAlgorithm {
         }
     }
 
+    /**
+     * Initializes the Blowfish P-array and S-boxes using the provided key.
+     * 
+     * @param options - Configuration options containing the key.
+     */
     initialize(options: { key: string | number[] }) {
         const POW8 = Math.pow(2, 8);
         let k: number[];
@@ -349,7 +365,17 @@ export class BlowfishAlgorithm {
     }
 }
 
+/**
+ * Utility object for creating Blowfish cipher and decipher instances.
+ */
 export const Blowfish = {
+    /**
+     * Creates a forge-compatible BlockCipher for encryption.
+     * 
+     * @param key - The encryption key.
+     * @param modeName - The cipher mode.
+     * @returns A forge BlockCipher instance.
+     */
     createCipher: function (key: string | number[], modeName: string) {
         return new (forge.cipher as any).BlockCipher({
             algorithm: new BlowfishAlgorithm(key, modeName),
@@ -357,6 +383,13 @@ export const Blowfish = {
             decrypt: false,
         });
     },
+    /**
+     * Creates a forge-compatible BlockCipher for decryption.
+     * 
+     * @param key - The encryption key.
+     * @param modeName - The cipher mode.
+     * @returns A forge BlockCipher instance.
+     */
     createDecipher: function (key: string | number[], modeName: string) {
         return new (forge.cipher as any).BlockCipher({
             algorithm: new BlowfishAlgorithm(key, modeName),

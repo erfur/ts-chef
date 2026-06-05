@@ -67,7 +67,7 @@ export class RC2Encrypt extends Operation {
     run(input: any, args: any[]): any {
         const key = Utils.convertToByteString(args[0].string, args[0].option),
             iv = Utils.convertToByteString(args[1].string, args[1].option),
-            [,, inputType, outputType] = args,
+            [, inputType, outputType] = args,
             cipher = forge.rc2.createEncryptionCipher(key);
 
         input = Utils.convertToByteString(input, inputType);

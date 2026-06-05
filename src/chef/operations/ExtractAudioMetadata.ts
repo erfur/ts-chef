@@ -18,8 +18,7 @@ import { makeEmptyReport, sniffContainer } from "../lib/AudioMetaSchema";
 import {
     parseMp3, parseRiffWave, parseFlac, parseOgg,
     parseMp4BestEffort, parseAiffBestEffort,
-    parseAacAdts, parseAc3, parseWmaAsf,
-} from "../lib/AudioParsers";
+    parseAacAdts, parseAc3, parseWmaAsf } from "../lib/AudioParsers";
 
 /**
  * Extract Audio Metadata operation.

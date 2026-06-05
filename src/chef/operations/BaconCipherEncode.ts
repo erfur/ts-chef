@@ -16,8 +16,7 @@ import {
     BACON_ALPHABETS,
     BACON_TRANSLATIONS_FOR_ENCODING,
     BACON_TRANSLATION_AB,
-    swapZeroAndOne,
-} from "../lib/Bacon";
+    swapZeroAndOne } from "../lib/Bacon";
 
 export class BaconCipherEncode extends Operation {
     constructor() {

@@ -15,7 +15,6 @@ import { Operation } from "../Operation";
 import Utils from "../Utils";
 import forge from "node-forge";
 import BigNumber from "bignumber.js";
-import { isWorkerEnvironment } from "../Utils";
 
 /**
  * Pseudo-Random Number Generator operation
@@ -58,7 +57,7 @@ export class PseudoRandomNumberGenerator extends Operation {
 
         let bytes;
 
-        if (isWorkerEnvironment() && self.crypto) {
+        if (self.crypto) {
             bytes = new ArrayBuffer(numBytes);
             const CHUNK_SIZE = 65536;
             for (let i = 0; i < numBytes; i += CHUNK_SIZE) {

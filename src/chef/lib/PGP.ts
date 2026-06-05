@@ -10,7 +10,6 @@
  */
 
 import OperationError from "../errors/OperationError";
-import { sendStatusMessage, isWorkerEnvironment } from "../Utils";
 import kbpgp from "kbpgp";
 import promisify from "es6-promisify";
 
@@ -19,33 +18,8 @@ import promisify from "es6-promisify";
  */
 export const ASP = kbpgp.ASP({
     "progress_hook": (info: { what: string }) => {
-        let msg = "";
-
-        switch (info.what) {
-            case "guess":
-                msg = "Guessing a prime";
-                break;
-            case "fermat":
-                msg = "Factoring prime using Fermat's factorization method";
-                break;
-            case "mr":
-                msg = "Performing Miller-Rabin primality test";
-                break;
-            case "passed_mr":
-                msg = "Passed Miller-Rabin primality test";
-                break;
-            case "failed_mr":
-                msg = "Failed Miller-Rabin primality test";
-                break;
-            case "found":
-                msg = "Prime found";
-                break;
-            default:
-                msg = `Stage: ${info.what}`;
-        }
-
-        if (isWorkerEnvironment())
-            sendStatusMessage(msg);
+        // Status updates disabled in VS Code extension context
+        void info;
     }
 });
 

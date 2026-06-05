@@ -61,6 +61,11 @@ class Edge {
     }
 }
 
+/**
+ * Shared scrambler logic used across multiple scrambler units in the Bombe.
+ * 
+ * Manages the common rotor state and caching for performance.
+ */
 class SharedScrambler {
     lowerCache: (number | undefined)[];
     higherCache: (number | undefined)[][];
@@ -77,6 +82,9 @@ class SharedScrambler {
         this.changeRotors(rotors, reflector);
     }
 
+    /**
+     * Updates the rotors and reflector used by the scrambler.
+     */
     changeRotors(rotors: Rotor[], reflector: Reflector) {
         this.reflector = reflector;
         this.rotors = rotors;
@@ -84,6 +92,9 @@ class SharedScrambler {
         this.cacheGen();
     }
 
+    /**
+     * Steps the rotors by a given number of positions.
+     */
     step(n: number) {
         for (let i = 0; i < n - 1; i++) {
             this.rotors[i].step();
@@ -91,6 +102,9 @@ class SharedScrambler {
         this.cacheGen();
     }
 
+    /**
+     * Rebuilds the transformation cache.
+     */
     cacheGen() {
         for (let i = 0; i < 26; i++) {
             this.lowerCache[i] = undefined;
@@ -115,11 +129,17 @@ class SharedScrambler {
         }
     }
 
+    /**
+     * Transforms a character index through the scrambler.
+     */
     transform(i: number): number {
         return this.lowerCache[i] as number;
     }
 }
 
+/**
+ * Represents a single scrambler unit in the Bombe machine.
+ */
 class Scrambler {
     baseScrambler: SharedScrambler;
     initialPos: number;
@@ -137,16 +157,25 @@ class Scrambler {
         this.cache = this.baseScrambler.higherCache[pos];
     }
 
+    /**
+     * Updates the rotor used by this unit.
+     */
     changeRotor(rotor: Rotor) {
         this.rotor = rotor;
         this.rotor.pos = Utils.mod(this.rotor.pos + this.initialPos, 26);
     }
 
+    /**
+     * Steps the unit's fast rotor.
+     */
     step() {
         this.rotor.step();
         this.cache = this.baseScrambler.higherCache[this.rotor.pos];
     }
 
+    /**
+     * Transforms a character index through this scrambler unit.
+     */
     transform(i: number): number {
         let letter = i;
         const cached = this.cache[i];
@@ -161,10 +190,16 @@ class Scrambler {
         return letter;
     }
 
+    /**
+     * Gets the other end of the connection if this scrambler corresponds to a crib pair.
+     */
     getOtherEnd(end: number): number {
         return this.end1 === end ? (this.end2 as number) : (this.end1 as number);
     }
 
+    /**
+     * Returns the current rotor positions as a string.
+     */
     getPos(): string {
         let result = "";
         let pos = Utils.mod(this.rotor.pos - 1, 26);
@@ -177,6 +212,9 @@ class Scrambler {
     }
 }
 
+/**
+ * Implementation of the Turing-Welchman Bombe machine for Enigma cryptanalysis.
+ */
 export class BombeMachine {
     ciphertext: string;
     crib: string;
@@ -193,6 +231,16 @@ export class BombeMachine {
     testInput!: [number, number];
     energiseCount: number = 0;
 
+    /**
+     * Creates a new Bombe machine instance.
+     * 
+     * @param rotors - Array of rotor IDs (e.g., ['I', 'II', 'III']).
+     * @param reflector - The reflector to use.
+     * @param ciphertext - The encrypted message.
+     * @param crib - The suspected plaintext (crib).
+     * @param check - Whether to perform additional checks on stops.
+     * @param update - Optional callback for progress updates.
+     */
     constructor(
         rotors: string[],
         reflector: Reflector,
@@ -490,6 +538,11 @@ export class BombeMachine {
         return [this.indicator.getPos(), stecker, testDecrypt];
     }
 
+    /**
+     * Runs the Bombe machine through all possible rotor positions.
+     * 
+     * @returns An array of "stops" found, where each stop is [rotor positions, stecker pairs, test decryption].
+     */
     run(): [string, string, string][] {
         let stops = 0;
         const result: [string, string, string][] = [];
