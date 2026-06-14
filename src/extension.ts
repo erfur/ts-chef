@@ -328,7 +328,11 @@ export function activate(context: vscode.ExtensionContext): void {
           { label: "$(add) Add variable", action: "add" as const },
           ...items.map((i) => ({ ...i, action: "inspect" as const })),
         ],
-        { placeHolder: "Variables — pick to delete/edit" },
+        {
+          placeHolder: "Variables — pick to delete/edit",
+          matchOnDescription: true,
+          matchOnDetail: true,
+        },
       );
       if (!action) return;
       if (action.action === "add") {

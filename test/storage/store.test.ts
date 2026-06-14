@@ -114,4 +114,26 @@ describe("scope-aware stores", () => {
     expect(store.loadAll()).toHaveLength(1);
     expect(mockVscode.window.showWarningMessage).not.toHaveBeenCalled();
   });
+
+  test("variable loadAll merges both scopes, workspace first", () => {
+    const store = new VariableStore(globalDir);
+    store.set("global", "g", "G");
+    store.set("workspace", "w", "W");
+    const all = store.loadAll();
+    expect(all.map((v) => [v.name, v.scope])).toEqual([
+      ["w", "workspace"],
+      ["g", "global"],
+    ]);
+  });
+
+  test("variable delete only affects the target scope", () => {
+    const store = new VariableStore(globalDir);
+    store.set("global", "x", "G");
+    store.set("workspace", "x", "W");
+    store.delete("workspace", "x");
+    const all = store.loadAll();
+    expect(all).toHaveLength(1);
+    expect(all[0].scope).toBe("global");
+    expect(all[0].value).toBe("G");
+  });
 });
