@@ -33,7 +33,7 @@ Use it to inspect encoded strings, build repeatable transformation pipelines, de
 - **Pipeline Editor** for composing multi-step recipes with configurable operation arguments.
 - **Pattern scanning** to detect Base64, hex, URLs, and other recognizable data in documents.
 - **Inline highlighting and hovers** for discovered patterns and quick conversion previews.
-- **Saved pipelines** for reusable workflows across a workspace.
+- **Saved pipelines** for reusable workflows, stored per-workspace or system-wide (global) so they are available in every workspace.
 - **Variable support** for storing values and reusing them in later pipeline steps.
 - **Deep Analysis** for exploring selected data and identifying likely formats or encodings.
 
@@ -59,7 +59,7 @@ Requirements:
 1. Open the command palette.
 2. Run **tschef: Open Pipeline Editor**.
 3. Add operations, configure their arguments, and bake the selected input.
-4. Save pipelines when you want to reuse a recipe later.
+4. Save pipelines when you want to reuse a recipe later. Choose **Global** (available in every workspace) or **Workspace** in the scope selector next to Save — global is the default.
 
 ### Document Scanning
 
