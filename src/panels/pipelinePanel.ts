@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
-import { PipelineStore, Pipeline, PipelineStep } from "../storage/store";
+import {
+  PipelineStore,
+  Pipeline,
+  PipelineStep,
+  ScopedPipeline,
+  StorageScope,
+} from "../storage/store";
 import { parsePipeline, runPipeline } from "../commands/runner";
 import { log } from "../logger";
 import registry from "../generated/opsRegistry";
@@ -11,7 +17,7 @@ export class PipelinePanel {
   static open(
     context: vscode.ExtensionContext,
     store: PipelineStore,
-    initial?: Pipeline,
+    initial?: ScopedPipeline,
   ): void {
     if (PipelinePanel.current) {
       PipelinePanel.current.panel.reveal();
@@ -30,7 +36,7 @@ export class PipelinePanel {
     panel: vscode.WebviewPanel,
     private store: PipelineStore,
     private context: vscode.ExtensionContext,
-    initial?: Pipeline,
+    initial?: ScopedPipeline,
   ) {
     this.panel = panel;
     panel.webview.html = this.buildHtml(initial);
@@ -77,16 +83,17 @@ export class PipelinePanel {
             : parsePipeline(msg.raw as string);
           const raw =
             (msg.raw as string) || steps.map((s) => s.opName).join(" | ");
-          this.store.upsert({
+          const scope = (msg.scope as StorageScope) ?? "global";
+          this.store.upsert(scope, {
             name,
             raw,
             steps,
             description: msg.description as string | undefined,
           });
           vscode.commands.executeCommand("tschef.refreshPipelines");
-          log(`Pipeline "${name}" saved (${steps.length} step(s))`);
+          log(`Pipeline "${name}" saved to ${scope} (${steps.length} step(s))`);
           vscode.window.showInformationMessage(
-            `ts-chef: Pipeline "${name}" saved.`,
+            `ts-chef: Pipeline "${name}" saved (${scope}).`,
           );
         } catch (e) {
           vscode.window.showErrorMessage(`ts-chef parse error: ${e}`);
@@ -118,10 +125,19 @@ export class PipelinePanel {
     }
   }
 
-  private buildHtml(initial?: Pipeline): string {
+  private buildHtml(initial?: ScopedPipeline): string {
     const initialName = initial?.name ?? "";
     const initialDesc = initial?.description ?? "";
     const initialRaw = initial?.raw ?? "";
+    const hasWorkspace = !!vscode.workspace.workspaceFolders?.length;
+    const requestedScope: StorageScope = initial?.scope ?? "global";
+    // Don't pre-select (and disable) Workspace when no folder is open —
+    // a disabled-but-selected <option> still reports value "workspace",
+    // which would silently fail to save. Fall back to global.
+    const initialScope: StorageScope =
+      !hasWorkspace && requestedScope === "workspace"
+        ? "global"
+        : requestedScope;
 
     // Build initial steps data: op names + stored args
     const initialSteps = (initial?.steps ?? [])
@@ -213,6 +229,10 @@ export class PipelinePanel {
   <strong style="white-space:nowrap">ts-chef</strong>
   <input id="pipeName" placeholder="Pipeline name…" value="${escHtmlAttr(initialName)}">
   <input id="pipeDesc" placeholder="Description (optional)" value="${escHtmlAttr(initialDesc)}">
+  <select id="pipeScope" class="btn-sec" title="Where to save this pipeline">
+    <option value="global" ${initialScope === "global" ? "selected" : ""}>Global</option>
+    <option value="workspace" ${initialScope === "workspace" ? "selected" : ""} ${hasWorkspace ? "" : "disabled"}>Workspace</option>
+  </select>
   <button class="btn" onclick="savePipeline()">Save</button>
   <button class="btn" onclick="runManual()">▶ Run</button>
   <button class="btn btn-live" id="liveBtn" onclick="toggleLive()" title="Toggle live preview">⚡ Live</button>
@@ -625,11 +645,13 @@ function savePipeline() {
   const raw = document.getElementById('pipeText').value.trim();
   const name = document.getElementById('pipeName').value.trim();
   const description = document.getElementById('pipeDesc').value.trim();
+  const scope = document.getElementById('pipeScope')?.value ?? 'global';
   vscode.postMessage({
     type: 'save',
     raw,
     name,
     description,
+    scope,
     steps: steps.map(s => ({ opName: s.opName, args: s.argValues })),
   });
 }
