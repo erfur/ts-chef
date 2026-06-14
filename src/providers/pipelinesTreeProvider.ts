@@ -1,22 +1,26 @@
 import * as vscode from "vscode";
-import { PipelineStore, Pipeline } from "../storage/store";
+import { PipelineStore, ScopedPipeline } from "../storage/store";
 
 class PipelineNode extends vscode.TreeItem {
-  constructor(public readonly pipeline: Pipeline) {
+  constructor(public readonly pipeline: ScopedPipeline) {
     super(pipeline.name, vscode.TreeItemCollapsibleState.None);
-    this.description = pipeline.description ?? pipeline.raw.slice(0, 50);
+    const scopeLabel = pipeline.scope === "global" ? "Global" : "Workspace";
+    const desc = pipeline.description ?? pipeline.raw.slice(0, 50);
+    this.description = `${scopeLabel} · ${desc}`;
     this.tooltip = pipeline.raw;
-    this.contextValue = "pipeline";
+    this.contextValue = `pipeline-${pipeline.scope}`;
     this.iconPath = new vscode.ThemeIcon("symbol-event");
     this.command = {
       command: "tschef.runSavedPipeline",
       title: "Run Pipeline",
-      arguments: [pipeline.name],
+      arguments: [pipeline.name, pipeline.scope],
     };
   }
 }
 
-export class PipelinesTreeProvider implements vscode.TreeDataProvider<PipelineNode> {
+export class PipelinesTreeProvider
+  implements vscode.TreeDataProvider<PipelineNode>
+{
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -29,6 +33,6 @@ export class PipelinesTreeProvider implements vscode.TreeDataProvider<PipelineNo
     return e;
   }
   getChildren(): PipelineNode[] {
-    return this.store.load().map((p) => new PipelineNode(p));
+    return this.store.loadAll().map((p) => new PipelineNode(p));
   }
 }
