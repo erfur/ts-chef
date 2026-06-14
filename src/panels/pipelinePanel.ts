@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import {
   PipelineStore,
-  Pipeline,
   PipelineStep,
   ScopedPipeline,
   StorageScope,
