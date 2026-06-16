@@ -40,8 +40,10 @@ new OperationsTreeProvider(
 ```
 
 - **Leaf node:** `label = displayName`; `iconPath = ThemeIcon("symbol-method")`;
-  `tooltip = opName`; when `needsInput(opName)` is true, append a `$(key)` hint
-  to the `description`. `command = { command: "tschef.applyOperation", title:
+  `tooltip = opName`; when `needsInput(opName)` is true, set `description =
+  "needs input"` (plain text — codicons like `$(key)` do not render in a
+  `TreeItem.description`, only in labels/QuickPick, so they'd show literally).
+  `command = { command: "tschef.applyOperation", title:
   "Apply Operation", arguments: [opName] }` (mirrors `PipelineNode` firing
   `runSavedPipeline`).
 - **Group node:** `label = module`; `description = "<n>"` (op count);
@@ -129,7 +131,7 @@ with a small injected `OperationItem[]` (e.g. ops across two modules) and a fake
 - `getChildren(group)` returns the module's op leaves, sorted by displayName,
   each carrying `command.command === "tschef.applyOperation"` and
   `command.arguments === [opName]`.
-- A leaf whose `needsInput(opName)` is true shows the `$(key)` hint.
+- A leaf whose `needsInput(opName)` is true shows the `"needs input"` hint.
 - `setFilter("base")` narrows leaves to matches (by displayName/opName), omits
   groups with no matches, and renders matching groups expanded.
 - Empty filter restores all groups, collapsed.
