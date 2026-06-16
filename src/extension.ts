@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { VariablesTreeProvider } from "./providers/variablesTreeProvider";
 import { PipelinesTreeProvider } from "./providers/pipelinesTreeProvider";
+import { OperationsTreeProvider } from "./providers/operationsTreeProvider";
 import { VariableStore, PipelineStore, StorageScope } from "./storage/store";
 import { PipelinePanel } from "./panels/pipelinePanel";
 import {
@@ -118,7 +119,23 @@ export function activate(context: vscode.ExtensionContext): void {
   const varTree = new VariablesTreeProvider(varStore);
   const pipeTree = new PipelinesTreeProvider(pipeStore);
 
+  const opItems = registry.map((e) => ({
+    opName: e.opName,
+    displayName: e.displayName,
+    module: e.module || "Other",
+  }));
+  const needsInputCache = new Map<string, boolean>();
+  const opsTree = new OperationsTreeProvider(opItems, (opName) => {
+    const cached = needsInputCache.get(opName);
+    if (cached !== undefined) return cached;
+    const entry = registry.find((e) => e.opName === opName);
+    const result = entry ? operationNeedsInput(entry.factory()) : false;
+    needsInputCache.set(opName, result);
+    return result;
+  });
+
   context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("tschef.operationsView", opsTree),
     vscode.window.registerTreeDataProvider("tschef.variablesView", varTree),
     vscode.window.registerTreeDataProvider("tschef.pipelinesView", pipeTree),
   );
@@ -130,6 +147,57 @@ export function activate(context: vscode.ExtensionContext): void {
   panelResult.register(context);
 
   // ---- Commands ----
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tschef.filterOperations", async () => {
+      const value = await vscode.window.showInputBox({
+        prompt: "Filter operations",
+        placeHolder: "e.g. base64",
+      });
+      if (value === undefined) return; // cancelled — keep current filter
+      opsTree.setFilter(value);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "tschef.applyOperation",
+      async (opName: string) => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showWarningMessage("ts-chef: No active editor.");
+          return;
+        }
+        const rawText = editor.document.getText(editor.selection);
+        if (!rawText) {
+          vscode.window.showWarningMessage("ts-chef: Select text first.");
+          return;
+        }
+        const text = resolveVars(rawText, varStore);
+        const entry = registry.find((e) => e.opName === opName);
+        if (!entry) return;
+        const args = await promptForArgs(entry.factory());
+        if (args === null) return;
+        try {
+          const str = resultToString(runOp(opName, text, args));
+          if (str === "" && text !== "") {
+            vscode.window.showWarningMessage(
+              `ts-chef: "${entry.displayName}" produced an empty result — nothing replaced.`,
+            );
+            return;
+          }
+          await presentPipelineResult(editor, str, entry.displayName, {
+            inline: (ed, res) => inlineResult.show(ed, res),
+            panel: (ed, res) => panelResult.show(ed, res),
+          });
+          log(`applyOperation: "${entry.displayName}" applied`);
+        } catch (e) {
+          log(`applyOperation error: ${e}`);
+          vscode.window.showErrorMessage(`ts-chef: ${e}`);
+        }
+      },
+    ),
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tschef.quickConvert", async () => {
