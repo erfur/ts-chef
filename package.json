@@ -145,6 +145,19 @@
           ],
           "default": "popup",
           "description": "What to do with a pipeline's result. 'popup' asks each time."
+        },
+        "tschef.defaultPipelineScope": {
+          "type": "string",
+          "enum": [
+            "global",
+            "workspace"
+          ],
+          "enumDescriptions": [
+            "Save to the global store, available in every workspace",
+            "Save to the current workspace's store"
+          ],
+          "default": "global",
+          "description": "Scope used when saving a recipe as a pipeline."
         }
       }
     }
