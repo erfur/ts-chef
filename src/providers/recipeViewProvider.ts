@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { PipelineStep } from "../storage/store";
+import type { ArgConfig } from "../chef/Operation";
 
 type Recipe = { name: string; steps: PipelineStep[] };
 
@@ -11,8 +12,9 @@ export type RecipeCallbacks = {
 /**
  * Sidebar webview holding one working "recipe" (a single pipeline). Operations
  * are appended via `addOp` (the Operations pane's ＋), reordered/removed in the
- * webview, applied to the selection, and saved into the pipelines list. The
- * controller holds the canonical recipe so it survives hide/show and loads.
+ * webview, applied to the selection, and saved into the pipelines list. Steps
+ * whose operation has arguments can be expanded to edit them. The controller
+ * holds the canonical recipe so it survives hide/show and loads.
  */
 export class RecipeViewProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
@@ -21,6 +23,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly items: { opName: string; displayName: string }[],
     private readonly callbacks: RecipeCallbacks,
+    private readonly argDefsFor: (opName: string) => ArgConfig[] = () => [],
   ) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
@@ -64,7 +67,15 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(): void {
-    this.view?.webview.postMessage({ type: "state", recipe: this.recipe });
+    const defs: Record<string, ArgConfig[]> = {};
+    for (const s of this.recipe.steps) {
+      if (!(s.opName in defs)) defs[s.opName] = this.argDefsFor(s.opName);
+    }
+    this.view?.webview.postMessage({
+      type: "state",
+      recipe: this.recipe,
+      defs,
+    });
   }
 
   private html(): string {
@@ -113,12 +124,45 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       .label {
         flex: 1;
       }
+      .chevron,
       .rm {
         cursor: pointer;
         opacity: 0.7;
+        padding: 0 2px;
       }
+      .chevron:hover,
       .rm:hover {
         opacity: 1;
+      }
+      .step-args {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding: 2px 8px 8px 28px;
+      }
+      .arg-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .arg-label {
+        opacity: 0.8;
+        min-width: 70px;
+        font-size: 11px;
+      }
+      .arg-row input[type="text"],
+      .arg-row input[type="number"],
+      .arg-row select {
+        flex: 1;
+        min-width: 50px;
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border, #555);
+        padding: 2px 5px;
+        font-size: 11px;
+      }
+      .arg-row input[type="checkbox"] {
+        cursor: pointer;
       }
       .empty {
         padding: 8px;
@@ -130,7 +174,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         padding: 8px;
         border-top: 1px solid var(--vscode-panel-border);
       }
-      button {
+      .actions button {
         flex: 1;
         color: var(--vscode-button-foreground);
         background: var(--vscode-button-background);
@@ -139,7 +183,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         cursor: pointer;
         border-radius: 2px;
       }
-      button:hover {
+      .actions button:hover {
         background: var(--vscode-button-hoverBackground);
       }
     </style>
@@ -157,6 +201,8 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       const nameEl = document.getElementById("name");
       const stepsEl = document.getElementById("steps");
       let steps = [];
+      let defs = {};
+      const expanded = new Set();
       let dragIdx = -1;
 
       function esc(s) {
@@ -165,8 +211,166 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
       }
+      function escAttr(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;");
+      }
       function label(op) {
         return NAMES[op] || op;
+      }
+      function argDefs(op) {
+        return defs[op] || [];
+      }
+
+      function renderArgRow(argDef, val, ai) {
+        const lbl = '<span class="arg-label">' + esc(argDef.name) + "</span>";
+        let input = "";
+        switch (argDef.type) {
+          case "boolean":
+            input =
+              '<input type="checkbox" ' +
+              (val ? "checked" : "") +
+              ' data-arg="' +
+              ai +
+              '" data-type="boolean">';
+            break;
+          case "number": {
+            const min = argDef.min != null ? 'min="' + argDef.min + '"' : "";
+            const max = argDef.max != null ? 'max="' + argDef.max + '"' : "";
+            const stp = argDef.step != null ? 'step="' + argDef.step + '"' : "";
+            input =
+              '<input type="number" value="' +
+              escAttr(val) +
+              '" ' +
+              min +
+              " " +
+              max +
+              " " +
+              stp +
+              ' data-arg="' +
+              ai +
+              '" data-type="number">';
+            break;
+          }
+          case "option": {
+            const opts = argDef.value;
+            const sel = Array.isArray(opts)
+              ? opts
+                  .map(
+                    (o) =>
+                      "<option " +
+                      (String(val) === String(o) ? "selected" : "") +
+                      ">" +
+                      esc(String(o)) +
+                      "</option>",
+                  )
+                  .join("")
+              : "";
+            input =
+              '<select data-arg="' + ai + '" data-type="option">' + sel + "</select>";
+            break;
+          }
+          case "editableOption":
+          case "editableOptionShort": {
+            const opts = argDef.value;
+            const sel = Array.isArray(opts)
+              ? opts
+                  .map(
+                    (o) =>
+                      "<option " +
+                      (JSON.stringify(o.value) === JSON.stringify(val)
+                        ? "selected"
+                        : "") +
+                      ">" +
+                      esc(String(o.name)) +
+                      "</option>",
+                  )
+                  .join("")
+              : "";
+            input =
+              '<select data-arg="' +
+              ai +
+              '" data-type="editableOption">' +
+              sel +
+              "</select>";
+            break;
+          }
+          case "argSelector": {
+            const opts = argDef.value;
+            const sel = Array.isArray(opts)
+              ? opts
+                  .map(
+                    (o) =>
+                      "<option " +
+                      (String(val) === String(o.name) ? "selected" : "") +
+                      ">" +
+                      esc(String(o.name)) +
+                      "</option>",
+                  )
+                  .join("")
+              : "";
+            input =
+              '<select data-arg="' +
+              ai +
+              '" data-type="argSelector">' +
+              sel +
+              "</select>";
+            break;
+          }
+          case "toggleString": {
+            const strVal =
+              val && typeof val === "object"
+                ? (val.string ?? "")
+                : typeof val === "string"
+                  ? val
+                  : "";
+            const encVal =
+              val && typeof val === "object" ? (val.option ?? "") : "";
+            const encOpts = (argDef.toggleValues || ["Hex"])
+              .map(
+                (v) =>
+                  "<option " +
+                  (encVal === v ? "selected" : "") +
+                  ">" +
+                  esc(v) +
+                  "</option>",
+              )
+              .join("");
+            input =
+              '<input type="text" value="' +
+              escAttr(strVal) +
+              '" data-arg="' +
+              ai +
+              '" data-type="toggleString" data-subfield="string">' +
+              '<select data-arg="' +
+              ai +
+              '" data-type="toggleString" data-subfield="option">' +
+              encOpts +
+              "</select>";
+            break;
+          }
+          default: {
+            const strVal =
+              typeof val === "string" ? val : val != null ? String(val) : "";
+            input =
+              '<input type="text" value="' +
+              escAttr(strVal) +
+              '" data-arg="' +
+              ai +
+              '" data-type="string">';
+          }
+        }
+        return '<div class="arg-row">' + lbl + input + "</div>";
+      }
+
+      function renderArgs(s, i) {
+        const ds = argDefs(s.opName);
+        const rows = ds
+          .map((a, ai) => renderArgRow(a, (s.args || [])[ai], ai))
+          .join("");
+        return '<div class="step-args" data-step="' + i + '">' + rows + "</div>";
       }
 
       function render() {
@@ -177,6 +381,8 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         }
         let html = "";
         steps.forEach((s, i) => {
+          const hasArgs = argDefs(s.opName).length > 0;
+          const open = expanded.has(i);
           html +=
             '<div class="step" draggable="true" data-i="' +
             i +
@@ -184,15 +390,68 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
             (i + 1) +
             '</span><span class="label">' +
             esc(label(s.opName)) +
-            '</span><span class="rm" data-rm="' +
+            "</span>" +
+            (hasArgs
+              ? '<span class="chevron" data-toggle="' +
+                i +
+                '" title="Configure">' +
+                (open ? "▲" : "▼") +
+                "</span>"
+              : "") +
+            '<span class="rm" data-rm="' +
             i +
-            '" title="Remove">✕</span></div>';
+            '" title="Remove">✕</span></div>' +
+            (open && hasArgs ? renderArgs(s, i) : "");
         });
         stepsEl.innerHTML = html;
       }
 
       function emitEdit() {
         vscode.postMessage({ type: "edit", name: nameEl.value, steps });
+      }
+
+      function handleArgUpdate(e) {
+        const argsDiv = e.target.closest(".step-args");
+        if (!argsDiv) return;
+        const si = Number(argsDiv.dataset.step);
+        const ai = Number(e.target.dataset.arg);
+        if (isNaN(si) || isNaN(ai)) return;
+        const s = steps[si];
+        if (!s) return;
+        if (!Array.isArray(s.args)) s.args = [];
+        const argDef = argDefs(s.opName)[ai] || {};
+        const t = e.target;
+        switch (t.dataset.type) {
+          case "boolean":
+            s.args[ai] = t.checked;
+            break;
+          case "number":
+            s.args[ai] = Number(t.value);
+            break;
+          case "toggleString": {
+            const cur = s.args[ai];
+            const obj =
+              cur && typeof cur === "object"
+                ? { string: cur.string, option: cur.option }
+                : {
+                    string: "",
+                    option: (argDef.toggleValues && argDef.toggleValues[0]) || "Hex",
+                  };
+            obj[t.dataset.subfield] = t.value;
+            s.args[ai] = obj;
+            break;
+          }
+          case "editableOption": {
+            const opts = argDef.value;
+            s.args[ai] = Array.isArray(opts)
+              ? (opts[t.selectedIndex] && opts[t.selectedIndex].value) ?? t.value
+              : t.value;
+            break;
+          }
+          default:
+            s.args[ai] = t.value;
+        }
+        emitEdit();
       }
 
       nameEl.addEventListener("input", emitEdit);
@@ -204,12 +463,26 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         .addEventListener("click", () => vscode.postMessage({ type: "save" }));
 
       stepsEl.addEventListener("click", (e) => {
+        const tog = e.target.closest("[data-toggle]");
+        if (tog) {
+          const i = Number(tog.dataset.toggle);
+          if (expanded.has(i)) expanded.delete(i);
+          else expanded.add(i);
+          render();
+          return;
+        }
         const rm = e.target.closest("[data-rm]");
         if (rm) {
           steps.splice(Number(rm.dataset.rm), 1);
+          expanded.clear();
           render();
           emitEdit();
         }
+      });
+      stepsEl.addEventListener("change", handleArgUpdate);
+      stepsEl.addEventListener("input", (e) => {
+        if (e.target.tagName === "INPUT" && e.target.type !== "checkbox")
+          handleArgUpdate(e);
       });
       stepsEl.addEventListener("dragstart", (e) => {
         const el = e.target.closest(".step");
@@ -224,6 +497,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         const moved = steps.splice(dragIdx, 1)[0];
         steps.splice(to, 0, moved);
         dragIdx = -1;
+        expanded.clear();
         render();
         emitEdit();
       });
@@ -233,6 +507,8 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         if (msg.type === "state") {
           nameEl.value = msg.recipe.name || "";
           steps = Array.isArray(msg.recipe.steps) ? msg.recipe.steps : [];
+          defs = msg.defs || {};
+          expanded.clear();
           render();
         }
       });
