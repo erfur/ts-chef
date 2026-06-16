@@ -25,6 +25,7 @@ When you run a pipeline from a command (**ts-chef: Run Pipeline on Selection** o
 - `popup` (default) — ask each time with Replace/Copy buttons.
 - `replace` — replace the selection (or the whole document if nothing is selected) with the result.
 - `copy` — copy the result to the clipboard.
+- `inline` — show the result in a CodeLens row above the selection, with Replace/Copy/Close actions (stays open until you close it).
 
 ## Variables
 
