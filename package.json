@@ -99,6 +99,26 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "tschef",
+      "properties": {
+        "tschef.pipelineResultAction": {
+          "type": "string",
+          "enum": [
+            "popup",
+            "replace",
+            "copy"
+          ],
+          "enumDescriptions": [
+            "Show a notification with Replace/Copy buttons (current behavior)",
+            "Replace the selection (or whole document if nothing is selected) with the result",
+            "Copy the result to the clipboard"
+          ],
+          "default": "popup",
+          "description": "What to do with a pipeline's result. 'popup' asks each time."
+        }
+      }
     }
   },
   "scripts": {
