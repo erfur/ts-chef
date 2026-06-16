@@ -49,14 +49,6 @@ jobs:
           path: coverage/
           retention-days: 14
 
-      - name: Sync Reports to Wiki
-        if: github.ref == 'refs/heads/master'
-        uses: Andrew-Chen-Wang/github-wiki-action@v4
-        with:
-          token: ${{ secrets.WIKI_ACTION_TOKEN || github.token }}
-          path: test-report
-          commit-message: "docs: update test and coverage reports [skip ci]"
-
       - name: Job Summary
         run: |
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
@@ -65,5 +57,3 @@ jobs:
           echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- **Test Report:** Visual HTML report of all test cases." >> $GITHUB_STEP_SUMMARY
           echo "- **Coverage Report:** Detailed code coverage metrics." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Latest reports are also available on the [GitHub Wiki](https://github.com/${{ github.repository }}/wiki/test-report)." >> $GITHUB_STEP_SUMMARY
