@@ -277,9 +277,9 @@ export function activate(context: vscode.ExtensionContext): void {
         log(
           `Pipeline ran: "${raw}", input ${text.length} chars → ${result.length} chars`,
         );
-        await presentPipelineResult(editor, result, "Result", (ed, res) =>
-          inlineResult.show(ed, res),
-        );
+        await presentPipelineResult(editor, result, "Result", {
+          inline: (ed, res) => inlineResult.show(ed, res),
+        });
       } catch (e) {
         log(`Pipeline error: ${e}`);
         vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
@@ -317,12 +317,9 @@ export function activate(context: vscode.ExtensionContext): void {
           log(
             `Ran saved pipeline "${name}": ${pipeline.steps.length} step(s), ${text.length} → ${result.length} chars`,
           );
-          await presentPipelineResult(
-            editor,
-            result,
-            `Pipeline "${name}"`,
-            (ed, res) => inlineResult.show(ed, res),
-          );
+          await presentPipelineResult(editor, result, `Pipeline "${name}"`, {
+            inline: (ed, res) => inlineResult.show(ed, res),
+          });
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
           vscode.window.showErrorMessage(

@@ -128,7 +128,7 @@ describe("presentPipelineResult", () => {
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
 
-  test("inline mode delegates to the injected showInline callback", async () => {
+  test("inline mode delegates to the inline renderer", async () => {
     __setConfig({ pipelineResultAction: "inline" });
     const showInline = jest.fn();
     const { editor } = makeEditor();
@@ -137,7 +137,7 @@ describe("presentPipelineResult", () => {
       editor as unknown as TextEditor,
       "RESULT",
       "Result",
-      showInline,
+      { inline: showInline },
     );
 
     expect(showInline).toHaveBeenCalledWith(editor, "RESULT");
@@ -145,7 +145,24 @@ describe("presentPipelineResult", () => {
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
 
-  test("inline mode falls back to popup when no showInline is provided", async () => {
+  test("panel mode delegates to the panel renderer", async () => {
+    __setConfig({ pipelineResultAction: "panel" });
+    const showPanel = jest.fn();
+    const { editor } = makeEditor();
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+      { panel: showPanel },
+    );
+
+    expect(showPanel).toHaveBeenCalledWith(editor, "RESULT");
+    expect(window.showInformationMessage).not.toHaveBeenCalled();
+    expect(env.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  test("inline mode falls back to popup when no renderer is provided", async () => {
     __setConfig({ pipelineResultAction: "inline" });
     window.showInformationMessage.mockResolvedValue(undefined);
     const { editor } = makeEditor();

@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 
-export type PipelineResultAction = "popup" | "replace" | "copy" | "inline";
+export type PipelineResultAction =
+  | "popup"
+  | "replace"
+  | "copy"
+  | "inline"
+  | "panel";
 
 /**
  * Range to overwrite when replacing: the current selection, or the whole
@@ -15,25 +20,27 @@ export function replaceTarget(editor: vscode.TextEditor): vscode.Selection {
     : editor.selection;
 }
 
+type ResultRenderer = (
+  editor: vscode.TextEditor,
+  result: string,
+) => void | Promise<void>;
+
 /**
  * Present a pipeline's result according to the `tschef.pipelineResultAction`
  * setting: show a popup with Replace/Copy buttons (default, "popup"), replace
- * the selection directly ("replace"), copy to the clipboard ("copy"), or show
- * an inline CodeLens row via the injected `showInline` callback ("inline").
+ * the selection directly ("replace"), copy to the clipboard ("copy"), or
+ * render via an injected renderer ("inline" = CodeLens, "panel" = webview).
  *
  * @param label Prefix shown in the popup message (e.g. `Result` or
- *   `Pipeline "name"`). Unused in the replace/copy/inline modes.
- * @param showInline Renders the result inline (CodeLens). When the mode is
- *   "inline" but this is not provided, falls back to the popup.
+ *   `Pipeline "name"`). Unused in the replace/copy/inline/panel modes.
+ * @param render Custom renderers keyed by mode. When the mode is "inline" or
+ *   "panel" but no matching renderer is provided, falls back to the popup.
  */
 export async function presentPipelineResult(
   editor: vscode.TextEditor,
   result: string,
   label: string,
-  showInline?: (
-    editor: vscode.TextEditor,
-    result: string,
-  ) => void | Promise<void>,
+  render?: Partial<Record<"inline" | "panel", ResultRenderer>>,
 ): Promise<void> {
   const mode = vscode.workspace
     .getConfiguration("tschef")
@@ -54,9 +61,12 @@ export async function presentPipelineResult(
     return;
   }
 
-  if (mode === "inline" && showInline) {
-    await showInline(editor, result);
-    return;
+  if (mode === "inline" || mode === "panel") {
+    const renderer = render?.[mode];
+    if (renderer) {
+      await renderer(editor, result);
+      return;
+    }
   }
 
   const preview = `${result.slice(0, 80)}${result.length > 80 ? "…" : ""}`;
