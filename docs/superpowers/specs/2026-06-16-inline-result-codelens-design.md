@@ -53,7 +53,7 @@ A single `InlineResultController` owns one "active inline result" and acts as a
     `<preview>` = result with newlines replaced by spaces, truncated to 80
     chars with a trailing `…` when longer.
   - `$(replace) Replace` → command `tschef.applyInlineResult`, args `["replace"]`.
-  - `$(clippy) Copy` → args `["copy"]`.
+  - `$(copy) Copy` → args `["copy"]`.
   - `$(close) Close` → args `["close"]`.
 
 CodeLens renders the row *above* `targetRange.start.line` (between lines).
