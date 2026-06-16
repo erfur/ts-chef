@@ -35,16 +35,13 @@ function fakeContext(): ExtensionContext {
   return { subscriptions: [] } as unknown as ExtensionContext;
 }
 
-/** Pull the command/doc-change handlers the controller registered. */
+/** Pull the command handler the controller registered. */
 function getRegisteredHandlers() {
   const applyCall = commands.registerCommand.mock.calls.find(
     (c) => c[0] === "tschef.applyInlineResult",
   );
   return {
     apply: applyCall?.[1] as (action: string) => Promise<void>,
-    onDocChange: workspace.onDidChangeTextDocument.mock.calls[0][0] as (e: {
-      document: TextDocument;
-    }) => void,
   };
 }
 
@@ -54,7 +51,7 @@ beforeEach(() => {
 });
 
 describe("InlineResultController", () => {
-  test("register wires the code lens provider, command, and doc listener", () => {
+  test("register wires the code lens provider and command, not a doc listener", () => {
     const c = new InlineResultController();
     const ctx = fakeContext();
     c.register(ctx);
@@ -64,8 +61,8 @@ describe("InlineResultController", () => {
       "tschef.applyInlineResult",
       expect.any(Function),
     );
-    expect(workspace.onDidChangeTextDocument).toHaveBeenCalledTimes(1);
-    expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(3);
+    expect(workspace.onDidChangeTextDocument).not.toHaveBeenCalled();
+    expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(2);
   });
 
   test("show stores state and fires onDidChangeCodeLenses", () => {
@@ -173,17 +170,5 @@ describe("InlineResultController", () => {
     await apply("close");
 
     expect(c.provideCodeLenses(fakeDoc())).toEqual([]);
-  });
-
-  test("editing the stored document auto-closes the row", () => {
-    const c = new InlineResultController();
-    c.register(fakeContext());
-    const { editor } = makeEditor(2, "file:///doc");
-    c.show(editor as unknown as TextEditor, "RESULT");
-
-    const { onDocChange } = getRegisteredHandlers();
-    onDocChange({ document: fakeDoc("file:///doc") });
-
-    expect(c.provideCodeLenses(fakeDoc("file:///doc"))).toEqual([]);
   });
 });

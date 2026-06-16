@@ -12,7 +12,7 @@ type InlineAction = "replace" | "copy" | "close";
 /**
  * Shows a pipeline result as a persistent CodeLens row anchored above the
  * selection, with Replace / Copy / Close actions. One active result at a time;
- * it stays until Close, Replace, or an edit to the document clears it.
+ * it stays until Close or Replace clears it.
  */
 export class InlineResultController implements vscode.CodeLensProvider {
   private state: InlineState | undefined;
@@ -25,9 +25,6 @@ export class InlineResultController implements vscode.CodeLensProvider {
       vscode.commands.registerCommand(
         "tschef.applyInlineResult",
         (action: InlineAction) => this.apply(action),
-      ),
-      vscode.workspace.onDidChangeTextDocument((e) =>
-        this.onDocumentChanged(e.document),
       ),
       this._onDidChangeCodeLenses,
     );
@@ -99,12 +96,6 @@ export class InlineResultController implements vscode.CodeLensProvider {
     }
 
     this.clear();
-  }
-
-  private onDocumentChanged(document: vscode.TextDocument): void {
-    if (this.state && document.uri.toString() === this.state.uri.toString()) {
-      this.clear();
-    }
   }
 
   private clear(): void {
