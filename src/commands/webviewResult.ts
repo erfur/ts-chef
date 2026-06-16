@@ -3,9 +3,11 @@ import { replaceTarget } from "./pipelineResult";
 
 type PanelState = {
   editor: vscode.TextEditor;
-  range: vscode.Range;
+  targetRange: vscode.Range;
   result: string;
 };
+
+type ResultMessage = { type: "replace" | "copy" | "close" };
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -82,7 +84,7 @@ export class WebviewResultController {
 
   /** Show `result` in the panel for the editor's selection. */
   show(editor: vscode.TextEditor, result: string): void {
-    this.state = { editor, range: replaceTarget(editor), result };
+    this.state = { editor, targetRange: replaceTarget(editor), result };
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
         "tschef.result",
@@ -100,11 +102,27 @@ export class WebviewResultController {
     this.panel.reveal(vscode.ViewColumn.Beside, true);
   }
 
-  private async onMessage(msg: { type?: string }): Promise<void> {
+  private async onMessage(msg: ResultMessage): Promise<void> {
     const state = this.state;
     if (!state) return;
     if (msg.type === "replace") {
-      await state.editor.edit((eb) => eb.replace(state.range, state.result));
+      // The panel outlives the source editor, so the stored editor may be
+      // closed by the time Replace fires — guard and fail gracefully.
+      if (state.editor.document.isClosed) {
+        vscode.window.showWarningMessage(
+          "ts-chef: Cannot replace — the editor is no longer open.",
+        );
+        return;
+      }
+      try {
+        await state.editor.edit((eb) =>
+          eb.replace(state.targetRange, state.result),
+        );
+      } catch {
+        vscode.window.showWarningMessage(
+          "ts-chef: Could not replace — the editor is no longer available.",
+        );
+      }
     } else if (msg.type === "copy") {
       vscode.env.clipboard.writeText(state.result);
       vscode.window.setStatusBarMessage(

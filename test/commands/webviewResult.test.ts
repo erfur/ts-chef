@@ -16,7 +16,7 @@ function makeFakePanel() {
   };
 }
 
-function makeEditor() {
+function makeEditor(opts: { isClosed?: boolean; editFails?: boolean } = {}) {
   const editBuilder = { replace: jest.fn() };
   const editor = {
     selection: {
@@ -24,8 +24,12 @@ function makeEditor() {
       start: { line: 1, character: 0 },
       end: { line: 1, character: 5 },
     },
-    document: { uri: { toString: () => "file:///doc" } },
+    document: {
+      uri: { toString: () => "file:///doc" },
+      isClosed: opts.isClosed ?? false,
+    },
     edit: jest.fn(async (cb: (eb: { replace: jest.Mock }) => void) => {
+      if (opts.editFails) throw new Error("editor disposed");
       cb(editBuilder);
       return true;
     }),
@@ -133,5 +137,47 @@ describe("WebviewResultController", () => {
     c.show(editor as unknown as TextEditor, "two");
 
     expect(window.createWebviewPanel).toHaveBeenCalledTimes(2);
+  });
+
+  test("replace on a closed editor warns instead of editing", async () => {
+    const panel = makeFakePanel();
+    window.createWebviewPanel.mockReturnValue(panel);
+    const c = new WebviewResultController();
+    const { editor } = makeEditor({ isClosed: true });
+    c.show(editor as unknown as TextEditor, "RESULT");
+
+    const onMessage = panel.webview.onDidReceiveMessage.mock.calls[0][0];
+    await onMessage({ type: "replace" });
+
+    expect(editor.edit).not.toHaveBeenCalled();
+    expect(window.showWarningMessage).toHaveBeenCalled();
+  });
+
+  test("replace swallows a failing edit and warns", async () => {
+    const panel = makeFakePanel();
+    window.createWebviewPanel.mockReturnValue(panel);
+    const c = new WebviewResultController();
+    const { editor } = makeEditor({ editFails: true });
+    c.show(editor as unknown as TextEditor, "RESULT");
+
+    const onMessage = panel.webview.onDidReceiveMessage.mock.calls[0][0];
+    await expect(onMessage({ type: "replace" })).resolves.toBeUndefined();
+
+    expect(editor.edit).toHaveBeenCalled();
+    expect(window.showWarningMessage).toHaveBeenCalled();
+  });
+
+  test("register pushes a disposable that disposes the panel", () => {
+    const panel = makeFakePanel();
+    window.createWebviewPanel.mockReturnValue(panel);
+    const c = new WebviewResultController();
+    const { editor } = makeEditor();
+    const subscriptions: { dispose: () => void }[] = [];
+    c.register({ subscriptions } as never);
+    c.show(editor as unknown as TextEditor, "RESULT");
+
+    expect(subscriptions).toHaveLength(1);
+    subscriptions[0].dispose();
+    expect(panel.dispose).toHaveBeenCalled();
   });
 });
