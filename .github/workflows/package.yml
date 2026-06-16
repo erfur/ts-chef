@@ -1,0 +1,55 @@
+name: Package
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  package:
+    name: Build & upload VSIX
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve VSIX name
+        id: vsix
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "name=vscode-ts-chef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
+
+      - name: Package VSIX
+        run: |
+          npx --yes @vscode/vsce package \
+            --no-dependencies \
+            --out "${{ steps.vsix.outputs.name }}"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ${{ steps.vsix.outputs.name }}
+          retention-days: 14
+
+      - name: Job Summary
+        run: |
+          echo "## Package" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built and uploaded \`${{ steps.vsix.outputs.name }}\` as artifact **vsix**." >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh "${{ steps.vsix.outputs.name }}" >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
