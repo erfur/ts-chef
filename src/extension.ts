@@ -8,6 +8,7 @@ import {
   parsePipeline,
   runPipeline,
   resolveDefaultArg,
+  operationNeedsInput,
 } from "./commands/runner";
 import { presentPipelineResult } from "./commands/pipelineResult";
 import { InlineResultController } from "./commands/inlineResult";
@@ -91,9 +92,7 @@ function buildOpPickItems(): (vscode.QuickPickItem & { opName?: string })[] {
     items.push({ label: mod, kind: vscode.QuickPickItemKind.Separator });
     for (const e of ops) {
       const inst = e.factory();
-      const needsInput = inst.args.some(
-        (a) => a.type === "toggleString" && (a.value as string) === "",
-      );
+      const needsInput = operationNeedsInput(inst);
       const requiredNames = inst.args
         .filter((a) => a.type === "toggleString" && (a.value as string) === "")
         .map((a) => a.name)
