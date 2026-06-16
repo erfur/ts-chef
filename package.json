@@ -30,6 +30,11 @@
         "title": "tschef: Quick Convert Selection"
       },
       {
+        "command": "tschef.loadRecipe",
+        "title": "tschef: Load Pipeline into Recipe",
+        "icon": "$(arrow-right)"
+      },
+      {
         "command": "tschef.runPipeline",
         "title": "tschef: Run Pipeline on Selection"
       },
@@ -74,6 +79,12 @@
           "contextualTitle": "tschef Operations"
         },
         {
+          "id": "tschef.recipeView",
+          "name": "Recipe",
+          "type": "webview",
+          "contextualTitle": "tschef Recipe"
+        },
+        {
           "id": "tschef.variablesView",
           "name": "Variables",
           "contextualTitle": "tschef Variables"
@@ -103,6 +114,13 @@
           "command": "tschef.runSavedPipelinePicker",
           "when": "view == tschef.pipelinesView",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tschef.loadRecipe",
+          "when": "view == tschef.pipelinesView && viewItem =~ /^pipeline-/",
+          "group": "inline"
         }
       ]
     },
