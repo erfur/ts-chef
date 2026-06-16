@@ -128,6 +128,41 @@ describe("presentPipelineResult", () => {
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
 
+  test("inline mode delegates to the injected showInline callback", async () => {
+    __setConfig({ pipelineResultAction: "inline" });
+    const showInline = jest.fn();
+    const { editor } = makeEditor();
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+      showInline,
+    );
+
+    expect(showInline).toHaveBeenCalledWith(editor, "RESULT");
+    expect(window.showInformationMessage).not.toHaveBeenCalled();
+    expect(env.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  test("inline mode falls back to popup when no showInline is provided", async () => {
+    __setConfig({ pipelineResultAction: "inline" });
+    window.showInformationMessage.mockResolvedValue(undefined);
+    const { editor } = makeEditor();
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+    );
+
+    expect(window.showInformationMessage).toHaveBeenCalledWith(
+      "Result: RESULT",
+      "Replace",
+      "Copy",
+    );
+  });
+
   test("popup mode truncates a long result preview with an ellipsis", async () => {
     window.showInformationMessage.mockResolvedValue(undefined);
     const { editor } = makeEditor();

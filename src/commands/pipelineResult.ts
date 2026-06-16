@@ -1,12 +1,12 @@
 import * as vscode from "vscode";
 
-export type PipelineResultAction = "popup" | "replace" | "copy";
+export type PipelineResultAction = "popup" | "replace" | "copy" | "inline";
 
 /**
  * Range to overwrite when replacing: the current selection, or the whole
  * document when the selection is empty.
  */
-function replaceTarget(editor: vscode.TextEditor): vscode.Selection {
+export function replaceTarget(editor: vscode.TextEditor): vscode.Selection {
   return editor.selection.isEmpty
     ? new vscode.Selection(
         editor.document.positionAt(0),
@@ -18,15 +18,22 @@ function replaceTarget(editor: vscode.TextEditor): vscode.Selection {
 /**
  * Present a pipeline's result according to the `tschef.pipelineResultAction`
  * setting: show a popup with Replace/Copy buttons (default, "popup"), replace
- * the selection directly ("replace"), or copy to the clipboard ("copy").
+ * the selection directly ("replace"), copy to the clipboard ("copy"), or show
+ * an inline CodeLens row via the injected `showInline` callback ("inline").
  *
  * @param label Prefix shown in the popup message (e.g. `Result` or
- *   `Pipeline "name"`). Unused in the replace/copy modes.
+ *   `Pipeline "name"`). Unused in the replace/copy/inline modes.
+ * @param showInline Renders the result inline (CodeLens). When the mode is
+ *   "inline" but this is not provided, falls back to the popup.
  */
 export async function presentPipelineResult(
   editor: vscode.TextEditor,
   result: string,
   label: string,
+  showInline?: (
+    editor: vscode.TextEditor,
+    result: string,
+  ) => void | Promise<void>,
 ): Promise<void> {
   const mode = vscode.workspace
     .getConfiguration("tschef")
@@ -44,6 +51,11 @@ export async function presentPipelineResult(
   if (mode === "copy") {
     vscode.env.clipboard.writeText(result);
     vscode.window.setStatusBarMessage("ts-chef: Pipeline result copied", 3000);
+    return;
+  }
+
+  if (mode === "inline" && showInline) {
+    await showInline(editor, result);
     return;
   }
 
