@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { VariablesTreeProvider } from "./providers/variablesTreeProvider";
 import { PipelinesTreeProvider } from "./providers/pipelinesTreeProvider";
-import { OperationsTreeProvider } from "./providers/operationsTreeProvider";
+import { OperationsViewProvider } from "./providers/operationsViewProvider";
 import { VariableStore, PipelineStore, StorageScope } from "./storage/store";
 import { PipelinePanel } from "./panels/pipelinePanel";
 import {
@@ -124,18 +124,10 @@ export function activate(context: vscode.ExtensionContext): void {
     displayName: e.displayName,
     module: e.module || "Other",
   }));
-  const needsInputCache = new Map<string, boolean>();
-  const opsTree = new OperationsTreeProvider(opItems, (opName) => {
-    const cached = needsInputCache.get(opName);
-    if (cached !== undefined) return cached;
-    const entry = registry.find((e) => e.opName === opName);
-    const result = entry ? operationNeedsInput(entry.factory()) : false;
-    needsInputCache.set(opName, result);
-    return result;
-  });
+  const opsView = new OperationsViewProvider(opItems);
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("tschef.operationsView", opsTree),
+    vscode.window.registerWebviewViewProvider("tschef.operationsView", opsView),
     vscode.window.registerTreeDataProvider("tschef.variablesView", varTree),
     vscode.window.registerTreeDataProvider("tschef.pipelinesView", pipeTree),
   );
@@ -147,17 +139,6 @@ export function activate(context: vscode.ExtensionContext): void {
   panelResult.register(context);
 
   // ---- Commands ----
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.filterOperations", async () => {
-      const value = await vscode.window.showInputBox({
-        prompt: "Filter operations",
-        placeHolder: "e.g. base64",
-      });
-      if (value === undefined) return; // cancelled — keep current filter
-      opsTree.setFilter(value);
-    }),
-  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
