@@ -2,7 +2,13 @@ import * as vscode from "vscode";
 import { VariablesTreeProvider } from "./providers/variablesTreeProvider";
 import { PipelinesTreeProvider } from "./providers/pipelinesTreeProvider";
 import { OperationsViewProvider } from "./providers/operationsViewProvider";
-import { VariableStore, PipelineStore, StorageScope } from "./storage/store";
+import { RecipeViewProvider } from "./providers/recipeViewProvider";
+import {
+  VariableStore,
+  PipelineStore,
+  StorageScope,
+  ScopedPipeline,
+} from "./storage/store";
 import { PipelinePanel } from "./panels/pipelinePanel";
 import {
   runOp,
@@ -138,7 +144,82 @@ export function activate(context: vscode.ExtensionContext): void {
   const panelResult = new WebviewResultController();
   panelResult.register(context);
 
+  const recipeView = new RecipeViewProvider(opItems, {
+    onApply: async (steps) => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage("ts-chef: No active editor.");
+        return;
+      }
+      const rawText =
+        editor.document.getText(editor.selection) || editor.document.getText();
+      const text = resolveVars(rawText, varStore);
+      try {
+        const result = runPipeline(text, steps);
+        await presentPipelineResult(editor, result, "Recipe", {
+          inline: (ed, res) => inlineResult.show(ed, res),
+          panel: (ed, res) => panelResult.show(ed, res),
+        });
+      } catch (e) {
+        log(`Recipe apply error: ${e}`);
+        vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
+      }
+    },
+    onSave: async (name, steps) => {
+      if (!name) {
+        vscode.window.showWarningMessage(
+          "ts-chef: Name the recipe before saving.",
+        );
+        return;
+      }
+      if (!steps.length) {
+        vscode.window.showWarningMessage("ts-chef: Recipe is empty.");
+        return;
+      }
+      const scope = await pickScope();
+      if (!scope) return;
+      const raw = steps.map((s) => s.opName).join(" | ");
+      pipeStore.upsert(scope, { name, steps, raw });
+      pipeTree.refresh();
+      log(`Recipe "${name}" saved as pipeline (${scope})`);
+      vscode.window.showInformationMessage(
+        `ts-chef: Recipe "${name}" saved (${scope}).`,
+      );
+    },
+  });
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider("tschef.recipeView", recipeView, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+  );
+
   // ---- Commands ----
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("tschef.addToRecipe", (opName: string) => {
+      const entry = registry.find((e) => e.opName === opName);
+      if (!entry) return;
+      const step = {
+        opName,
+        args: entry.factory().args.map((a) => resolveDefaultArg(a)),
+      };
+      recipeView.addOp(step);
+      vscode.commands.executeCommand("tschef.recipeView.focus");
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "tschef.loadRecipe",
+      (node?: { pipeline?: ScopedPipeline }) => {
+        const pipeline = node?.pipeline;
+        if (!pipeline) return;
+        vscode.commands.executeCommand("tschef.recipeView.focus");
+        recipeView.load(pipeline);
+      },
+    ),
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
