@@ -18,6 +18,14 @@ For complex multi-step transformations:
 4.  Configure arguments for each step.
 5.  Click **Bake** to see the final output and optionally replace your selection.
 
+## Pipeline result action
+
+When you run a pipeline from a command (**ts-chef: Run Pipeline on Selection** or **ts-chef: Run Saved Pipeline**), ts-chef shows the result in a notification with **Replace** and **Copy** buttons by default. Set `tschef.pipelineResultAction` to change this default:
+
+- `popup` (default) — ask each time with Replace/Copy buttons.
+- `replace` — replace the selection (or the whole document if nothing is selected) with the result.
+- `copy` — copy the result to the clipboard.
+
 ## Variables
 
 You can use the **Register** operation to save intermediate results into variables (e.g., `$R0`, `$R1`). These can then be passed as arguments into subsequent operations in the same pipeline.
