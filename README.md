@@ -31,11 +31,8 @@ Use it to inspect encoded strings, build repeatable transformation pipelines, de
 - **480+ operations** for encoding, decoding, hashing, compression, cryptography, parsing, formatting, images, and text processing.
 - **Quick Convert** for applying suggested transformations directly to selected editor text.
 - **Pipeline Editor** for composing multi-step recipes with configurable operation arguments.
-- **Pattern scanning** to detect Base64, hex, URLs, and other recognizable data in documents.
-- **Inline highlighting and hovers** for discovered patterns and quick conversion previews.
 - **Saved pipelines** for reusable workflows, stored per-workspace or system-wide (global) so they are available in every workspace.
 - **Variable support** for storing values and reusing them in later pipeline steps.
-- **Deep Analysis** for exploring selected data and identifying likely formats or encodings.
 
 ## Installation
 
@@ -60,16 +57,6 @@ Requirements:
 2. Run **tschef: Open Pipeline Editor**.
 3. Add operations, configure their arguments, and bake the selected input.
 4. Save pipelines when you want to reuse a recipe later. Choose **Global** (available in every workspace) or **Workspace** in the scope selector next to Save — global is the default.
-
-### Document Scanning
-
-Run **tschef: Scan Document for Patterns** to find recognizable encoded or structured values in the current document. Detected values can be highlighted in the editor and inspected through hover actions.
-
-Useful settings:
-
-- `tschef.highlightingEnabled` controls editor highlighting.
-- `tschef.confidenceThreshold` controls when hover conversion options are shown.
-- `tschef.autoScanOnSave` scans documents automatically when they are saved.
 
 ## Documentation
 
@@ -104,7 +91,7 @@ Project layout:
 - `src/extension.ts` contains the VS Code extension entry point.
 - `src/chef/` contains the TypeScript operation engine.
 - `src/chef/operations/` contains individual transformation operations.
-- `src/providers/` contains VS Code tree, hover, scan, and decoration providers.
+- `src/providers/` contains the VS Code tree view providers.
 - `src/panels/` contains the pipeline editor webview.
 - `test/` contains the test suite.
 

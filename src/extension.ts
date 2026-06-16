@@ -1,8 +1,4 @@
 import * as vscode from "vscode";
-import { ScanState } from "./providers/scanState";
-import { DecorationProvider } from "./providers/decorationProvider";
-import { HoverProvider } from "./providers/hoverProvider";
-import { PatternsTreeProvider } from "./providers/patternsTreeProvider";
 import { VariablesTreeProvider } from "./providers/variablesTreeProvider";
 import { PipelinesTreeProvider } from "./providers/pipelinesTreeProvider";
 import { VariableStore, PipelineStore, StorageScope } from "./storage/store";
@@ -13,7 +9,6 @@ import {
   runPipeline,
   resolveDefaultArg,
 } from "./commands/runner";
-import { analyseValue } from "./providers/detector";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
 import type { Operation } from "./chef/Operation";
@@ -114,95 +109,19 @@ export function activate(context: vscode.ExtensionContext): void {
   initOutputChannel(context);
   log("Extension activated");
 
-  const scanState = new ScanState();
-  const decorations = new DecorationProvider(scanState);
   const globalDir = context.globalStorageUri.fsPath;
   const varStore = new VariableStore(globalDir);
   const pipeStore = new PipelineStore(globalDir);
 
-  const patternsTree = new PatternsTreeProvider(scanState);
   const varTree = new VariablesTreeProvider(varStore);
   const pipeTree = new PipelinesTreeProvider(pipeStore);
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("tschef.patternsView", patternsTree),
     vscode.window.registerTreeDataProvider("tschef.variablesView", varTree),
     vscode.window.registerTreeDataProvider("tschef.pipelinesView", pipeTree),
-    vscode.languages.registerHoverProvider(
-      { scheme: "*" },
-      new HoverProvider(scanState),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-      if (editor) decorations.update(editor);
-    }),
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      const editor = vscode.window.activeTextEditor;
-      if (editor && e.document === editor.document) decorations.update(editor);
-    }),
   );
 
   // ---- Commands ----
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.scanDocument", () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showWarningMessage("ts-chef: No active editor.");
-        return;
-      }
-      const matches = scanState.scan(editor.document);
-      decorations.update(editor);
-      log(
-        `Scanned "${editor.document.fileName}": ${matches.length} pattern(s) found`,
-      );
-      vscode.window.showInformationMessage(
-        `ts-chef: Found ${matches.length} pattern(s).`,
-      );
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.toggleHighlight", () => {
-      decorations.toggle();
-      const state = decorations.isEnabled() ? "enabled" : "disabled";
-      log(`Highlighting ${state}`);
-      vscode.window.showInformationMessage(`ts-chef: Highlighting ${state}.`);
-      if (decorations.isEnabled()) {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) decorations.update(editor);
-      }
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.clearScanResults", () => {
-      const editor = vscode.window.activeTextEditor;
-      scanState.clear(editor?.document.uri);
-      if (editor) decorations.update(editor);
-      log("Scan results cleared");
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.refreshScan", () => {
-      vscode.commands.executeCommand("tschef.scanDocument");
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "tschef.revealMatch",
-      (uri: vscode.Uri, range: vscode.Range) => {
-        vscode.window.showTextDocument(uri).then((editor) => {
-          editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-          editor.selection = new vscode.Selection(range.start, range.end);
-        });
-      },
-    ),
-  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tschef.quickConvert", async () => {
@@ -247,41 +166,6 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage(`ts-chef: ${e}`);
       }
     }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "tschef.applyConversion",
-      async (
-        payload: { opName: string; value: string; args: unknown[] } | string,
-      ) => {
-        const data =
-          typeof payload === "string"
-            ? JSON.parse(decodeURIComponent(payload))
-            : payload;
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) return;
-
-        const matches = scanState.get(editor.document.uri);
-        const match = matches.find((m) => m.value === data.value);
-        if (!match) return;
-
-        try {
-          const str = resultToString(runOp(data.opName, data.value, data.args));
-          if (str === "" && data.value !== "") {
-            vscode.window.showWarningMessage(
-              `ts-chef: Operation produced an empty result — nothing replaced.`,
-            );
-            return;
-          }
-          await editor.edit((eb) => eb.replace(match.range, str));
-          log(`applyConversion: "${data.opName}" applied`);
-        } catch (e) {
-          log(`applyConversion error: ${e}`);
-          vscode.window.showErrorMessage(`ts-chef: ${e}`);
-        }
-      },
-    ),
   );
 
   context.subscriptions.push(
@@ -507,64 +391,6 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // tschef.deepAnalysis — analyse selected text to detect encoding/format
-  context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.deepAnalysis", async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) return;
-      const text = editor.document.getText(editor.selection);
-      if (!text) {
-        vscode.window.showWarningMessage("ts-chef: Select text to analyse.");
-        return;
-      }
-
-      log(
-        `Deep analysis: "${text.slice(0, 40)}${text.length > 40 ? "…" : ""}"`,
-      );
-      const matches = analyseValue(text);
-
-      if (!matches.length) {
-        vscode.window.showInformationMessage(
-          "ts-chef: No recognisable encoding/format detected in selection.",
-        );
-        return;
-      }
-
-      const items = matches.map((m) => ({
-        label: m.label,
-        description: `${Math.round(m.confidence * 100)}% confidence`,
-        detail: `→ Apply operation: ${m.opName}`,
-        opName: m.opName,
-        defaultArgs: m.defaultArgs,
-      }));
-
-      const picked = await vscode.window.showQuickPick(items, {
-        placeHolder: `Deep analysis: ${items.length} pattern(s) detected — pick to decode/apply`,
-      });
-      if (!picked) return;
-
-      try {
-        const str = resultToString(
-          runOp(picked.opName, text, picked.defaultArgs as unknown[]),
-        );
-        log(
-          `Deep analysis applied "${picked.opName}": ${text.length} → ${str.length} chars`,
-        );
-        const action = await vscode.window.showInformationMessage(
-          `Result: ${str.slice(0, 100)}${str.length > 100 ? "…" : ""}`,
-          "Replace",
-          "Copy",
-        );
-        if (action === "Replace")
-          await editor.edit((eb) => eb.replace(editor.selection, str));
-        if (action === "Copy") vscode.env.clipboard.writeText(str);
-      } catch (e) {
-        log(`Deep analysis error: ${e}`);
-        vscode.window.showErrorMessage(`ts-chef deep analysis error: ${e}`);
-      }
-    }),
-  );
-
   context.subscriptions.push(
     vscode.commands.registerCommand("tschef.addVariable", () => {
       vscode.commands.executeCommand("tschef.setVariable");
@@ -576,20 +402,6 @@ export function activate(context: vscode.ExtensionContext): void {
       pipeTree.refresh(),
     ),
   );
-
-  context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument((doc) => {
-      if (
-        vscode.workspace.getConfiguration("tschef").get("autoScanOnSave", false)
-      ) {
-        scanState.scan(doc);
-        const editor = vscode.window.activeTextEditor;
-        if (editor && editor.document === doc) decorations.update(editor);
-      }
-    }),
-  );
-
-  context.subscriptions.push(scanState);
 }
 
 export function deactivate(): void {}

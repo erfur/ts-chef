@@ -30,14 +30,6 @@
         "title": "tschef: Quick Convert Selection"
       },
       {
-        "command": "tschef.scanDocument",
-        "title": "tschef: Scan Document for Patterns"
-      },
-      {
-        "command": "tschef.toggleHighlight",
-        "title": "tschef: Toggle Pattern Highlighting"
-      },
-      {
         "command": "tschef.runPipeline",
         "title": "tschef: Run Pipeline on Selection"
       },
@@ -54,23 +46,9 @@
         "title": "tschef: Show Variables"
       },
       {
-        "command": "tschef.clearScanResults",
-        "title": "tschef: Clear Scan Results",
-        "icon": "$(trash)"
-      },
-      {
-        "command": "tschef.refreshScan",
-        "title": "tschef: Refresh Scan",
-        "icon": "$(refresh)"
-      },
-      {
         "command": "tschef.runSavedPipelinePicker",
         "title": "tschef: Run Saved Pipeline",
         "icon": "$(run)"
-      },
-      {
-        "command": "tschef.deepAnalysis",
-        "title": "tschef: Deep Analysis of Selection"
       },
       {
         "command": "tschef.addVariable",
@@ -90,11 +68,6 @@
     "views": {
       "tschef-sidebar": [
         {
-          "id": "tschef.patternsView",
-          "name": "Found Patterns",
-          "contextualTitle": "tschef Patterns"
-        },
-        {
           "id": "tschef.variablesView",
           "name": "Variables",
           "contextualTitle": "tschef Variables"
@@ -112,24 +85,9 @@
           "command": "tschef.quickConvert",
           "when": "editorHasSelection",
           "group": "tschef"
-        },
-        {
-          "command": "tschef.deepAnalysis",
-          "when": "editorHasSelection",
-          "group": "tschef"
         }
       ],
       "view/title": [
-        {
-          "command": "tschef.refreshScan",
-          "when": "view == tschef.patternsView",
-          "group": "navigation"
-        },
-        {
-          "command": "tschef.clearScanResults",
-          "when": "view == tschef.patternsView",
-          "group": "navigation"
-        },
         {
           "command": "tschef.addVariable",
           "when": "view == tschef.variablesView",
@@ -141,26 +99,6 @@
           "group": "navigation"
         }
       ]
-    },
-    "configuration": {
-      "title": "tschef",
-      "properties": {
-        "tschef.highlightingEnabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable pattern highlighting in the editor"
-        },
-        "tschef.confidenceThreshold": {
-          "type": "number",
-          "default": 0.9,
-          "description": "Minimum confidence (0–1) to show hover conversion options"
-        },
-        "tschef.autoScanOnSave": {
-          "type": "boolean",
-          "default": false,
-          "description": "Automatically scan the document when it is saved"
-        }
-      }
     }
   },
   "scripts": {
