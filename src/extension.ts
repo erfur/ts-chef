@@ -9,6 +9,7 @@ import {
   runPipeline,
   resolveDefaultArg,
 } from "./commands/runner";
+import { presentPipelineResult } from "./commands/pipelineResult";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
 import type { Operation } from "./chef/Operation";
@@ -272,23 +273,7 @@ export function activate(context: vscode.ExtensionContext): void {
         log(
           `Pipeline ran: "${raw}", input ${text.length} chars → ${result.length} chars`,
         );
-        const action = await vscode.window.showInformationMessage(
-          `Result: ${result.slice(0, 80)}${result.length > 80 ? "…" : ""}`,
-          "Replace Selection",
-          "Copy",
-        );
-        if (action === "Replace Selection") {
-          await editor.edit((eb) => {
-            const sel = editor.selection.isEmpty
-              ? new vscode.Selection(
-                  editor.document.positionAt(0),
-                  editor.document.positionAt(editor.document.getText().length),
-                )
-              : editor.selection;
-            eb.replace(sel, result);
-          });
-        }
-        if (action === "Copy") vscode.env.clipboard.writeText(result);
+        await presentPipelineResult(editor, result, "Result");
       } catch (e) {
         log(`Pipeline error: ${e}`);
         vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
@@ -326,25 +311,7 @@ export function activate(context: vscode.ExtensionContext): void {
           log(
             `Ran saved pipeline "${name}": ${pipeline.steps.length} step(s), ${text.length} → ${result.length} chars`,
           );
-          const action = await vscode.window.showInformationMessage(
-            `Pipeline "${name}": ${result.slice(0, 80)}${result.length > 80 ? "…" : ""}`,
-            "Replace",
-            "Copy",
-          );
-          if (action === "Replace") {
-            await editor.edit((eb) => {
-              const sel = editor.selection.isEmpty
-                ? new vscode.Selection(
-                    editor.document.positionAt(0),
-                    editor.document.positionAt(
-                      editor.document.getText().length,
-                    ),
-                  )
-                : editor.selection;
-              eb.replace(sel, result);
-            });
-          }
-          if (action === "Copy") vscode.env.clipboard.writeText(result);
+          await presentPipelineResult(editor, result, `Pipeline "${name}"`);
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
           vscode.window.showErrorMessage(
