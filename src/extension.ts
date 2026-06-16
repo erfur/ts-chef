@@ -10,6 +10,7 @@ import {
   resolveDefaultArg,
 } from "./commands/runner";
 import { presentPipelineResult } from "./commands/pipelineResult";
+import { InlineResultController } from "./commands/inlineResult";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
 import type { Operation } from "./chef/Operation";
@@ -121,6 +122,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider("tschef.variablesView", varTree),
     vscode.window.registerTreeDataProvider("tschef.pipelinesView", pipeTree),
   );
+
+  const inlineResult = new InlineResultController();
+  inlineResult.register(context);
 
   // ---- Commands ----
 
@@ -273,7 +277,9 @@ export function activate(context: vscode.ExtensionContext): void {
         log(
           `Pipeline ran: "${raw}", input ${text.length} chars → ${result.length} chars`,
         );
-        await presentPipelineResult(editor, result, "Result");
+        await presentPipelineResult(editor, result, "Result", (ed, res) =>
+          inlineResult.show(ed, res),
+        );
       } catch (e) {
         log(`Pipeline error: ${e}`);
         vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
@@ -311,7 +317,12 @@ export function activate(context: vscode.ExtensionContext): void {
           log(
             `Ran saved pipeline "${name}": ${pipeline.steps.length} step(s), ${text.length} → ${result.length} chars`,
           );
-          await presentPipelineResult(editor, result, `Pipeline "${name}"`);
+          await presentPipelineResult(
+            editor,
+            result,
+            `Pipeline "${name}"`,
+            (ed, res) => inlineResult.show(ed, res),
+          );
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
           vscode.window.showErrorMessage(
