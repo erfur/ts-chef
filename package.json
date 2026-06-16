@@ -109,13 +109,15 @@
             "popup",
             "replace",
             "copy",
-            "inline"
+            "inline",
+            "panel"
           ],
           "enumDescriptions": [
             "Show a notification with Replace/Copy buttons (current behavior)",
             "Replace the selection (or whole document if nothing is selected) with the result",
             "Copy the result to the clipboard",
-            "Show the result in a CodeLens row above the selection with Replace/Copy/Close actions"
+            "Show the result in a CodeLens row above the selection with Replace/Copy/Close actions",
+            "Show the result in a webview panel beside the editor (multi-line, with Replace/Copy/Close actions)"
           ],
           "default": "popup",
           "description": "What to do with a pipeline's result. 'popup' asks each time."
