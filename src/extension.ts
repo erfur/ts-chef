@@ -11,6 +11,7 @@ import {
 } from "./commands/runner";
 import { presentPipelineResult } from "./commands/pipelineResult";
 import { InlineResultController } from "./commands/inlineResult";
+import { WebviewResultController } from "./commands/webviewResult";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
 import type { Operation } from "./chef/Operation";
@@ -125,6 +126,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const inlineResult = new InlineResultController();
   inlineResult.register(context);
+
+  const panelResult = new WebviewResultController();
+  panelResult.register(context);
 
   // ---- Commands ----
 
@@ -279,6 +283,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         await presentPipelineResult(editor, result, "Result", {
           inline: (ed, res) => inlineResult.show(ed, res),
+          panel: (ed, res) => panelResult.show(ed, res),
         });
       } catch (e) {
         log(`Pipeline error: ${e}`);
@@ -319,6 +324,7 @@ export function activate(context: vscode.ExtensionContext): void {
           );
           await presentPipelineResult(editor, result, `Pipeline "${name}"`, {
             inline: (ed, res) => inlineResult.show(ed, res),
+            panel: (ed, res) => panelResult.show(ed, res),
           });
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
