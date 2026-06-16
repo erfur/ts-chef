@@ -9,8 +9,10 @@ import {
 } from "../vscode-mock";
 import type { ExtensionContext, TextDocument, TextEditor } from "vscode";
 
-/** Fake editor whose non-empty selection sits on `line`. */
-function makeEditor(line = 2, uri = "file:///doc") {
+type Lens = InstanceType<typeof CodeLens>;
+
+/** Fake editor whose non-empty selection sits on `line` of `uri`. */
+function makeEditor(line = 2, uri = "file:///doc", isClosed = false) {
   const editBuilder = { replace: jest.fn() };
   const editor = {
     selection: {
@@ -18,7 +20,7 @@ function makeEditor(line = 2, uri = "file:///doc") {
       start: { line, character: 0 },
       end: { line, character: 5 },
     },
-    document: { uri: { toString: () => uri } },
+    document: { uri: { toString: () => uri }, isClosed },
     edit: jest.fn(async (cb: (eb: { replace: jest.Mock }) => void) => {
       cb(editBuilder);
       return true;
@@ -35,13 +37,20 @@ function fakeContext(): ExtensionContext {
   return { subscriptions: [] } as unknown as ExtensionContext;
 }
 
-/** Pull the command handler the controller registered. */
-function getRegisteredHandlers() {
-  const applyCall = commands.registerCommand.mock.calls.find(
+/** The registered apply(action, id) command handler. */
+function getApply() {
+  const call = commands.registerCommand.mock.calls.find(
     (c) => c[0] === "tschef.applyInlineResult",
   );
-  return {
-    apply: applyCall?.[1] as (action: string) => Promise<void>,
+  return call?.[1] as (action: string, id: number) => Promise<void>;
+}
+
+/** Command of a lens (preview lens has command "" and no arguments). */
+function cmd(lens: Lens) {
+  return lens.command as {
+    command: string;
+    title: string;
+    arguments?: [string, number];
   };
 }
 
@@ -50,7 +59,7 @@ beforeEach(() => {
   (window as { activeTextEditor: unknown }).activeTextEditor = undefined;
 });
 
-describe("InlineResultController", () => {
+describe("InlineResultController (multi-result)", () => {
   test("register wires the code lens provider and command, not a doc listener", () => {
     const c = new InlineResultController();
     const ctx = fakeContext();
@@ -65,7 +74,7 @@ describe("InlineResultController", () => {
     expect(ctx.subscriptions.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("show stores state and fires onDidChangeCodeLenses", () => {
+  test("show adds a row and fires onDidChangeCodeLenses", () => {
     const c = new InlineResultController();
     const fired = jest.fn();
     c.onDidChangeCodeLenses(fired);
@@ -74,101 +83,154 @@ describe("InlineResultController", () => {
     c.show(editor as unknown as TextEditor, "RESULT");
 
     expect(fired).toHaveBeenCalled();
+    expect(c.provideCodeLenses(fakeDoc())).toHaveLength(4);
   });
 
-  test("provideCodeLenses returns the 4-lens row for the matching document", () => {
+  test("a single result renders a 4-lens row with [action, id] args", () => {
     const c = new InlineResultController();
     const { editor } = makeEditor(2, "file:///doc");
     c.show(editor as unknown as TextEditor, "Hello world");
 
-    const lenses = c.provideCodeLenses(fakeDoc("file:///doc")) as InstanceType<
-      typeof CodeLens
-    >[];
-
+    const lenses = c.provideCodeLenses(fakeDoc("file:///doc")) as Lens[];
     expect(lenses).toHaveLength(4);
-    const commandsList = lenses.map(
-      (l) => (l.command as { command: string }).command,
-    );
-    expect(commandsList).toEqual([
-      "",
+    expect(cmd(lenses[0]).command).toBe("");
+    expect(lenses.slice(1).map((l) => cmd(l).command)).toEqual([
       "tschef.applyInlineResult",
       "tschef.applyInlineResult",
       "tschef.applyInlineResult",
     ]);
-    const args = lenses
-      .slice(1)
-      .map((l) => (l.command as { arguments: string[] }).arguments[0]);
-    expect(args).toEqual(["replace", "copy", "close"]);
+    expect(lenses.slice(1).map((l) => cmd(l).arguments?.[0])).toEqual([
+      "replace",
+      "copy",
+      "close",
+    ]);
+    expect(typeof cmd(lenses[1]).arguments?.[1]).toBe("number");
     expect((lenses[0].range as { start: { line: number } }).start.line).toBe(2);
+  });
+
+  test("two shows render two rows (8 lenses) with distinct ids", () => {
+    const c = new InlineResultController();
+    const { editor: e1 } = makeEditor(2, "file:///doc");
+    const { editor: e2 } = makeEditor(5, "file:///doc");
+    c.show(e1 as unknown as TextEditor, "first");
+    c.show(e2 as unknown as TextEditor, "second");
+
+    const lenses = c.provideCodeLenses(fakeDoc("file:///doc")) as Lens[];
+    expect(lenses).toHaveLength(8);
+    expect(cmd(lenses[1]).arguments?.[1]).not.toBe(
+      cmd(lenses[5]).arguments?.[1],
+    );
   });
 
   test("provideCodeLenses truncates a long preview with an ellipsis", () => {
     const c = new InlineResultController();
     const { editor } = makeEditor(2, "file:///doc");
-    const long = "x".repeat(100);
-    c.show(editor as unknown as TextEditor, long);
+    c.show(editor as unknown as TextEditor, "x".repeat(100));
 
-    const lenses = c.provideCodeLenses(fakeDoc("file:///doc")) as InstanceType<
-      typeof CodeLens
-    >[];
-    const title = (lenses[0].command as { title: string }).title;
-    expect(title).toBe(`$(output) ${"x".repeat(80)}…`);
+    const lenses = c.provideCodeLenses(fakeDoc("file:///doc")) as Lens[];
+    expect(cmd(lenses[0]).title).toBe(`$(output) ${"x".repeat(80)}…`);
   });
 
-  test("provideCodeLenses returns [] with no active result", () => {
+  test("provideCodeLenses returns [] with no results", () => {
     const c = new InlineResultController();
     expect(c.provideCodeLenses(fakeDoc())).toEqual([]);
   });
 
-  test("provideCodeLenses returns [] for a different document", () => {
+  test("provideCodeLenses returns only rows for the matching document", () => {
     const c = new InlineResultController();
     const { editor } = makeEditor(2, "file:///doc");
     c.show(editor as unknown as TextEditor, "RESULT");
 
     expect(c.provideCodeLenses(fakeDoc("file:///other"))).toEqual([]);
+    expect(c.provideCodeLenses(fakeDoc("file:///doc"))).toHaveLength(4);
   });
 
-  test("apply('replace') edits the target range and clears the row", async () => {
+  test("apply('replace', id) edits that row's range and removes only it", async () => {
     const c = new InlineResultController();
     c.register(fakeContext());
-    const { editor, editBuilder } = makeEditor();
+    const { editor, editBuilder } = makeEditor(2, "file:///doc");
     (window as { activeTextEditor: unknown }).activeTextEditor = editor;
-    c.show(editor as unknown as TextEditor, "RESULT");
+    c.show(editor as unknown as TextEditor, "ONE");
+    c.show(editor as unknown as TextEditor, "TWO");
 
-    const { apply } = getRegisteredHandlers();
-    await apply("replace");
+    const before = c.provideCodeLenses(fakeDoc("file:///doc")) as Lens[];
+    const firstId = cmd(before[1]).arguments?.[1] as number;
+    await getApply()("replace", firstId);
 
-    expect(editor.edit).toHaveBeenCalled();
-    expect(editBuilder.replace).toHaveBeenCalledWith(
-      editor.selection,
-      "RESULT",
-    );
-    expect(c.provideCodeLenses(fakeDoc())).toEqual([]);
+    expect(editBuilder.replace).toHaveBeenCalledWith(editor.selection, "ONE");
+    expect(c.provideCodeLenses(fakeDoc("file:///doc"))).toHaveLength(4);
   });
 
-  test("apply('copy') copies and keeps the row open", async () => {
+  test("apply('replace', id) targets the stored editor, not the active one", async () => {
+    const c = new InlineResultController();
+    c.register(fakeContext());
+    const { editor: docA, editBuilder: ebA } = makeEditor(2, "file:///a");
+    const { editBuilder: ebB } = makeEditor(2, "file:///b");
+    const { editor: docBActive } = makeEditor(9, "file:///b");
+    c.show(docA as unknown as TextEditor, "FROM_A");
+    (window as { activeTextEditor: unknown }).activeTextEditor = docBActive;
+
+    const lenses = c.provideCodeLenses(fakeDoc("file:///a")) as Lens[];
+    const id = cmd(lenses[1]).arguments?.[1] as number;
+    await getApply()("replace", id);
+
+    expect(ebA.replace).toHaveBeenCalledWith(docA.selection, "FROM_A");
+    expect(ebB.replace).not.toHaveBeenCalled();
+  });
+
+  test("apply('replace', id) on a closed editor warns and keeps the row", async () => {
+    const c = new InlineResultController();
+    c.register(fakeContext());
+    const { editor, editBuilder } = makeEditor(2, "file:///doc", true);
+    c.show(editor as unknown as TextEditor, "RESULT");
+
+    const lenses = c.provideCodeLenses(fakeDoc()) as Lens[];
+    const id = cmd(lenses[1]).arguments?.[1] as number;
+    await getApply()("replace", id);
+
+    expect(editBuilder.replace).not.toHaveBeenCalled();
+    expect(window.showWarningMessage).toHaveBeenCalled();
+    expect(c.provideCodeLenses(fakeDoc())).toHaveLength(4);
+  });
+
+  test("apply('copy', id) copies and keeps the row", async () => {
     const c = new InlineResultController();
     c.register(fakeContext());
     const { editor } = makeEditor();
     c.show(editor as unknown as TextEditor, "RESULT");
 
-    const { apply } = getRegisteredHandlers();
-    await apply("copy");
+    const lenses = c.provideCodeLenses(fakeDoc()) as Lens[];
+    const id = cmd(lenses[1]).arguments?.[1] as number;
+    await getApply()("copy", id);
 
     expect(env.clipboard.writeText).toHaveBeenCalledWith("RESULT");
     expect(window.setStatusBarMessage).toHaveBeenCalled();
     expect(c.provideCodeLenses(fakeDoc())).toHaveLength(4);
   });
 
-  test("apply('close') clears the row", async () => {
+  test("apply('close', id) removes only that row", async () => {
+    const c = new InlineResultController();
+    c.register(fakeContext());
+    const { editor } = makeEditor();
+    c.show(editor as unknown as TextEditor, "ONE");
+    c.show(editor as unknown as TextEditor, "TWO");
+
+    const lenses = c.provideCodeLenses(fakeDoc()) as Lens[];
+    const firstId = cmd(lenses[1]).arguments?.[1] as number;
+    await getApply()("close", firstId);
+
+    const after = c.provideCodeLenses(fakeDoc()) as Lens[];
+    expect(after).toHaveLength(4);
+    expect(cmd(after[0]).title).toContain("TWO");
+  });
+
+  test("apply ignores an unknown id", async () => {
     const c = new InlineResultController();
     c.register(fakeContext());
     const { editor } = makeEditor();
     c.show(editor as unknown as TextEditor, "RESULT");
 
-    const { apply } = getRegisteredHandlers();
-    await apply("close");
-
-    expect(c.provideCodeLenses(fakeDoc())).toEqual([]);
+    await getApply()("close", 999);
+    expect(c.provideCodeLenses(fakeDoc())).toHaveLength(4);
   });
 });
