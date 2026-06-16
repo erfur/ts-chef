@@ -19,8 +19,11 @@ export class OperationsViewProvider implements vscode.WebviewViewProvider {
     view.webview.html = this.html();
     view.webview.onDidReceiveMessage(
       (msg: { type?: string; opName?: string }) => {
-        if (msg.type === "apply" && typeof msg.opName === "string") {
+        if (typeof msg.opName !== "string") return;
+        if (msg.type === "apply") {
           vscode.commands.executeCommand("tschef.applyOperation", msg.opName);
+        } else if (msg.type === "addToRecipe") {
+          vscode.commands.executeCommand("tschef.addToRecipe", msg.opName);
         }
       },
     );
@@ -66,9 +69,22 @@ export class OperationsViewProvider implements vscode.WebviewViewProvider {
       .op {
         cursor: pointer;
         padding: 3px 8px 3px 22px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
       .op:hover {
         background: var(--vscode-list-hoverBackground);
+      }
+      .op-label {
+        flex: 1;
+      }
+      .op-add {
+        opacity: 0.55;
+        padding: 0 4px;
+      }
+      .op-add:hover {
+        opacity: 1;
       }
       .count {
         opacity: 0.6;
@@ -134,9 +150,9 @@ export class OperationsViewProvider implements vscode.WebviewViewProvider {
               html +=
                 '<div class="op" data-op="' +
                 esc(op.opName) +
-                '">' +
+                '"><span class="op-label">' +
                 esc(op.displayName) +
-                "</div>";
+                '</span><span class="op-add" title="Add to recipe">＋</span></div>';
             }
           }
         }
@@ -145,6 +161,13 @@ export class OperationsViewProvider implements vscode.WebviewViewProvider {
 
       filterEl.addEventListener("input", render);
       listEl.addEventListener("click", (e) => {
+        const addEl = e.target.closest(".op-add");
+        if (addEl) {
+          const row = addEl.closest(".op[data-op]");
+          if (row)
+            vscode.postMessage({ type: "addToRecipe", opName: row.dataset.op });
+          return;
+        }
         const opEl = e.target.closest(".op[data-op]");
         if (opEl) {
           vscode.postMessage({ type: "apply", opName: opEl.dataset.op });

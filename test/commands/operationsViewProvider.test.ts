@@ -59,4 +59,18 @@ describe("OperationsViewProvider", () => {
 
     expect(commands.executeCommand).not.toHaveBeenCalled();
   });
+
+  test("an 'addToRecipe' message runs tschef.addToRecipe with the opName", () => {
+    const p = new OperationsViewProvider(ITEMS);
+    const { view, webview } = makeView();
+    p.resolveWebviewView(view);
+
+    const onMessage = webview.onDidReceiveMessage.mock.calls[0][0];
+    onMessage({ type: "addToRecipe", opName: "FromBase64" });
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      "tschef.addToRecipe",
+      "FromBase64",
+    );
+  });
 });
