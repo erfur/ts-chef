@@ -20,7 +20,7 @@ modes. The internal command `tschef.applyInlineResult` is not contributed in
 ## Design
 
 - **State:** replace the single `state` with `results: InlineResult[]`, where
-  `InlineResult = { id: number; uri: vscode.Uri; targetRange: vscode.Range; result: string }`,
+  `InlineResult = { id: number; editor: vscode.TextEditor; uri: vscode.Uri; targetRange: vscode.Range; result: string }`,
   plus a private `seq` counter for ids.
 - **`show(editor, result)`:** append a new `InlineResult` with a fresh `id`
   (`this.seq++`) instead of overwriting; fire `onDidChangeCodeLenses`.
@@ -30,8 +30,9 @@ modes. The internal command `tschef.applyInlineResult` is not contributed in
   `arguments: [action, id]` (the preview lens keeps `command: ""`).
 - **`apply(action, id)`** (the registered command now receives two args): find
   the result by `id`; if none, return.
-  - `replace` → edit that result's `targetRange` in the active editor, then
-    remove that result (others remain).
+  - `replace` → edit that result's `targetRange` in that result's own stored
+    `editor` (not the active editor — they differ when rows span documents;
+    guarded against a closed editor), then remove that result (others remain).
   - `copy` → `clipboard.writeText` + status-bar message; keep the result.
   - `close` → remove that result.
 - **`remove(id)`:** filter the result out of `results` and fire the change
