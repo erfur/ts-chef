@@ -22,7 +22,7 @@ import { InlineResultController } from "./commands/inlineResult";
 import { WebviewResultController } from "./commands/webviewResult";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
-import type { Operation } from "./chef/Operation";
+import type { Operation, ArgConfig } from "./chef/Operation";
 
 function resultToString(result: unknown): string {
   if (Array.isArray(result))
@@ -144,49 +144,64 @@ export function activate(context: vscode.ExtensionContext): void {
   const panelResult = new WebviewResultController();
   panelResult.register(context);
 
-  const recipeView = new RecipeViewProvider(opItems, {
-    onApply: async (steps) => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) {
-        vscode.window.showWarningMessage("ts-chef: No active editor.");
-        return;
-      }
-      const rawText =
-        editor.document.getText(editor.selection) || editor.document.getText();
-      const text = resolveVars(rawText, varStore);
-      try {
-        const result = runPipeline(text, steps);
-        await presentPipelineResult(editor, result, "Recipe", {
-          inline: (ed, res) => inlineResult.show(ed, res),
-          panel: (ed, res) => panelResult.show(ed, res),
-        });
-      } catch (e) {
-        log(`Recipe apply error: ${e}`);
-        vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
-      }
-    },
-    onSave: async (name, steps) => {
-      if (!name) {
-        vscode.window.showWarningMessage(
-          "ts-chef: Name the recipe before saving.",
+  const argDefsCache = new Map<string, ArgConfig[]>();
+  const argDefsFor = (opName: string): ArgConfig[] => {
+    const cached = argDefsCache.get(opName);
+    if (cached) return cached;
+    const entry = registry.find((e) => e.opName === opName);
+    const defs = entry ? entry.factory().args : [];
+    argDefsCache.set(opName, defs);
+    return defs;
+  };
+  const recipeView = new RecipeViewProvider(
+    opItems,
+    {
+      onApply: async (steps) => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showWarningMessage("ts-chef: No active editor.");
+          return;
+        }
+        const rawText =
+          editor.document.getText(editor.selection) ||
+          editor.document.getText();
+        const text = resolveVars(rawText, varStore);
+        try {
+          const result = runPipeline(text, steps);
+          await presentPipelineResult(editor, result, "Recipe", {
+            inline: (ed, res) => inlineResult.show(ed, res),
+            panel: (ed, res) => panelResult.show(ed, res),
+          });
+        } catch (e) {
+          log(`Recipe apply error: ${e}`);
+          vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
+        }
+      },
+      onSave: async (name, steps) => {
+        if (!name) {
+          vscode.window.showWarningMessage(
+            "ts-chef: Name the recipe before saving.",
+          );
+          return;
+        }
+        if (!steps.length) {
+          vscode.window.showWarningMessage("ts-chef: Recipe is empty.");
+          return;
+        }
+        const scope = vscode.workspace
+          .getConfiguration("tschef")
+          .get<StorageScope>("defaultPipelineScope", "global");
+        const raw = steps.map((s) => s.opName).join(" | ");
+        pipeStore.upsert(scope, { name, steps, raw });
+        pipeTree.refresh();
+        log(`Recipe "${name}" saved as pipeline (${scope})`);
+        vscode.window.showInformationMessage(
+          `ts-chef: Recipe "${name}" saved (${scope}).`,
         );
-        return;
-      }
-      if (!steps.length) {
-        vscode.window.showWarningMessage("ts-chef: Recipe is empty.");
-        return;
-      }
-      const scope = await pickScope();
-      if (!scope) return;
-      const raw = steps.map((s) => s.opName).join(" | ");
-      pipeStore.upsert(scope, { name, steps, raw });
-      pipeTree.refresh();
-      log(`Recipe "${name}" saved as pipeline (${scope})`);
-      vscode.window.showInformationMessage(
-        `ts-chef: Recipe "${name}" saved (${scope}).`,
-      );
+      },
     },
-  });
+    argDefsFor,
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("tschef.recipeView", recipeView, {
