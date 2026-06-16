@@ -13,6 +13,7 @@ export const window = {
   showInformationMessage: jest.fn(),
   setStatusBarMessage: jest.fn(),
   activeTextEditor: undefined as unknown,
+  createWebviewPanel: jest.fn(),
 };
 
 let configValues: Record<string, unknown> = {};
@@ -103,3 +104,8 @@ export class CodeLens {
     public readonly command?: unknown,
   ) {}
 }
+
+export const ViewColumn = {
+  Active: -1,
+  Beside: -2,
+};
