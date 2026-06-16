@@ -12,6 +12,7 @@ export const window = {
   showErrorMessage: jest.fn(),
   showInformationMessage: jest.fn(),
   setStatusBarMessage: jest.fn(),
+  activeTextEditor: undefined as unknown,
 };
 
 let configValues: Record<string, unknown> = {};
@@ -26,12 +27,14 @@ export const workspace: {
   getConfiguration: (section?: string) => {
     get: <T>(key: string, defaultValue: T) => T;
   };
+  onDidChangeTextDocument: jest.Mock;
 } = {
   workspaceFolders: undefined,
   getConfiguration: () => ({
     get: <T>(key: string, defaultValue: T): T =>
       key in configValues ? (configValues[key] as T) : defaultValue,
   }),
+  onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
 };
 
 export const env = {
@@ -51,5 +54,52 @@ export class Selection {
   constructor(
     public readonly anchor: unknown,
     public readonly active: unknown,
+  ) {}
+}
+
+export const languages = {
+  registerCodeLensProvider: jest.fn(() => ({ dispose: jest.fn() })),
+};
+
+export const commands = {
+  registerCommand: jest.fn<
+    { dispose: () => void },
+    [string, (...args: any[]) => any]
+  >(() => ({ dispose: jest.fn() })),
+  executeCommand: jest.fn(),
+};
+
+export class EventEmitter<T> {
+  private listeners: ((e: T) => void)[] = [];
+  event = (listener: (e: T) => void) => {
+    this.listeners.push(listener);
+    return { dispose: () => {} };
+  };
+  fire(data?: T): void {
+    for (const l of this.listeners) l(data as T);
+  }
+  dispose(): void {
+    this.listeners = [];
+  }
+}
+
+export class Range {
+  readonly start: { line: number; character: number };
+  readonly end: { line: number; character: number };
+  constructor(
+    startLine: number,
+    startCharacter: number,
+    endLine: number,
+    endCharacter: number,
+  ) {
+    this.start = { line: startLine, character: startCharacter };
+    this.end = { line: endLine, character: endCharacter };
+  }
+}
+
+export class CodeLens {
+  constructor(
+    public readonly range: unknown,
+    public readonly command?: unknown,
   ) {}
 }
