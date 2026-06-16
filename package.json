@@ -30,11 +30,6 @@
         "title": "tschef: Quick Convert Selection"
       },
       {
-        "command": "tschef.filterOperations",
-        "title": "tschef: Filter Operations",
-        "icon": "$(search)"
-      },
-      {
         "command": "tschef.runPipeline",
         "title": "tschef: Run Pipeline on Selection"
       },
@@ -75,6 +70,7 @@
         {
           "id": "tschef.operationsView",
           "name": "Operations",
+          "type": "webview",
           "contextualTitle": "tschef Operations"
         },
         {
@@ -98,11 +94,6 @@
         }
       ],
       "view/title": [
-        {
-          "command": "tschef.filterOperations",
-          "when": "view == tschef.operationsView",
-          "group": "navigation"
-        },
         {
           "command": "tschef.addVariable",
           "when": "view == tschef.variablesView",
