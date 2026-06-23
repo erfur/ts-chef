@@ -9,7 +9,6 @@ import {
   StorageScope,
   ScopedPipeline,
 } from "./storage/store";
-import { PipelinePanel } from "./panels/pipelinePanel";
 import {
   runOp,
   parsePipeline,
@@ -437,13 +436,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.openPipelineEditor", () => {
-      PipelinePanel.open(context, pipeStore);
-      log("Pipeline editor opened");
-    }),
-  );
-
-  context.subscriptions.push(
     vscode.commands.registerCommand(
       "tschef.runSavedPipeline",
       async (name: string, scope?: StorageScope) => {
@@ -488,7 +480,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const pipelines = pipeStore.loadAll();
         if (!pipelines.length) {
           vscode.window.showInformationMessage(
-            "ts-chef: No saved pipelines. Save one in the Pipeline Editor first.",
+            "ts-chef: No saved pipelines. Save one from the Recipe view first.",
           );
           return;
         }

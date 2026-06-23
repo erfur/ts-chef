@@ -39,10 +39,6 @@
         "title": "tschef: Run Pipeline on Selection"
       },
       {
-        "command": "tschef.openPipelineEditor",
-        "title": "tschef: Open Pipeline Editor"
-      },
-      {
         "command": "tschef.setVariable",
         "title": "tschef: Set Variable"
       },
