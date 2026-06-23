@@ -47,6 +47,12 @@ describe("RecipeViewProvider", () => {
     expect(v.webview.html).toContain("Save as pipeline");
   });
 
+  test("renders argument-bearing steps open by default", () => {
+    const { v } = setup();
+    expect(v.webview.html).toContain("const open = hasArgs;");
+    expect(v.webview.html).not.toContain("const open = expanded.has(i);");
+  });
+
   test("ready posts the empty recipe state with an empty defs map", () => {
     const { v, onMessage } = setup();
     onMessage({ type: "ready" });

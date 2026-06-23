@@ -382,7 +382,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         let html = "";
         steps.forEach((s, i) => {
           const hasArgs = argDefs(s.opName).length > 0;
-          const open = expanded.has(i);
+          const open = hasArgs;
           html +=
             '<div class="step" draggable="true" data-i="' +
             i +
