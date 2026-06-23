@@ -1,6 +1,7 @@
 import { RecipeViewProvider } from "../../src/providers/recipeViewProvider";
 import type { WebviewView } from "vscode";
 import type { ArgConfig } from "../../src/chef/Operation";
+import { JSDOM } from "jsdom";
 
 const ITEMS = [
   { opName: "FromBase64", displayName: "From Base64", module: "Encoding" },
@@ -36,6 +37,29 @@ function setup() {
   return { p, v, onApply, onSave, argDefsFor, onMessage };
 }
 
+function renderRecipeDom(html: string) {
+  const dom = new JSDOM(html, {
+    runScripts: "dangerously",
+    beforeParse(window) {
+      Object.defineProperty(window, "acquireVsCodeApi", {
+        value: () => ({ postMessage: jest.fn() }),
+      });
+    },
+  });
+
+  dom.window.dispatchEvent(
+    new dom.window.MessageEvent("message", {
+      data: {
+        type: "state",
+        recipe: { name: "r1", steps: [{ opName: "FromBase64", args: [""] }] },
+        defs: { FromBase64: ARG_DEFS },
+      },
+    }),
+  );
+
+  return dom;
+}
+
 beforeEach(() => jest.clearAllMocks());
 
 describe("RecipeViewProvider", () => {
@@ -47,10 +71,35 @@ describe("RecipeViewProvider", () => {
     expect(v.webview.html).toContain("Save as pipeline");
   });
 
-  test("renders argument-bearing steps open by default", () => {
+  test("renders argument-bearing steps open by default while honoring collapse state", () => {
     const { v } = setup();
-    expect(v.webview.html).toContain("const open = hasArgs;");
-    expect(v.webview.html).not.toContain("const open = expanded.has(i);");
+    const dom = renderRecipeDom(v.webview.html);
+
+    expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
+    expect(dom.window.document.querySelector("[data-toggle]")?.textContent).toBe(
+      "▲",
+    );
+
+    dom.window.document
+      .querySelector<HTMLElement>("[data-toggle]")
+      ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+
+    expect(dom.window.document.querySelector(".step-args")).toBeNull();
+    expect(dom.window.document.querySelector("[data-toggle]")?.textContent).toBe(
+      "▼",
+    );
+
+    dom.window.dispatchEvent(
+      new dom.window.MessageEvent("message", {
+        data: {
+          type: "state",
+          recipe: { name: "r1", steps: [{ opName: "FromBase64", args: [""] }] },
+          defs: { FromBase64: ARG_DEFS },
+        },
+      }),
+    );
+
+    expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
   });
 
   test("ready posts the empty recipe state with an empty defs map", () => {

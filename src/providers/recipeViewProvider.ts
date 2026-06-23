@@ -202,7 +202,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       const stepsEl = document.getElementById("steps");
       let steps = [];
       let defs = {};
-      const expanded = new Set();
+      const collapsed = new Set();
       let dragIdx = -1;
 
       function esc(s) {
@@ -382,7 +382,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         let html = "";
         steps.forEach((s, i) => {
           const hasArgs = argDefs(s.opName).length > 0;
-          const open = hasArgs;
+          const open = hasArgs && !collapsed.has(i);
           html +=
             '<div class="step" draggable="true" data-i="' +
             i +
@@ -466,15 +466,15 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         const tog = e.target.closest("[data-toggle]");
         if (tog) {
           const i = Number(tog.dataset.toggle);
-          if (expanded.has(i)) expanded.delete(i);
-          else expanded.add(i);
+          if (collapsed.has(i)) collapsed.delete(i);
+          else collapsed.add(i);
           render();
           return;
         }
         const rm = e.target.closest("[data-rm]");
         if (rm) {
           steps.splice(Number(rm.dataset.rm), 1);
-          expanded.clear();
+          collapsed.clear();
           render();
           emitEdit();
         }
@@ -497,7 +497,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         const moved = steps.splice(dragIdx, 1)[0];
         steps.splice(to, 0, moved);
         dragIdx = -1;
-        expanded.clear();
+        collapsed.clear();
         render();
         emitEdit();
       });
@@ -508,7 +508,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
           nameEl.value = msg.recipe.name || "";
           steps = Array.isArray(msg.recipe.steps) ? msg.recipe.steps : [];
           defs = msg.defs || {};
-          expanded.clear();
+          collapsed.clear();
           render();
         }
       });
