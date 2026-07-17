@@ -90,8 +90,14 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       body {
         color: var(--vscode-foreground);
         font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
         padding: 0;
         margin: 0;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
       }
       #name {
         width: 100%;
@@ -148,7 +154,6 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       .arg-label {
         opacity: 0.8;
         min-width: 70px;
-        font-size: 11px;
       }
       .arg-row input[type="text"],
       .arg-row input[type="number"],
@@ -159,7 +164,6 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         color: var(--vscode-input-foreground);
         border: 1px solid var(--vscode-input-border, #555);
         padding: 2px 5px;
-        font-size: 11px;
       }
       .arg-row input[type="checkbox"] {
         cursor: pointer;

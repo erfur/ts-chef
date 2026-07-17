@@ -71,23 +71,33 @@ describe("RecipeViewProvider", () => {
     expect(v.webview.html).toContain("Save as pipeline");
   });
 
+  test("uses VS Code default typography for all recipe fields", () => {
+    const { v } = setup();
+
+    expect(v.webview.html).toContain("font-size: var(--vscode-font-size);");
+    expect(v.webview.html).toMatch(
+      /input,\s*select,\s*button\s*{\s*font: inherit;/,
+    );
+    expect(v.webview.html).not.toContain("font-size: 11px;");
+  });
+
   test("renders argument-bearing steps open by default while honoring collapse state", () => {
     const { v } = setup();
     const dom = renderRecipeDom(v.webview.html);
 
     expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
-    expect(dom.window.document.querySelector("[data-toggle]")?.textContent).toBe(
-      "▲",
-    );
+    expect(
+      dom.window.document.querySelector("[data-toggle]")?.textContent,
+    ).toBe("▲");
 
     dom.window.document
       .querySelector<HTMLElement>("[data-toggle]")
       ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 
     expect(dom.window.document.querySelector(".step-args")).toBeNull();
-    expect(dom.window.document.querySelector("[data-toggle]")?.textContent).toBe(
-      "▼",
-    );
+    expect(
+      dom.window.document.querySelector("[data-toggle]")?.textContent,
+    ).toBe("▼");
 
     dom.window.dispatchEvent(
       new dom.window.MessageEvent("message", {
