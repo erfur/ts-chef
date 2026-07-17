@@ -1,6 +1,6 @@
 import { WebviewResultController } from "../../src/commands/webviewResult";
-import { window, env, ViewColumn } from "../vscode-mock";
-import type { TextEditor } from "vscode";
+import { window, env, Range, ViewColumn } from "../vscode-mock";
+import type { Range as VsCodeRange, TextEditor } from "vscode";
 
 function makeFakePanel() {
   const webview = {
@@ -93,6 +93,20 @@ describe("WebviewResultController", () => {
       editor.selection,
       "RESULT",
     );
+  });
+
+  test("replace uses an explicit target supplied to show", async () => {
+    const panel = makeFakePanel();
+    window.createWebviewPanel.mockReturnValue(panel);
+    const c = new WebviewResultController();
+    const { editor, editBuilder } = makeEditor();
+    const target = new Range(1, 3, 1, 3) as unknown as VsCodeRange;
+    c.show(editor as unknown as TextEditor, "RESULT", target);
+
+    const onMessage = panel.webview.onDidReceiveMessage.mock.calls[0][0];
+    await onMessage({ type: "replace" });
+
+    expect(editBuilder.replace).toHaveBeenCalledWith(target, "RESULT");
   });
 
   test("copy message writes to the clipboard", async () => {

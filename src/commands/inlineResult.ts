@@ -33,13 +33,17 @@ export class InlineResultController implements vscode.CodeLensProvider {
     );
   }
 
-  /** Add `result` as a new inline CodeLens row for the editor's selection. */
-  show(editor: vscode.TextEditor, result: string): void {
+  /** Add `result` as a new inline CodeLens row for the supplied target. */
+  show(
+    editor: vscode.TextEditor,
+    result: string,
+    targetRange: vscode.Range = replaceTarget(editor),
+  ): void {
     this.results.push({
       id: this.seq++,
       editor,
       uri: editor.document.uri,
-      targetRange: replaceTarget(editor),
+      targetRange,
       result,
     });
     this._onDidChangeCodeLenses.fire();

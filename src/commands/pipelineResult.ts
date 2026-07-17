@@ -20,10 +20,15 @@ export function replaceTarget(editor: vscode.TextEditor): vscode.Selection {
     : editor.selection;
 }
 
-type ResultRenderer = (
+export type ResultRenderer = (
   editor: vscode.TextEditor,
   result: string,
+  target: vscode.Range,
 ) => void | Promise<void>;
+
+export type ResultRenderers = Partial<
+  Record<"inline" | "panel", ResultRenderer>
+>;
 
 /**
  * Present a pipeline's result according to the `tschef.pipelineResultAction`
@@ -40,14 +45,15 @@ export async function presentPipelineResult(
   editor: vscode.TextEditor,
   result: string,
   label: string,
-  render?: Partial<Record<"inline" | "panel", ResultRenderer>>,
+  render?: ResultRenderers,
+  target: vscode.Range = replaceTarget(editor),
 ): Promise<void> {
   const mode = vscode.workspace
     .getConfiguration("tschef")
     .get<PipelineResultAction>("pipelineResultAction", "popup");
 
   if (mode === "replace") {
-    await editor.edit((eb) => eb.replace(replaceTarget(editor), result));
+    await editor.edit((eb) => eb.replace(target, result));
     vscode.window.setStatusBarMessage(
       "ts-chef: Pipeline result replaced selection",
       3000,
@@ -64,7 +70,7 @@ export async function presentPipelineResult(
   if (mode === "inline" || mode === "panel") {
     const renderer = render?.[mode];
     if (renderer) {
-      await renderer(editor, result);
+      await renderer(editor, result, target);
       return;
     }
   }
@@ -76,7 +82,7 @@ export async function presentPipelineResult(
     "Copy",
   );
   if (action === "Replace") {
-    await editor.edit((eb) => eb.replace(replaceTarget(editor), result));
+    await editor.edit((eb) => eb.replace(target, result));
   }
   if (action === "Copy") {
     vscode.env.clipboard.writeText(result);

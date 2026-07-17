@@ -6,8 +6,14 @@ import {
   languages,
   workspace,
   CodeLens,
+  Range,
 } from "../vscode-mock";
-import type { ExtensionContext, TextDocument, TextEditor } from "vscode";
+import type {
+  ExtensionContext,
+  Range as VsCodeRange,
+  TextDocument,
+  TextEditor,
+} from "vscode";
 
 type Lens = InstanceType<typeof CodeLens>;
 
@@ -159,6 +165,20 @@ describe("InlineResultController (multi-result)", () => {
 
     expect(editBuilder.replace).toHaveBeenCalledWith(editor.selection, "ONE");
     expect(c.provideCodeLenses(fakeDoc("file:///doc"))).toHaveLength(4);
+  });
+
+  test("apply replace uses an explicit target supplied to show", async () => {
+    const c = new InlineResultController();
+    c.register(fakeContext());
+    const { editor, editBuilder } = makeEditor();
+    const target = new Range(2, 3, 2, 3) as unknown as VsCodeRange;
+    c.show(editor as unknown as TextEditor, "RESULT", target);
+
+    const lenses = c.provideCodeLenses(fakeDoc()) as Lens[];
+    const id = cmd(lenses[1]).arguments?.[1] as number;
+    await getApply()("replace", id);
+
+    expect(editBuilder.replace).toHaveBeenCalledWith(target, "RESULT");
   });
 
   test("apply('replace', id) targets the stored editor, not the active one", async () => {

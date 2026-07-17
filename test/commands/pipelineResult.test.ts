@@ -1,6 +1,13 @@
 import { presentPipelineResult } from "../../src/commands/pipelineResult";
-import { window, env, __setConfig, Position, Selection } from "../vscode-mock";
-import type { TextEditor } from "vscode";
+import {
+  window,
+  env,
+  __setConfig,
+  Position,
+  Range,
+  Selection,
+} from "../vscode-mock";
+import type { Range as VsCodeRange, TextEditor } from "vscode";
 
 /** Build a fake TextEditor with a spyable edit builder. */
 function makeEditor(opts?: { selectionEmpty?: boolean; text?: string }) {
@@ -78,6 +85,28 @@ describe("presentPipelineResult", () => {
     expect(range).toBeInstanceOf(Selection);
   });
 
+  test.each(["replace", "popup"] as const)(
+    "%s mode uses an explicit replacement target",
+    async (mode) => {
+      __setConfig({ pipelineResultAction: mode });
+      if (mode === "popup") {
+        window.showInformationMessage.mockResolvedValue("Replace");
+      }
+      const { editor, editBuilder } = makeEditor({ selectionEmpty: true });
+      const target = new Range(0, 2, 0, 2) as unknown as VsCodeRange;
+
+      await presentPipelineResult(
+        editor as unknown as TextEditor,
+        "RESULT",
+        "Result",
+        undefined,
+        target,
+      );
+
+      expect(editBuilder.replace).toHaveBeenCalledWith(target, "RESULT");
+    },
+  );
+
   test("popup mode shows the message and replaces when Replace is chosen", async () => {
     __setConfig({}); // default -> popup
     window.showInformationMessage.mockResolvedValue("Replace");
@@ -140,7 +169,11 @@ describe("presentPipelineResult", () => {
       { inline: showInline },
     );
 
-    expect(showInline).toHaveBeenCalledWith(editor, "RESULT");
+    expect(showInline).toHaveBeenCalledWith(
+      editor,
+      "RESULT",
+      editor.selection,
+    );
     expect(window.showInformationMessage).not.toHaveBeenCalled();
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
@@ -157,7 +190,11 @@ describe("presentPipelineResult", () => {
       { panel: showPanel },
     );
 
-    expect(showPanel).toHaveBeenCalledWith(editor, "RESULT");
+    expect(showPanel).toHaveBeenCalledWith(
+      editor,
+      "RESULT",
+      editor.selection,
+    );
     expect(window.showInformationMessage).not.toHaveBeenCalled();
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
@@ -178,6 +215,23 @@ describe("presentPipelineResult", () => {
       "Replace",
       "Copy",
     );
+  });
+
+  test("renderer receives the explicit replacement target", async () => {
+    __setConfig({ pipelineResultAction: "inline" });
+    const showInline = jest.fn();
+    const { editor } = makeEditor({ selectionEmpty: true });
+    const target = new Range(0, 2, 0, 2) as unknown as VsCodeRange;
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+      { inline: showInline },
+      target,
+    );
+
+    expect(showInline).toHaveBeenCalledWith(editor, "RESULT", target);
   });
 
   test("popup mode truncates a long result preview with an ellipsis", async () => {

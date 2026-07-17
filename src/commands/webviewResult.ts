@@ -82,9 +82,13 @@ export class WebviewResultController {
     context.subscriptions.push({ dispose: () => this.panel?.dispose() });
   }
 
-  /** Show `result` in the panel for the editor's selection. */
-  show(editor: vscode.TextEditor, result: string): void {
-    this.state = { editor, targetRange: replaceTarget(editor), result };
+  /** Show `result` in the panel for the supplied target. */
+  show(
+    editor: vscode.TextEditor,
+    result: string,
+    targetRange: vscode.Range = replaceTarget(editor),
+  ): void {
+    this.state = { editor, targetRange, result };
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
         "tschef.result",
