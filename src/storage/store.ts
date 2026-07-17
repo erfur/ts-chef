@@ -29,79 +29,19 @@ function writeJSON(file: string, data: unknown): void {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf-8");
 }
 
-// ---- Variables ----
-
-export interface Variable {
-  name: string;
-  value: string;
-  description?: string;
-}
-
-export interface ScopedVariable extends Variable {
-  scope: StorageScope;
-}
-
-export class VariableStore {
-  constructor(private globalDir: string) {}
-
-  private dir(scope: StorageScope): string | undefined {
-    return scope === "global" ? this.globalDir : workspaceStoreDir();
-  }
-
-  load(scope: StorageScope): Variable[] {
-    const dir = this.dir(scope);
-    if (!dir) return [];
-    return readJSON<Variable[]>(path.join(dir, "variables.json"), []);
-  }
-
-  /** Merged view of both scopes; workspace items first. */
-  loadAll(): ScopedVariable[] {
-    const ws = this.load("workspace").map((v) => ({
-      ...v,
-      scope: "workspace" as const,
-    }));
-    const gl = this.load("global").map((v) => ({
-      ...v,
-      scope: "global" as const,
-    }));
-    return [...ws, ...gl];
-  }
-
-  save(scope: StorageScope, vars: Variable[]): void {
-    const dir = this.dir(scope);
-    if (!dir) {
-      vscode.window.showWarningMessage(
-        "ts-chef: open a workspace folder to save variables.",
-      );
-      return;
+export function removeLegacyVariableFiles(
+  globalDir: string,
+  reportError: (message: string) => void,
+): void {
+  const dirs = [globalDir, workspaceStoreDir()];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const file = path.join(dir, "variables.json");
+    try {
+      fs.rmSync(file, { force: true });
+    } catch (error) {
+      reportError(`Failed to remove ${file}: ${error}`);
     }
-    ensureDir(dir);
-    writeJSON(path.join(dir, "variables.json"), vars);
-  }
-
-  /** Resolve a variable value; workspace overrides global. */
-  get(name: string): string | undefined {
-    const ws = this.load("workspace").find((v) => v.name === name);
-    if (ws) return ws.value;
-    return this.load("global").find((v) => v.name === name)?.value;
-  }
-
-  set(
-    scope: StorageScope,
-    name: string,
-    value: string,
-    description?: string,
-  ): void {
-    const vars = this.load(scope).filter((v) => v.name !== name);
-    vars.push({ name, value, description });
-    this.save(scope, vars);
-  }
-
-  delete(scope: StorageScope, name: string): void {
-    this.save(
-      scope,
-      this.load(scope).filter((v) => v.name !== name),
-    );
   }
 }
 

@@ -39,22 +39,9 @@
         "title": "tschef: Run Pipeline on Selection"
       },
       {
-        "command": "tschef.setVariable",
-        "title": "tschef: Set Variable"
-      },
-      {
-        "command": "tschef.showVariables",
-        "title": "tschef: Show Variables"
-      },
-      {
         "command": "tschef.runSavedPipelinePicker",
         "title": "tschef: Run Saved Pipeline",
         "icon": "$(run)"
-      },
-      {
-        "command": "tschef.addVariable",
-        "title": "tschef: Add Variable",
-        "icon": "$(add)"
       }
     ],
     "viewsContainers": {
@@ -81,11 +68,6 @@
           "contextualTitle": "tschef Recipe"
         },
         {
-          "id": "tschef.variablesView",
-          "name": "Variables",
-          "contextualTitle": "tschef Variables"
-        },
-        {
           "id": "tschef.pipelinesView",
           "name": "Pipelines",
           "contextualTitle": "tschef Pipelines"
@@ -101,11 +83,6 @@
         }
       ],
       "view/title": [
-        {
-          "command": "tschef.addVariable",
-          "when": "view == tschef.variablesView",
-          "group": "navigation"
-        },
         {
           "command": "tschef.runSavedPipelinePicker",
           "when": "view == tschef.pipelinesView",

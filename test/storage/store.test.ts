@@ -1,7 +1,11 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { PipelineStore, VariableStore, Pipeline } from "../../src/storage/store";
+import {
+  PipelineStore,
+  Pipeline,
+  removeLegacyVariableFiles,
+} from "../../src/storage/store";
 import * as vscode from "vscode";
 
 // `vscode` is the mock from test/vscode-mock.ts (via moduleNameMapper).
@@ -50,7 +54,9 @@ describe("scope-aware stores", () => {
   test("workspace pipeline save persists under workspace dir tagged workspace", () => {
     const store = new PipelineStore(globalDir);
     store.upsert("workspace", samplePipeline("w1"));
-    expect(fs.existsSync(path.join(wsDir, ".ts-chef", "pipelines.json"))).toBe(true);
+    expect(fs.existsSync(path.join(wsDir, ".ts-chef", "pipelines.json"))).toBe(
+      true,
+    );
     const all = store.loadAll();
     expect(all).toHaveLength(1);
     expect(all[0].scope).toBe("workspace");
@@ -86,19 +92,6 @@ describe("scope-aware stores", () => {
     expect(all[0].scope).toBe("global");
   });
 
-  test("variable get: workspace overrides global", () => {
-    const store = new VariableStore(globalDir);
-    store.set("global", "key", "G");
-    store.set("workspace", "key", "W");
-    expect(store.get("key")).toBe("W");
-  });
-
-  test("variable get falls back to global when no workspace value", () => {
-    const store = new VariableStore(globalDir);
-    store.set("global", "key", "G");
-    expect(store.get("key")).toBe("G");
-  });
-
   test("workspace save with no folder open warns and writes nothing", () => {
     mockVscode.workspace.workspaceFolders = undefined;
     const store = new PipelineStore(globalDir);
@@ -115,25 +108,64 @@ describe("scope-aware stores", () => {
     expect(mockVscode.window.showWarningMessage).not.toHaveBeenCalled();
   });
 
-  test("variable loadAll merges both scopes, workspace first", () => {
-    const store = new VariableStore(globalDir);
-    store.set("global", "g", "G");
-    store.set("workspace", "w", "W");
-    const all = store.loadAll();
-    expect(all.map((v) => [v.name, v.scope])).toEqual([
-      ["w", "workspace"],
-      ["g", "global"],
-    ]);
+  test("legacy variable cleanup removes global and workspace files only", () => {
+    const vscodeDir = path.join(wsDir, ".vscode");
+    const workspaceStoreDir = path.join(vscodeDir, "ts-chef");
+    fs.mkdirSync(workspaceStoreDir, { recursive: true });
+
+    const globalVariables = path.join(globalDir, "variables.json");
+    const workspaceVariables = path.join(workspaceStoreDir, "variables.json");
+    const globalKeep = path.join(globalDir, "pipelines.json");
+    const workspaceKeep = path.join(workspaceStoreDir, "pipelines.json");
+    fs.writeFileSync(globalVariables, "[]");
+    fs.writeFileSync(workspaceVariables, "[]");
+    fs.writeFileSync(globalKeep, "[]");
+    fs.writeFileSync(workspaceKeep, "[]");
+
+    removeLegacyVariableFiles(globalDir, jest.fn());
+
+    expect(fs.existsSync(globalVariables)).toBe(false);
+    expect(fs.existsSync(workspaceVariables)).toBe(false);
+    expect(fs.existsSync(globalKeep)).toBe(true);
+    expect(fs.existsSync(workspaceKeep)).toBe(true);
+    expect(fs.existsSync(globalDir)).toBe(true);
+    expect(fs.existsSync(workspaceStoreDir)).toBe(true);
   });
 
-  test("variable delete only affects the target scope", () => {
-    const store = new VariableStore(globalDir);
-    store.set("global", "x", "G");
-    store.set("workspace", "x", "W");
-    store.delete("workspace", "x");
-    const all = store.loadAll();
-    expect(all).toHaveLength(1);
-    expect(all[0].scope).toBe("global");
-    expect(all[0].value).toBe("G");
+  test("legacy variable cleanup tolerates missing files", () => {
+    const reportError = jest.fn();
+
+    expect(() =>
+      removeLegacyVariableFiles(globalDir, reportError),
+    ).not.toThrow();
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  test("legacy variable cleanup reports deletion failures and continues", () => {
+    const globalVariables = path.join(globalDir, "variables.json");
+    const workspaceStoreDir = path.join(wsDir, ".ts-chef");
+    const workspaceVariables = path.join(workspaceStoreDir, "variables.json");
+    fs.mkdirSync(workspaceStoreDir, { recursive: true });
+    fs.writeFileSync(globalVariables, "[]");
+    fs.writeFileSync(workspaceVariables, "[]");
+    const realRmSync = fs.rmSync;
+    const mutableFs = jest.requireActual<typeof fs>("fs");
+    const rmSpy = jest
+      .spyOn(mutableFs, "rmSync")
+      .mockImplementation((target, options) => {
+        if (target === globalVariables) throw new Error("denied");
+        return realRmSync(target, options);
+      });
+    const reportError = jest.fn();
+
+    removeLegacyVariableFiles(globalDir, reportError);
+
+    expect(reportError).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `Failed to remove ${globalVariables}: Error: denied`,
+      ),
+    );
+    expect(fs.existsSync(workspaceVariables)).toBe(false);
+    rmSpy.mockRestore();
   });
 });

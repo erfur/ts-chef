@@ -32,7 +32,6 @@ Use it to inspect encoded strings, build repeatable transformation pipelines, de
 - **Quick Convert** for applying suggested transformations directly to selected editor text.
 - **Pipeline Editor** for composing multi-step recipes with configurable operation arguments.
 - **Saved pipelines** for reusable workflows, stored per-workspace or system-wide (global) so they are available in every workspace.
-- **Variable support** for storing values and reusing them in later pipeline steps.
 
 ## Installation
 

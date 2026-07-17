@@ -28,6 +28,6 @@ When you run a pipeline from a command (**ts-chef: Run Pipeline on Selection** o
 - `inline` — show the result in a CodeLens row above the selection, with Replace/Copy/Close actions (stays open until you close it).
 - `panel` — show the full multi-line result in a webview panel beside the editor, with Replace/Copy/Close actions (stays open until you close it).
 
-## Variables
+## Recipe registers
 
-You can use the **Register** operation to save intermediate results into variables (e.g., `$R0`, `$R1`). These can then be passed as arguments into subsequent operations in the same pipeline.
+Use the **Register** operation to capture intermediate results into recipe-local registers such as `$R0` and `$R1`. Later operations in the same recipe can reference those registers in their arguments.
