@@ -11,7 +11,9 @@ describe("package contributions", () => {
 
   test("does not contribute saved-variable commands or view", () => {
     const commands = pkg.contributes.commands.map((command) => command.command);
-    const views = pkg.contributes.views["tschef-sidebar"].map((view) => view.id);
+    const views = pkg.contributes.views["tschef-sidebar"].map(
+      (view) => view.id,
+    );
 
     expect(commands).not.toContain("tschef.setVariable");
     expect(commands).not.toContain("tschef.showVariables");

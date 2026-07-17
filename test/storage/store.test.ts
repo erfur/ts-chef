@@ -54,7 +54,9 @@ describe("scope-aware stores", () => {
   test("workspace pipeline save persists under workspace dir tagged workspace", () => {
     const store = new PipelineStore(globalDir);
     store.upsert("workspace", samplePipeline("w1"));
-    expect(fs.existsSync(path.join(wsDir, ".ts-chef", "pipelines.json"))).toBe(true);
+    expect(fs.existsSync(path.join(wsDir, ".ts-chef", "pipelines.json"))).toBe(
+      true,
+    );
     const all = store.loadAll();
     expect(all).toHaveLength(1);
     expect(all[0].scope).toBe("workspace");
@@ -133,7 +135,9 @@ describe("scope-aware stores", () => {
   test("legacy variable cleanup tolerates missing files", () => {
     const reportError = jest.fn();
 
-    expect(() => removeLegacyVariableFiles(globalDir, reportError)).not.toThrow();
+    expect(() =>
+      removeLegacyVariableFiles(globalDir, reportError),
+    ).not.toThrow();
     expect(reportError).not.toHaveBeenCalled();
   });
 
@@ -153,7 +157,9 @@ describe("scope-aware stores", () => {
     removeLegacyVariableFiles(globalDir, reportError);
 
     expect(reportError).toHaveBeenCalledWith(
-      expect.stringContaining(`Failed to remove ${globalVariables}: Error: denied`),
+      expect.stringContaining(
+        `Failed to remove ${globalVariables}: Error: denied`,
+      ),
     );
     rmSpy.mockRestore();
   });
