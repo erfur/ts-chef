@@ -143,7 +143,11 @@ describe("scope-aware stores", () => {
 
   test("legacy variable cleanup reports deletion failures and continues", () => {
     const globalVariables = path.join(globalDir, "variables.json");
+    const workspaceStoreDir = path.join(wsDir, ".ts-chef");
+    const workspaceVariables = path.join(workspaceStoreDir, "variables.json");
+    fs.mkdirSync(workspaceStoreDir, { recursive: true });
     fs.writeFileSync(globalVariables, "[]");
+    fs.writeFileSync(workspaceVariables, "[]");
     const realRmSync = fs.rmSync;
     const mutableFs = jest.requireActual<typeof fs>("fs");
     const rmSpy = jest
@@ -161,6 +165,7 @@ describe("scope-aware stores", () => {
         `Failed to remove ${globalVariables}: Error: denied`,
       ),
     );
+    expect(fs.existsSync(workspaceVariables)).toBe(false);
     rmSpy.mockRestore();
   });
 });
