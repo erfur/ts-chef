@@ -16,43 +16,16 @@ import {
   operationNeedsInput,
 } from "./commands/runner";
 import { presentPipelineResult } from "./commands/pipelineResult";
+import {
+  applyOperation,
+  promptForArgs,
+  resultToString,
+} from "./commands/applyOperation";
 import { InlineResultController } from "./commands/inlineResult";
 import { WebviewResultController } from "./commands/webviewResult";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
-import type { Operation, ArgConfig } from "./chef/Operation";
-
-function resultToString(result: unknown): string {
-  if (Array.isArray(result))
-    return Buffer.from(result as number[]).toString("utf-8");
-  if (typeof result === "string") return result;
-  if (result === null || result === undefined) return "";
-  return JSON.stringify(result, null, 2);
-}
-
-async function promptForArgs(opInstance: Operation): Promise<unknown[] | null> {
-  const result: unknown[] = [];
-  for (const argDef of opInstance.args) {
-    if (argDef.type === "toggleString" && (argDef.value as string) === "") {
-      const strVal = await vscode.window.showInputBox({
-        prompt: argDef.name,
-        placeHolder: `Enter ${argDef.name.toLowerCase()} (encoding: ${argDef.toggleValues?.join(" / ") ?? "Hex"})`,
-      });
-      if (strVal === undefined) return null;
-      const encoding =
-        argDef.toggleValues && argDef.toggleValues.length > 1
-          ? await vscode.window.showQuickPick(argDef.toggleValues, {
-              placeHolder: `Encoding for "${argDef.name}"`,
-            })
-          : argDef.toggleValues?.[0];
-      if (encoding === undefined) return null;
-      result.push({ string: strVal, option: encoding });
-    } else {
-      result.push(resolveDefaultArg(argDef));
-    }
-  }
-  return result;
-}
+import type { ArgConfig } from "./chef/Operation";
 
 function buildOpPickItems(): (vscode.QuickPickItem & { opName?: string })[] {
   const byModule = new Map<string, typeof registry>();
@@ -108,6 +81,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const panelResult = new WebviewResultController();
   panelResult.register(context);
 
+  const resultRenderers = {
+    inline: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
+      inlineResult.show(editor, result, target),
+    panel: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
+      panelResult.show(editor, result, target),
+  };
+
   const argDefsCache = new Map<string, ArgConfig[]>();
   const argDefsFor = (opName: string): ArgConfig[] => {
     const cached = argDefsCache.get(opName);
@@ -131,10 +111,12 @@ export function activate(context: vscode.ExtensionContext): void {
           editor.document.getText();
         try {
           const result = runPipeline(text, steps);
-          await presentPipelineResult(editor, result, "Recipe", {
-            inline: (ed, res) => inlineResult.show(ed, res),
-            panel: (ed, res) => panelResult.show(ed, res),
-          });
+          await presentPipelineResult(
+            editor,
+            result,
+            "Recipe",
+            resultRenderers,
+          );
         } catch (e) {
           log(`Recipe apply error: ${e}`);
           vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
@@ -203,37 +185,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "tschef.applyOperation",
       async (opName: string) => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-          vscode.window.showWarningMessage("ts-chef: No active editor.");
-          return;
-        }
-        const text = editor.document.getText(editor.selection);
-        if (!text) {
-          vscode.window.showWarningMessage("ts-chef: Select text first.");
-          return;
-        }
         const entry = registry.find((e) => e.opName === opName);
-        if (!entry) return;
-        const args = await promptForArgs(entry.factory());
-        if (args === null) return;
-        try {
-          const str = resultToString(runOp(opName, text, args));
-          if (str === "" && text !== "") {
-            vscode.window.showWarningMessage(
-              `ts-chef: "${entry.displayName}" produced an empty result — nothing replaced.`,
-            );
-            return;
-          }
-          await presentPipelineResult(editor, str, entry.displayName, {
-            inline: (ed, res) => inlineResult.show(ed, res),
-            panel: (ed, res) => panelResult.show(ed, res),
-          });
-          log(`applyOperation: "${entry.displayName}" applied`);
-        } catch (e) {
-          log(`applyOperation error: ${e}`);
-          vscode.window.showErrorMessage(`ts-chef: ${e}`);
-        }
+        await applyOperation(opName, entry, resultRenderers);
       },
     ),
   );
@@ -301,10 +254,7 @@ export function activate(context: vscode.ExtensionContext): void {
         log(
           `Pipeline ran: "${raw}", input ${text.length} chars → ${result.length} chars`,
         );
-        await presentPipelineResult(editor, result, "Result", {
-          inline: (ed, res) => inlineResult.show(ed, res),
-          panel: (ed, res) => panelResult.show(ed, res),
-        });
+        await presentPipelineResult(editor, result, "Result", resultRenderers);
       } catch (e) {
         log(`Pipeline error: ${e}`);
         vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
@@ -334,10 +284,12 @@ export function activate(context: vscode.ExtensionContext): void {
           log(
             `Ran saved pipeline "${name}": ${pipeline.steps.length} step(s), ${text.length} → ${result.length} chars`,
           );
-          await presentPipelineResult(editor, result, `Pipeline "${name}"`, {
-            inline: (ed, res) => inlineResult.show(ed, res),
-            panel: (ed, res) => panelResult.show(ed, res),
-          });
+          await presentPipelineResult(
+            editor,
+            result,
+            `Pipeline "${name}"`,
+            resultRenderers,
+          );
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
           vscode.window.showErrorMessage(
