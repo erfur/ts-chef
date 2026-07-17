@@ -29,6 +29,22 @@ function writeJSON(file: string, data: unknown): void {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf-8");
 }
 
+export function removeLegacyVariableFiles(
+  globalDir: string,
+  reportError: (message: string) => void,
+): void {
+  const dirs = [globalDir, workspaceStoreDir()];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    const file = path.join(dir, "variables.json");
+    try {
+      fs.rmSync(file, { force: true });
+    } catch (error) {
+      reportError(`Failed to remove ${file}: ${error}`);
+    }
+  }
+}
+
 // ---- Variables ----
 
 export interface Variable {

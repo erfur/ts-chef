@@ -1,7 +1,12 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { PipelineStore, VariableStore, Pipeline } from "../../src/storage/store";
+import {
+  PipelineStore,
+  VariableStore,
+  Pipeline,
+  removeLegacyVariableFiles,
+} from "../../src/storage/store";
 import * as vscode from "vscode";
 
 // `vscode` is the mock from test/vscode-mock.ts (via moduleNameMapper).
@@ -135,5 +140,57 @@ describe("scope-aware stores", () => {
     expect(all).toHaveLength(1);
     expect(all[0].scope).toBe("global");
     expect(all[0].value).toBe("G");
+  });
+
+  test("legacy variable cleanup removes global and workspace files only", () => {
+    const vscodeDir = path.join(wsDir, ".vscode");
+    const workspaceStoreDir = path.join(vscodeDir, "ts-chef");
+    fs.mkdirSync(workspaceStoreDir, { recursive: true });
+
+    const globalVariables = path.join(globalDir, "variables.json");
+    const workspaceVariables = path.join(workspaceStoreDir, "variables.json");
+    const globalKeep = path.join(globalDir, "pipelines.json");
+    const workspaceKeep = path.join(workspaceStoreDir, "pipelines.json");
+    fs.writeFileSync(globalVariables, "[]");
+    fs.writeFileSync(workspaceVariables, "[]");
+    fs.writeFileSync(globalKeep, "[]");
+    fs.writeFileSync(workspaceKeep, "[]");
+
+    removeLegacyVariableFiles(globalDir, jest.fn());
+
+    expect(fs.existsSync(globalVariables)).toBe(false);
+    expect(fs.existsSync(workspaceVariables)).toBe(false);
+    expect(fs.existsSync(globalKeep)).toBe(true);
+    expect(fs.existsSync(workspaceKeep)).toBe(true);
+    expect(fs.existsSync(globalDir)).toBe(true);
+    expect(fs.existsSync(workspaceStoreDir)).toBe(true);
+  });
+
+  test("legacy variable cleanup tolerates missing files", () => {
+    const reportError = jest.fn();
+
+    expect(() => removeLegacyVariableFiles(globalDir, reportError)).not.toThrow();
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  test("legacy variable cleanup reports deletion failures and continues", () => {
+    const globalVariables = path.join(globalDir, "variables.json");
+    fs.writeFileSync(globalVariables, "[]");
+    const realRmSync = fs.rmSync;
+    const mutableFs = jest.requireActual<typeof fs>("fs");
+    const rmSpy = jest
+      .spyOn(mutableFs, "rmSync")
+      .mockImplementation((target, options) => {
+        if (target === globalVariables) throw new Error("denied");
+        return realRmSync(target, options);
+      });
+    const reportError = jest.fn();
+
+    removeLegacyVariableFiles(globalDir, reportError);
+
+    expect(reportError).toHaveBeenCalledWith(
+      expect.stringContaining(`Failed to remove ${globalVariables}: Error: denied`),
+    );
+    rmSpy.mockRestore();
   });
 });
