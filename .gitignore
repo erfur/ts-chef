@@ -23,6 +23,7 @@ node_modules/
 !.vscode/extensions.json
 .history/
 .claude/
+.worktrees/
 
 # Documentation
 /docs/api/
