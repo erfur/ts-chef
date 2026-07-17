@@ -130,6 +130,29 @@ describe("presentPipelineResult", () => {
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
   });
 
+  test("popup mode resolves an omitted replacement target when Replace is chosen", async () => {
+    let resolveAction!: (action: "Replace") => void;
+    window.showInformationMessage.mockReturnValue(
+      new Promise((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    const { editor, editBuilder } = makeEditor();
+    const updatedSelection = { isEmpty: false };
+
+    const presenting = presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+    );
+    editor.selection = updatedSelection;
+    resolveAction("Replace");
+    await presenting;
+
+    expect(editBuilder.replace.mock.calls[0][0]).toBe(updatedSelection);
+    expect(editBuilder.replace.mock.calls[0][1]).toBe("RESULT");
+  });
+
   test("popup mode copies when Copy is chosen", async () => {
     window.showInformationMessage.mockResolvedValue("Copy");
     const { editor } = makeEditor();

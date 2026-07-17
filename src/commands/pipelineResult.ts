@@ -46,14 +46,16 @@ export async function presentPipelineResult(
   result: string,
   label: string,
   render?: ResultRenderers,
-  target: vscode.Range = replaceTarget(editor),
+  target?: vscode.Range,
 ): Promise<void> {
   const mode = vscode.workspace
     .getConfiguration("tschef")
     .get<PipelineResultAction>("pipelineResultAction", "popup");
 
   if (mode === "replace") {
-    await editor.edit((eb) => eb.replace(target, result));
+    await editor.edit((eb) =>
+      eb.replace(target ?? replaceTarget(editor), result),
+    );
     vscode.window.setStatusBarMessage(
       "ts-chef: Pipeline result replaced selection",
       3000,
@@ -70,7 +72,7 @@ export async function presentPipelineResult(
   if (mode === "inline" || mode === "panel") {
     const renderer = render?.[mode];
     if (renderer) {
-      await renderer(editor, result, target);
+      await renderer(editor, result, target ?? replaceTarget(editor));
       return;
     }
   }
@@ -82,7 +84,9 @@ export async function presentPipelineResult(
     "Copy",
   );
   if (action === "Replace") {
-    await editor.edit((eb) => eb.replace(target, result));
+    await editor.edit((eb) =>
+      eb.replace(target ?? replaceTarget(editor), result),
+    );
   }
   if (action === "Copy") {
     vscode.env.clipboard.writeText(result);

@@ -51,6 +51,18 @@ beforeEach(() => {
 });
 
 describe("applyOperation", () => {
+  test("rejects execution when there is no active editor", async () => {
+    (window as { activeTextEditor: unknown }).activeTextEditor = undefined;
+
+    await applyOperation("Required", entry("required"), {});
+
+    expect(window.showWarningMessage).toHaveBeenCalledWith(
+      "ts-chef: No active editor.",
+    );
+    expect(runOpMock).not.toHaveBeenCalled();
+    expect(presentMock).not.toHaveBeenCalled();
+  });
+
   test("rejects a required-input operation when selection is empty", async () => {
     const { editor } = makeEditor();
     (window as { activeTextEditor: unknown }).activeTextEditor = editor;
