@@ -35,6 +35,7 @@ export class GenerateLoremIpsum extends Operation {
     this.description = "Generate varying length lorem ipsum placeholder text.";
     this.infoURL = "https://wikipedia.org/wiki/Lorem_ipsum";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       {

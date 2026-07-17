@@ -31,6 +31,7 @@ export class GenerateECDSAKeyPair extends Operation {
     this.infoURL =
       "https://wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       {

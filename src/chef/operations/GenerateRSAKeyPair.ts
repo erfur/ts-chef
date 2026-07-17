@@ -30,6 +30,7 @@ export class GenerateRSAKeyPair extends Operation {
     this.description = `Generate an RSA key pair with a given number of bits.<br><br>${cryptNotice}`;
     this.infoURL = "https://wikipedia.org/wiki/RSA_(cryptosystem)";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       {

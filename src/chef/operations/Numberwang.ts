@@ -35,6 +35,7 @@ export class Numberwang extends Operation {
     this.infoURL =
       "https://wikipedia.org/wiki/That_Mitchell_and_Webb_Look#Recurring_sketches";
     this.inputType = "string";
+    this.inputMode = "optional";
     this.outputType = "string";
     this.args = [];
   }

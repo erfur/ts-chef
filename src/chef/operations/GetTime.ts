@@ -24,6 +24,7 @@ export class GetTime extends Operation {
       "Generates a timestamp showing the amount of time since the UNIX epoch (1970-01-01 00:00:00 UTC). Uses the W3C High Resolution Time API.";
     this.infoURL = "https://wikipedia.org/wiki/Unix_time";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "number";
     this.args = [
       {

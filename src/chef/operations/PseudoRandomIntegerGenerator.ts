@@ -32,6 +32,7 @@ export class PseudoRandomIntegerGenerator extends Operation {
       "A cryptographically-secure pseudo-random number generator (PRNG). Generates random integers within a specified range.";
     this.infoURL = "https://wikipedia.org/wiki/Pseudorandom_number_generator";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       { name: "Number of Integers", type: "number", value: 1, min: 1 },

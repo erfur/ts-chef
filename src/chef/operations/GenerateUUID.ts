@@ -26,6 +26,7 @@ export class GenerateUUID extends Operation {
       "Generates an RFC 9562 compliant Universally Unique Identifier (UUID). Supports v1, v3, v4, v5, v6, v7.";
     this.infoURL = "https://wikipedia.org/wiki/Universally_unique_identifier";
     this.inputType = "string";
+    this.inputMode = "optional";
     this.outputType = "string";
     this.args = [
       {

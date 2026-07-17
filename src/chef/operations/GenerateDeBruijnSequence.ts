@@ -30,6 +30,7 @@ export class GenerateDeBruijnSequence extends Operation {
       "Generates rolling keycode combinations given a certain alphabet size and key length.";
     this.infoURL = "https://wikipedia.org/wiki/De_Bruijn_sequence";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       {

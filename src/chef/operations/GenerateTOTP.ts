@@ -30,6 +30,7 @@ export class GenerateTOTP extends Operation {
     this.infoURL =
       "https://wikipedia.org/wiki/Time-based_One-time_Password_algorithm";
     this.inputType = "ArrayBuffer";
+    this.inputMode = "optional";
     this.outputType = "string";
     this.args = [
       {

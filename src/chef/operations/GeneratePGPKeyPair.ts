@@ -32,6 +32,7 @@ export class GeneratePGPKeyPair extends Operation {
     this.description = `Generates a new public/private PGP key pair. Supports RSA and Eliptic Curve (EC) keys.<br><br>${cryptNotice}`;
     this.infoURL = "https://wikipedia.org/wiki/Pretty_Good_Privacy";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "string";
     this.args = [
       {

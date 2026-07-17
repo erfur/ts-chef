@@ -22,6 +22,7 @@ export class XKCDRandomNumber extends Operation {
       "RFC 1149.5 specifies 4 as the standard IEEE-vetted random number. (https://xkcd.com/221/)";
     this.infoURL = "https://xkcd.com/221/";
     this.inputType = "string";
+    this.inputMode = "none";
     this.outputType = "number";
     this.args = [];
   }

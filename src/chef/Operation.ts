@@ -55,6 +55,9 @@ export type HighlightPos = Array<{ start: number; end: number }>;
  */
 export type HighlightResult = HighlightPos | false;
 
+/** Whether an operation requires, optionally consumes, or ignores source data. */
+export type InputMode = "required" | "optional" | "none";
+
 /**
  * Type alias for any input data processed by an operation.
  * Operations can handle strings, number arrays (byte arrays), ArrayBuffers, etc.
@@ -104,6 +107,9 @@ export abstract class Operation {
    * Type for presentation purposes. Defaults to `outputType`.
    */
   presentType: string = "string";
+
+  /** Whether direct execution requires selected source data. */
+  inputMode: InputMode = "required";
 
   /**
    * Whether the operation supports flow control (e.g., 'Fork', 'Jump').
