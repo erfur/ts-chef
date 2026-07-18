@@ -281,7 +281,8 @@ export class ResultsController implements vscode.Disposable {
     this.remove(item.id);
     const editor = await this.reveal(item);
     if (!editor) return;
-    await editor.edit((builder) => builder.replace(range, output));
+    const edited = await editor.edit((builder) => builder.replace(range, output));
+    if (!edited) throw new Error("Result replacement was not applied.");
   }
 
   private async onMessage(message: ResultsViewMessage): Promise<void> {

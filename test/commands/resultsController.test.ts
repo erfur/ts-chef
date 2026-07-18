@@ -497,6 +497,22 @@ describe("ResultsController", () => {
     expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
   });
 
+  test("warns once when editing a removed replacement returns false", async () => {
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    const { editor: shown } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(shown);
+    (shown.edit as jest.Mock).mockResolvedValue(false);
+    const { controller, emit, lastState } = setup();
+    controller.show(editor, "replacement", target(2, 6), source("Recipe"));
+    const id = lastState().items[0].id;
+
+    await emit({ type: "action", action: "replace", id });
+
+    expect(lastState().items).toHaveLength(0);
+    expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
+  });
+
   test("contains unexpected async action rejections at the message listener", async () => {
     const document = makeDocument("source.txt");
     const { editor } = makeEditor(document);
