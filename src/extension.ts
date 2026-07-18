@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const recipeView = new RecipeViewProvider(
     opItems,
     {
-      onApply: async (steps) => {
+      onApply: async (_name, steps) => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showWarningMessage("ts-chef: No active editor.");

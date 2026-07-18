@@ -5,7 +5,7 @@ import type { ArgConfig } from "../chef/Operation";
 type Recipe = { name: string; steps: PipelineStep[] };
 
 export type RecipeCallbacks = {
-  onApply: (steps: PipelineStep[]) => void | Promise<void>;
+  onApply: (name: string, steps: PipelineStep[]) => void | Promise<void>;
   onSave: (name: string, steps: PipelineStep[]) => void | Promise<void>;
 };
 
@@ -43,7 +43,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
             };
             break;
           case "apply":
-            await this.callbacks.onApply(this.recipe.steps);
+            await this.callbacks.onApply(this.recipe.name, this.recipe.steps);
             break;
           case "save":
             await this.callbacks.onSave(this.recipe.name, this.recipe.steps);

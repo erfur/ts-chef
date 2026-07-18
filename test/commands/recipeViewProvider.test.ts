@@ -161,11 +161,11 @@ describe("RecipeViewProvider", () => {
     });
   });
 
-  test("apply passes the current steps to onApply", () => {
+  test("apply passes the current recipe name and steps", () => {
     const { onMessage, onApply } = setup();
     const steps = [{ opName: "FromBase64", args: [] }];
-    onMessage({ type: "edit", name: "", steps });
+    onMessage({ type: "edit", name: "decode", steps });
     onMessage({ type: "apply" });
-    expect(onApply).toHaveBeenCalledWith(steps);
+    expect(onApply).toHaveBeenCalledWith("decode", steps);
   });
 });

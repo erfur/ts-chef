@@ -109,6 +109,10 @@ describe("applyOperation", () => {
       "Test operation",
       {},
       expect.anything(),
+      expect.objectContaining({
+        recipe: expect.any(Object),
+        evaluate: expect.any(Function),
+      }),
     );
   });
 
@@ -127,14 +131,19 @@ describe("applyOperation", () => {
     expect(target.active).toEqual(active);
   });
 
-  test("targets a non-empty selection and passes its text", async () => {
-    const { editor, selection } = makeEditor("selected");
+  test("presents an immutable one-step recipe that can recompute", async () => {
+    const { editor } = makeEditor("selected");
     (window as { activeTextEditor: unknown }).activeTextEditor = editor;
-    runOpMock.mockReturnValue("RESULT");
+    runOpMock.mockReturnValueOnce("RESULT").mockReturnValueOnce("UPDATED");
 
     await applyOperation("Required", entry("required"), {});
 
-    expect(runOpMock).toHaveBeenCalledWith("Required", "selected", []);
-    expect(presentMock.mock.calls[0][4]).toBe(selection);
+    const source = presentMock.mock.calls[0][5]!;
+    expect(source.recipe).toEqual({
+      name: "",
+      steps: [{ opName: "Required", args: [] }],
+    });
+    await expect(source.evaluate("changed")).resolves.toBe("UPDATED");
+    expect(runOpMock).toHaveBeenLastCalledWith("Required", "changed", []);
   });
 });

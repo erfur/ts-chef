@@ -67,13 +67,14 @@ export async function applyOperation(
 
   const args = await promptForArgs(operation);
   if (args === null) return;
+  const capturedArgs = structuredClone(args);
 
   const target = editor.selection.isEmpty
     ? new vscode.Selection(editor.selection.active, editor.selection.active)
     : editor.selection;
 
   try {
-    const result = await runOp(opName, text, args);
+    const result = await runOp(opName, text, capturedArgs);
     const str = resultToString(result);
     if (str === "" && text !== "") {
       vscode.window.showWarningMessage(
@@ -87,6 +88,16 @@ export async function applyOperation(
       entry.displayName,
       renderers,
       target,
+      {
+        recipe: {
+          name: "",
+          steps: [{ opName, args: structuredClone(capturedArgs) }],
+        },
+        evaluate: async (input) =>
+          resultToString(
+            await runOp(opName, input, structuredClone(capturedArgs)),
+          ),
+      },
     );
     log(`applyOperation: "${entry.displayName}" applied`);
   } catch (error) {
