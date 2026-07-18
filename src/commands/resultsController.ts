@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
+import { log } from "../logger";
 import type { PipelineStep } from "../storage/store";
 import type { RenderedResultSource } from "./pipelineResult";
 import {
@@ -31,6 +32,52 @@ type ResultsDependencies = {
   debounceMs?: number;
 };
 
+type OffsetChange = {
+  rangeOffset: number;
+  rangeLength: number;
+  text: string;
+};
+
+export function transformTrackedRange(
+  start: number,
+  end: number,
+  changes: readonly OffsetChange[],
+): { start: number; end: number; changed: boolean } {
+  const sorted = [...changes].sort((a, b) => a.rangeOffset - b.rangeOffset);
+  const mapBoundary = (offset: number, includeInsertion: boolean): number => {
+    let delta = 0;
+    for (const change of sorted) {
+      const changeStart = change.rangeOffset;
+      const changeEnd = changeStart + change.rangeLength;
+
+      if (change.rangeLength === 0 && changeStart === offset) {
+        if (includeInsertion) delta += change.text.length;
+        continue;
+      }
+      if (changeEnd <= offset) {
+        delta += change.text.length - change.rangeLength;
+        continue;
+      }
+      if (changeStart >= offset) break;
+      return changeStart + delta + (includeInsertion ? change.text.length : 0);
+    }
+    return offset + delta;
+  };
+
+  const changed = sorted.some((change) => {
+    const changeEnd = change.rangeOffset + change.rangeLength;
+    return change.rangeLength === 0
+      ? change.rangeOffset >= start && change.rangeOffset <= end
+      : change.rangeOffset < end && changeEnd > start;
+  });
+
+  return {
+    start: mapBoundary(start, false),
+    end: mapBoundary(end, true),
+    changed,
+  };
+}
+
 export class ResultsController {
   private results: ResultRecord[] = [];
   private filter: ResultFilter = "all";
@@ -52,6 +99,27 @@ export class ResultsController {
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
         this.removeDocument(document.uri.toString());
+      }),
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        const uri = event.document.uri.toString();
+        const documentLength = event.document.getText().length;
+        for (const item of this.results) {
+          if (item.document.uri.toString() !== uri) continue;
+          const tracked = transformTrackedRange(
+            item.startOffset,
+            item.endOffset,
+            event.contentChanges,
+          );
+          item.startOffset = Math.min(
+            Math.max(tracked.start, 0),
+            documentLength,
+          );
+          item.endOffset = Math.min(
+            Math.max(tracked.end, item.startOffset),
+            documentLength,
+          );
+          if (tracked.changed) this.schedule(item);
+        }
       }),
       this.view,
     );
@@ -122,7 +190,11 @@ export class ResultsController {
   private remove(id: number): void {
     const item = this.results.find((result) => result.id === id);
     if (!item) return;
-    if (item.timer) clearTimeout(item.timer);
+    item.generation++;
+    if (item.timer) {
+      clearTimeout(item.timer);
+      item.timer = undefined;
+    }
     this.results = this.results.filter((result) => result.id !== id);
     this.publish();
   }
@@ -133,11 +205,46 @@ export class ResultsController {
     );
     if (!removed.length) return;
     for (const item of removed) {
-      if (item.timer) clearTimeout(item.timer);
+      item.generation++;
+      if (item.timer) {
+        clearTimeout(item.timer);
+        item.timer = undefined;
+      }
     }
     this.results = this.results.filter(
       (item) => item.document.uri.toString() !== uri,
     );
+    this.publish();
+  }
+
+  private schedule(item: ResultRecord): void {
+    if (item.timer) clearTimeout(item.timer);
+    const generation = ++item.generation;
+    item.timer = setTimeout(() => {
+      item.timer = undefined;
+      void this.recompute(item, generation);
+    }, this.dependencies.debounceMs ?? 150);
+  }
+
+  private async recompute(
+    item: ResultRecord,
+    generation: number,
+  ): Promise<void> {
+    if (!this.results.includes(item) || item.document.isClosed) return;
+    const input = item.document.getText(this.range(item));
+    try {
+      const output = await item.source.evaluate(input);
+      if (!this.results.includes(item) || item.generation !== generation)
+        return;
+      item.output = output;
+      item.error = undefined;
+    } catch (error) {
+      if (!this.results.includes(item) || item.generation !== generation)
+        return;
+      item.output = undefined;
+      item.error = error instanceof Error ? error.message : String(error);
+      log(`Result recompute error: ${error}`);
+    }
     this.publish();
   }
 

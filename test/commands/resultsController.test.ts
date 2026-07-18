@@ -4,33 +4,54 @@ import type {
   TextDocument,
   TextEditor,
 } from "vscode";
-import { ResultsController } from "../../src/commands/resultsController";
+import {
+  ResultsController,
+  transformTrackedRange,
+} from "../../src/commands/resultsController";
 import type { RenderedResultSource } from "../../src/commands/pipelineResult";
 import type {
   ResultsViewMessage,
   ResultsViewProvider,
   ResultsViewState,
 } from "../../src/providers/resultsViewProvider";
-import {
-  env,
-  Position,
-  Range,
-  window,
-  workspace,
-} from "../vscode-mock";
+import { env, Position, Range, window, workspace } from "../vscode-mock";
 
-type FakeDocument = TextDocument & { isClosed: boolean };
+type OffsetChange = {
+  rangeOffset: number;
+  rangeLength: number;
+  text: string;
+};
+
+type FakeDocument = TextDocument & {
+  isClosed: boolean;
+  applyChanges: (changes: OffsetChange[]) => void;
+};
 
 function makeDocument(name: string, text = "0123456789"): FakeDocument {
   const uri = `file:///${name}`;
-  return {
+  let contents = text;
+  const document = {
     uri: { toString: () => uri },
     fileName: `/workspace/${name}`,
     isClosed: false,
-    getText: () => text,
+    getText: (range?: VsCodeRange) =>
+      range
+        ? contents.slice(range.start.character, range.end.character)
+        : contents,
     offsetAt: (position: { character: number }) => position.character,
     positionAt: (offset: number) => new Position(0, offset),
+    applyChanges: (changes: OffsetChange[]) => {
+      for (const change of [...changes].sort(
+        (a, b) => b.rangeOffset - a.rangeOffset,
+      )) {
+        contents =
+          contents.slice(0, change.rangeOffset) +
+          change.text +
+          contents.slice(change.rangeOffset + change.rangeLength);
+      }
+    },
   } as unknown as FakeDocument;
+  return document;
 }
 
 function makeEditor(document: FakeDocument, start = 1, end = 4) {
@@ -67,7 +88,7 @@ function target(start: number, end: number): VsCodeRange {
   return new Range(0, start, 0, end) as unknown as VsCodeRange;
 }
 
-function setup() {
+function setup(debounceMs?: number) {
   let listener: ((message: ResultsViewMessage) => void) | undefined;
   const states: ResultsViewState[] = [];
   const view = {
@@ -80,7 +101,11 @@ function setup() {
   } as unknown as ResultsViewProvider;
   const loadRecipe = jest.fn();
   const showPanel = jest.fn();
-  const controller = new ResultsController(view, { loadRecipe, showPanel });
+  const controller = new ResultsController(view, {
+    loadRecipe,
+    showPanel,
+    debounceMs,
+  });
   const context = { subscriptions: [] } as unknown as ExtensionContext;
   controller.register(context);
 
@@ -90,9 +115,20 @@ function setup() {
     showPanel,
     states,
     lastState: () => states[states.length - 1],
+    change: (document: FakeDocument, changes: OffsetChange[]) => {
+      document.applyChanges(changes);
+      const changeHandler = workspace.onDidChangeTextDocument.mock.calls[0][0];
+      changeHandler({ document, contentChanges: changes });
+    },
+    close: (document: FakeDocument) => {
+      document.isClosed = true;
+      const closeHandler = workspace.onDidCloseTextDocument.mock.calls[0][0];
+      closeHandler(document);
+    },
     emit: async (message: ResultsViewMessage | Record<string, unknown>) => {
       listener?.(message as ResultsViewMessage);
-      await new Promise<void>((resolve) => setImmediate(resolve));
+      await Promise.resolve();
+      await Promise.resolve();
     },
   };
 }
@@ -100,6 +136,189 @@ function setup() {
 beforeEach(() => {
   jest.clearAllMocks();
   (window as { activeTextEditor: unknown }).activeTextEditor = undefined;
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+describe("transformTrackedRange", () => {
+  test.each([
+    [
+      "edit before",
+      5,
+      9,
+      [{ rangeOffset: 0, rangeLength: 2, text: "1234" }],
+      7,
+      11,
+      false,
+    ],
+    [
+      "edit inside",
+      5,
+      9,
+      [{ rangeOffset: 6, rangeLength: 1, text: "XYZ" }],
+      5,
+      11,
+      true,
+    ],
+    [
+      "insert at start",
+      5,
+      9,
+      [{ rangeOffset: 5, rangeLength: 0, text: "X" }],
+      5,
+      10,
+      true,
+    ],
+    [
+      "insert at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "X" }],
+      5,
+      10,
+      true,
+    ],
+    [
+      "edit after",
+      5,
+      9,
+      [{ rangeOffset: 10, rangeLength: 1, text: "" }],
+      5,
+      9,
+      false,
+    ],
+    [
+      "edit ending at start",
+      5,
+      9,
+      [{ rangeOffset: 3, rangeLength: 2, text: "X" }],
+      4,
+      8,
+      false,
+    ],
+    [
+      "edit starting at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 2, text: "X" }],
+      5,
+      9,
+      false,
+    ],
+    [
+      "edit crossing start",
+      5,
+      9,
+      [{ rangeOffset: 3, rangeLength: 4, text: "X" }],
+      3,
+      6,
+      true,
+    ],
+    [
+      "edit crossing end",
+      5,
+      9,
+      [{ rangeOffset: 7, rangeLength: 4, text: "XY" }],
+      5,
+      9,
+      true,
+    ],
+    [
+      "edit covering range",
+      5,
+      9,
+      [{ rangeOffset: 3, rangeLength: 8, text: "X" }],
+      3,
+      4,
+      true,
+    ],
+  ] as const)(
+    "tracks %s",
+    (_name, start, end, changes, nextStart, nextEnd, changed) => {
+      expect(transformTrackedRange(start, end, [...changes])).toEqual({
+        start: nextStart,
+        end: nextEnd,
+        changed,
+      });
+    },
+  );
+
+  test("applies cumulative deltas from unordered original-document changes once", () => {
+    expect(
+      transformTrackedRange(5, 9, [
+        { rangeOffset: 6, rangeLength: 1, text: "XYZ" },
+        { rangeOffset: 0, rangeLength: 2, text: "1234" },
+      ]),
+    ).toEqual({ start: 7, end: 13, changed: true });
+  });
+
+  test.each([
+    [
+      "ignores an edit away from a point",
+      4,
+      4,
+      [{ rangeOffset: 6, rangeLength: 1, text: "X" }],
+      4,
+      4,
+      false,
+    ],
+    [
+      "shifts a point after an earlier edit",
+      4,
+      4,
+      [{ rangeOffset: 0, rangeLength: 1, text: "XYZ" }],
+      6,
+      6,
+      false,
+    ],
+    [
+      "expands a point for an insertion there",
+      4,
+      4,
+      [{ rangeOffset: 4, rangeLength: 0, text: "XY" }],
+      4,
+      6,
+      true,
+    ],
+    [
+      "tracks an insertion at document start",
+      0,
+      10,
+      [{ rangeOffset: 0, rangeLength: 0, text: "X" }],
+      0,
+      11,
+      true,
+    ],
+    [
+      "tracks an insertion at document end",
+      0,
+      10,
+      [{ rangeOffset: 10, rangeLength: 0, text: "X" }],
+      0,
+      11,
+      true,
+    ],
+    [
+      "tracks a whole-document replacement",
+      0,
+      10,
+      [{ rangeOffset: 0, rangeLength: 10, text: "new" }],
+      0,
+      3,
+      true,
+    ],
+  ] as const)(
+    "%s",
+    (_name, start, end, changes, nextStart, nextEnd, changed) => {
+      expect(transformTrackedRange(start, end, [...changes])).toEqual({
+        start: nextStart,
+        end: nextEnd,
+        changed,
+      });
+    },
+  );
 });
 
 describe("ResultsController", () => {
@@ -127,7 +346,8 @@ describe("ResultsController", () => {
     expect(lastState().items).toHaveLength(1);
     expect(lastState().items[0].source).toBe("a.txt");
 
-    const activeEditorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0];
+    const activeEditorHandler =
+      window.onDidChangeActiveTextEditor.mock.calls[0][0];
     activeEditorHandler(editorB);
     expect(lastState().items).toHaveLength(1);
     expect(lastState().items[0].source).toBe("b.txt");
@@ -143,7 +363,8 @@ describe("ResultsController", () => {
     controller.show(editor, "result", target(2, 6), original);
     const id = lastState().items[0].id;
     original.recipe.name = "Mutated";
-    (original.recipe.steps[0].args[0] as { alphabet: string }).alphabet = "changed";
+    (original.recipe.steps[0].args[0] as { alphabet: string }).alphabet =
+      "changed";
 
     await emit({ type: "open", id });
 
@@ -279,5 +500,193 @@ describe("ResultsController", () => {
     expect(loadRecipe).not.toHaveBeenCalled();
     expect(showPanel).not.toHaveBeenCalled();
     expect(lastState().items).toHaveLength(1);
+  });
+
+  test("moves action ranges for edits strictly before without recomputing", async () => {
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const { editor: shown, editBuilder } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(shown);
+    const recipe = source("Recipe");
+    const { controller, change, emit, lastState } = setup(10);
+    controller.show(editor, "result", target(5, 9), recipe);
+    const id = lastState().items[0].id;
+
+    change(document, [{ rangeOffset: 0, rangeLength: 2, text: "1234" }]);
+    await emit({ type: "open", id });
+
+    expect(shown.selection).toEqual(
+      expect.objectContaining({
+        anchor: document.positionAt(7),
+        active: document.positionAt(11),
+      }),
+    );
+    await emit({ type: "action", action: "replace", id });
+    expect(editBuilder.replace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: document.positionAt(7),
+        end: document.positionAt(11),
+      }),
+      "result",
+    );
+    expect(recipe.evaluate).not.toHaveBeenCalled();
+  });
+
+  test("debounces intersecting edits and evaluates the newest tracked text", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const recipe = source("Recipe");
+    const { controller, change, lastState } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    change(document, [{ rangeOffset: 4, rangeLength: 0, text: "Y" }]);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(recipe.evaluate).toHaveBeenCalledTimes(1);
+    expect(recipe.evaluate).toHaveBeenCalledWith("cXYde");
+    expect(lastState().items[0]).toMatchObject({ output: "cXYde" });
+  });
+
+  test("does not publish an older evaluation after a newer one", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    let resolveOld: (value: string) => void = () => {};
+    let resolveNew: (value: string) => void = () => {};
+    const oldResult = new Promise<string>((resolve) => {
+      resolveOld = resolve;
+    });
+    const newResult = new Promise<string>((resolve) => {
+      resolveNew = resolve;
+    });
+    const recipe = source("Recipe");
+    (recipe.evaluate as jest.Mock)
+      .mockReturnValueOnce(oldResult)
+      .mockReturnValueOnce(newResult);
+    const { controller, change, lastState } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    change(document, [{ rangeOffset: 4, rangeLength: 0, text: "Y" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    resolveNew("NEW");
+    await Promise.resolve();
+    expect(lastState().items[0]).toMatchObject({ output: "NEW" });
+
+    resolveOld("OLD");
+    await Promise.resolve();
+    expect(lastState().items[0]).toMatchObject({ output: "NEW" });
+  });
+
+  test("publishes an inline error and recovers after a successful edit", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const recipe = source("Recipe");
+    (recipe.evaluate as jest.Mock)
+      .mockRejectedValueOnce(new Error("bad input"))
+      .mockResolvedValueOnce("RECOVERED");
+    const { controller, change, lastState } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(lastState().items[0]).toMatchObject({
+      error: "bad input",
+      output: undefined,
+    });
+
+    change(document, [{ rangeOffset: 4, rangeLength: 0, text: "Y" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(lastState().items[0]).toMatchObject({
+      output: "RECOVERED",
+      error: undefined,
+    });
+  });
+
+  test("disables output actions in an error state but still allows delete", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const recipe = source("Recipe");
+    (recipe.evaluate as jest.Mock).mockRejectedValueOnce(
+      new Error("bad input"),
+    );
+    const { controller, change, emit, lastState, showPanel } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    const id = lastState().items[0].id;
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+
+    await emit({ type: "action", action: "popup", id });
+    await emit({ type: "action", action: "copy", id });
+    await emit({ type: "action", action: "replace", id });
+    expect(showPanel).not.toHaveBeenCalled();
+    expect(env.clipboard.writeText).not.toHaveBeenCalled();
+    expect(editor.edit).not.toHaveBeenCalled();
+
+    await emit({ type: "action", action: "delete", id });
+    expect(lastState().items).toHaveLength(0);
+  });
+
+  test("recomputes a whole-document result for every content edit", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document, 0, 10);
+    const recipe = source("Recipe");
+    const { controller, change } = setup(10);
+    controller.show(editor, "initial", target(0, 10), recipe);
+
+    change(document, [{ rangeOffset: 10, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    change(document, [{ rangeOffset: 0, rangeLength: 0, text: "Y" }]);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(recipe.evaluate).toHaveBeenNthCalledWith(1, "abcdefghijX");
+    expect(recipe.evaluate).toHaveBeenNthCalledWith(2, "YabcdefghijX");
+  });
+
+  test("moves a zero-length range silently and expands it for an insertion there", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document, 4, 4);
+    const recipe = source("Recipe");
+    const { controller, change } = setup(10);
+    controller.show(editor, "initial", target(4, 4), recipe);
+
+    change(document, [{ rangeOffset: 0, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(recipe.evaluate).not.toHaveBeenCalled();
+
+    change(document, [{ rangeOffset: 5, rangeLength: 0, text: "Y" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(recipe.evaluate).toHaveBeenCalledWith("Y");
+  });
+
+  test("clears pending evaluations when results are deleted or documents close", async () => {
+    jest.useFakeTimers();
+    const deletedDocument = makeDocument("deleted.txt", "abcdefghij");
+    const closedDocument = makeDocument("closed.txt", "abcdefghij");
+    const { editor: deletedEditor } = makeEditor(deletedDocument);
+    const { editor: closedEditor } = makeEditor(closedDocument);
+    const deletedSource = source("Deleted");
+    const closedSource = source("Closed");
+    const { controller, change, close, emit, lastState } = setup(10);
+    controller.show(deletedEditor, "deleted", target(2, 5), deletedSource);
+    const deletedId = lastState().items[0].id;
+    controller.show(closedEditor, "closed", target(2, 5), closedSource);
+
+    change(deletedDocument, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    change(closedDocument, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    await emit({ type: "action", action: "delete", id: deletedId });
+    close(closedDocument);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(deletedSource.evaluate).not.toHaveBeenCalled();
+    expect(closedSource.evaluate).not.toHaveBeenCalled();
+    expect(lastState().items).toHaveLength(0);
   });
 });
