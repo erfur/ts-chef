@@ -1,11 +1,20 @@
 import * as vscode from "vscode";
+import type { PipelineStep } from "../storage/store";
 
 export type PipelineResultAction =
   | "popup"
   | "replace"
   | "copy"
   | "inline"
-  | "panel";
+  | "panel"
+  | "sidebar";
+
+export type PipelineResultSource = {
+  recipe: { name: string; steps: PipelineStep[] };
+  evaluate: (input: string) => string | Promise<string>;
+};
+
+export type RenderedResultSource = PipelineResultSource & { label: string };
 
 /**
  * Range to overwrite when replacing: the current selection, or the whole
@@ -24,22 +33,23 @@ export type ResultRenderer = (
   editor: vscode.TextEditor,
   result: string,
   target: vscode.Range,
+  source?: RenderedResultSource,
 ) => void | Promise<void>;
 
 export type ResultRenderers = Partial<
-  Record<"inline" | "panel", ResultRenderer>
+  Record<"inline" | "panel" | "sidebar", ResultRenderer>
 >;
 
 /**
  * Present a pipeline's result according to the `tschef.pipelineResultAction`
  * setting: show a popup with Replace/Copy buttons (default, "popup"), replace
  * the selection directly ("replace"), copy to the clipboard ("copy"), or
- * render via an injected renderer ("inline" = CodeLens, "panel" = webview).
+ * render via an injected renderer ("inline", "panel", or "sidebar").
  *
  * @param label Prefix shown in the popup message (e.g. `Result` or
- *   `Pipeline "name"`). Unused in the replace/copy/inline/panel modes.
- * @param render Custom renderers keyed by mode. When the mode is "inline" or
- *   "panel" but no matching renderer is provided, falls back to the popup.
+ *   `Pipeline "name"`), and included in renderer source context when present.
+ * @param render Custom renderers keyed by mode. When no eligible renderer is
+ *   provided for the configured custom mode, falls back to the popup.
  */
 export async function presentPipelineResult(
   editor: vscode.TextEditor,
@@ -47,6 +57,7 @@ export async function presentPipelineResult(
   label: string,
   render?: ResultRenderers,
   target?: vscode.Range,
+  source?: PipelineResultSource,
 ): Promise<void> {
   const mode = vscode.workspace
     .getConfiguration("tschef")
@@ -69,10 +80,16 @@ export async function presentPipelineResult(
     return;
   }
 
-  if (mode === "inline" || mode === "panel") {
+  if (mode === "inline" || mode === "panel" || mode === "sidebar") {
     const renderer = render?.[mode];
-    if (renderer) {
-      await renderer(editor, result, target ?? replaceTarget(editor));
+    if (renderer && (mode !== "sidebar" || source)) {
+      const renderedSource = source ? { ...source, label } : undefined;
+      await renderer(
+        editor,
+        result,
+        target ?? replaceTarget(editor),
+        renderedSource,
+      );
       return;
     }
   }

@@ -8,6 +8,7 @@ import {
   Selection,
 } from "../vscode-mock";
 import type { Range as VsCodeRange, TextEditor } from "vscode";
+import type { PipelineStep } from "../../src/storage/store";
 
 /** Build a fake TextEditor with a spyable edit builder. */
 function makeEditor(opts?: { selectionEmpty?: boolean; text?: string }) {
@@ -196,6 +197,7 @@ describe("presentPipelineResult", () => {
       editor,
       "RESULT",
       editor.selection,
+      undefined,
     );
     expect(window.showInformationMessage).not.toHaveBeenCalled();
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
@@ -217,6 +219,7 @@ describe("presentPipelineResult", () => {
       editor,
       "RESULT",
       editor.selection,
+      undefined,
     );
     expect(window.showInformationMessage).not.toHaveBeenCalled();
     expect(env.clipboard.writeText).not.toHaveBeenCalled();
@@ -254,7 +257,61 @@ describe("presentPipelineResult", () => {
       target,
     );
 
-    expect(showInline).toHaveBeenCalledWith(editor, "RESULT", target);
+    expect(showInline).toHaveBeenCalledWith(
+      editor,
+      "RESULT",
+      target,
+      undefined,
+    );
+  });
+
+  test("sidebar mode delegates with source context", async () => {
+    __setConfig({ pipelineResultAction: "sidebar" });
+    const showSidebar = jest.fn();
+    const { editor } = makeEditor();
+    const source = {
+      recipe: {
+        name: "decode",
+        steps: [{ opName: "FromBase64", args: [] }] as PipelineStep[],
+      },
+      evaluate: jest.fn((input: string) => input),
+    };
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Recipe",
+      { sidebar: showSidebar },
+      undefined,
+      source,
+    );
+
+    expect(showSidebar).toHaveBeenCalledWith(
+      editor,
+      "RESULT",
+      editor.selection,
+      { ...source, label: "Recipe" },
+    );
+    expect(window.showInformationMessage).not.toHaveBeenCalled();
+  });
+
+  test("sidebar mode falls back to popup without source context", async () => {
+    __setConfig({ pipelineResultAction: "sidebar" });
+    window.showInformationMessage.mockResolvedValue(undefined);
+    const { editor } = makeEditor();
+
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+      { sidebar: jest.fn() },
+    );
+
+    expect(window.showInformationMessage).toHaveBeenCalledWith(
+      "Result: RESULT",
+      "Replace",
+      "Copy",
+    );
   });
 
   test("popup mode truncates a long result preview with an ellipsis", async () => {

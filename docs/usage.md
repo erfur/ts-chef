@@ -27,6 +27,7 @@ When you run a pipeline from a command (**ts-chef: Run Pipeline on Selection** o
 - `copy` — copy the result to the clipboard.
 - `inline` — show the result in a CodeLens row above the selection, with Replace/Copy/Close actions (stays open until you close it).
 - `panel` — show the full multi-line result in a webview panel beside the editor, with Replace/Copy/Close actions (stays open until you close it).
+- `sidebar` — keep a live result in the Results view; results update when their tracked input changes and can be filtered by current/all tabs.
 
 ## Recipe registers
 
