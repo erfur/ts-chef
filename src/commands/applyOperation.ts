@@ -1,10 +1,7 @@
 import * as vscode from "vscode";
 import type { Operation } from "../chef/Operation";
 import { log } from "../logger";
-import {
-  presentPipelineResult,
-  type ResultRenderers,
-} from "./pipelineResult";
+import { presentPipelineResult, type ResultRenderers } from "./pipelineResult";
 import { resolveDefaultArg, runOp } from "./runner";
 
 export type OperationEntry = {
@@ -20,9 +17,7 @@ export function resultToString(result: unknown): string {
   return JSON.stringify(result, null, 2);
 }
 
-export async function promptForArgs(
-  op: Operation,
-): Promise<unknown[] | null> {
+export async function promptForArgs(op: Operation): Promise<unknown[] | null> {
   const result: unknown[] = [];
   for (const argDef of op.args) {
     if (argDef.type === "toggleString" && (argDef.value as string) === "") {

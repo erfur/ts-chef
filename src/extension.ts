@@ -15,7 +15,11 @@ import {
   resolveDefaultArg,
   operationNeedsInput,
 } from "./commands/runner";
-import { presentPipelineResult } from "./commands/pipelineResult";
+import {
+  presentPipelineResult,
+  type RenderedResultSource,
+  type ResultRenderers,
+} from "./commands/pipelineResult";
 import {
   applyOperation,
   promptForArgs,
@@ -23,6 +27,9 @@ import {
 } from "./commands/applyOperation";
 import { InlineResultController } from "./commands/inlineResult";
 import { WebviewResultController } from "./commands/webviewResult";
+import { ResultsController } from "./commands/resultsController";
+import { createPipelineResultSource } from "./commands/resultSource";
+import { ResultsViewProvider } from "./providers/resultsViewProvider";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
 import type { ArgConfig } from "./chef/Operation";
@@ -81,12 +88,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const panelResult = new WebviewResultController();
   panelResult.register(context);
 
-  const resultRenderers = {
-    inline: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
-      inlineResult.show(editor, result, target),
-    panel: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
-      panelResult.show(editor, result, target),
-  };
+  // Recipe callbacks require this map before its controller dependencies exist.
+  // eslint-disable-next-line prefer-const
+  let resultRenderers: ResultRenderers;
 
   const argDefsCache = new Map<string, ArgConfig[]>();
   const argDefsFor = (opName: string): ArgConfig[] => {
@@ -100,7 +104,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const recipeView = new RecipeViewProvider(
     opItems,
     {
-      onApply: async (_name, steps) => {
+      onApply: async (name, steps) => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showWarningMessage("ts-chef: No active editor.");
@@ -116,6 +120,8 @@ export function activate(context: vscode.ExtensionContext): void {
             result,
             "Recipe",
             resultRenderers,
+            undefined,
+            createPipelineResultSource(name, steps),
           );
         } catch (e) {
           log(`Recipe apply error: ${e}`);
@@ -147,6 +153,39 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     argDefsFor,
   );
+
+  const resultsView = new ResultsViewProvider();
+  const resultsController = new ResultsController(resultsView, {
+    loadRecipe: (recipe) => {
+      vscode.commands.executeCommand("tschef.recipeView.focus");
+      recipeView.load(recipe);
+    },
+    showPanel: (editor, result, target) =>
+      panelResult.show(editor, result, target),
+  });
+  resultsController.register(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "tschef.resultsView",
+      resultsView,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+
+  resultRenderers = {
+    inline: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
+      inlineResult.show(editor, result, target),
+    panel: (editor: vscode.TextEditor, result: string, target: vscode.Range) =>
+      panelResult.show(editor, result, target),
+    sidebar: (
+      editor: vscode.TextEditor,
+      result: string,
+      target: vscode.Range,
+      source?: RenderedResultSource,
+    ) => {
+      if (source) resultsController.show(editor, result, target, source);
+    },
+  };
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("tschef.recipeView", recipeView, {
@@ -254,7 +293,14 @@ export function activate(context: vscode.ExtensionContext): void {
         log(
           `Pipeline ran: "${raw}", input ${text.length} chars → ${result.length} chars`,
         );
-        await presentPipelineResult(editor, result, "Result", resultRenderers);
+        await presentPipelineResult(
+          editor,
+          result,
+          "Result",
+          resultRenderers,
+          undefined,
+          createPipelineResultSource("", steps),
+        );
       } catch (e) {
         log(`Pipeline error: ${e}`);
         vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
@@ -289,6 +335,8 @@ export function activate(context: vscode.ExtensionContext): void {
             result,
             `Pipeline "${name}"`,
             resultRenderers,
+            undefined,
+            createPipelineResultSource(pipeline.name, pipeline.steps),
           );
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);

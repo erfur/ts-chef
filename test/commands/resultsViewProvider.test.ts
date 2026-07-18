@@ -86,7 +86,12 @@ describe("ResultsViewProvider", () => {
       filter: "all",
       totalCount: 2,
       items: [
-        { id: 1, label: "Success", source: "first.ts", output: "line 1\nline 2" },
+        {
+          id: 1,
+          label: "Success",
+          source: "first.ts",
+          output: "line 1\nline 2",
+        },
         { id: 2, label: "Failure", source: "second.ts", error: "bad input" },
       ],
     });
@@ -94,7 +99,9 @@ describe("ResultsViewProvider", () => {
 
     expect(document.querySelectorAll(".result")).toHaveLength(2);
     expect(document.querySelector("pre")?.textContent).toBe("line 1\nline 2");
-    expect(document.querySelector(".error")?.textContent).toContain("bad input");
+    expect(document.querySelector(".error")?.textContent).toContain(
+      "bad input",
+    );
     expect(
       document.querySelector<HTMLButtonElement>(
         '[data-action="copy"][data-id="2"]',
@@ -154,9 +161,7 @@ describe("ResultsViewProvider", () => {
     const document = dom.window.document;
     postMessage.mockClear();
 
-    document
-      .querySelector<HTMLElement>('[data-filter="current"]')
-      ?.click();
+    document.querySelector<HTMLElement>('[data-filter="current"]')?.click();
     document.querySelector<HTMLElement>('.result[data-id="4"]')?.click();
     document
       .querySelector<HTMLElement>('[data-action="copy"][data-id="4"]')
