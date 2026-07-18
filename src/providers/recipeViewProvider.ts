@@ -395,9 +395,11 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
               '" data-arg="' +
               ai +
               '" data-type="string">' +
-              '<button type="button" class="use-selection" data-use-selection data-arg="' +
-              ai +
-              '" title="Use current editor selection">Use selection</button>';
+              (argDef.type === "string"
+                ? '<button type="button" class="use-selection" data-use-selection data-arg="' +
+                  ai +
+                  '" title="Use current editor selection">Use selection</button>'
+                : "");
           }
         }
         return '<div class="arg-row">' + lbl + input + "</div>";

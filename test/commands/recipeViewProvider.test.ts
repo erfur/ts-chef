@@ -10,6 +10,7 @@ const ITEMS = [
 const ARG_DEFS = [
   { name: "Value", type: "string", value: "" },
   { name: "Alphabet", type: "toggleString", value: "" },
+  { name: "Separator", type: "binaryShortString", value: "" },
 ] as ArgConfig[];
 
 function makeView() {
@@ -68,7 +69,7 @@ function renderRecipeDom(html: string) {
         type: "state",
         recipe: {
           name: "r1",
-          steps: [{ opName: "FromBase64", args: ["", ""] }],
+          steps: [{ opName: "FromBase64", args: ["", "", ""] }],
         },
         defs: { FromBase64: ARG_DEFS },
       },
@@ -140,6 +141,11 @@ describe("RecipeViewProvider", () => {
     expect(buttons[0].closest(".arg-row")?.textContent).not.toContain(
       "Alphabet",
     );
+    const separatorRow = Array.from(
+      dom.window.document.querySelectorAll(".arg-row"),
+    ).find((row) => row.textContent?.includes("Separator"));
+    expect(separatorRow?.querySelector('input[type="text"]')).not.toBeNull();
+    expect(separatorRow?.querySelector("[data-use-selection]")).toBeNull();
   });
 
   test("requests the current selection for the clicked argument", () => {
