@@ -177,13 +177,22 @@ describe("transformTrackedRange", () => {
       true,
     ],
     [
-      "insert at end",
+      "insert text at end",
       5,
       9,
       [{ rangeOffset: 9, rangeLength: 0, text: "X" }],
       5,
-      10,
-      true,
+      9,
+      false,
+    ],
+    [
+      "insert newline at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "\n" }],
+      5,
+      9,
+      false,
     ],
     [
       "edit after",
@@ -297,13 +306,13 @@ describe("transformTrackedRange", () => {
       true,
     ],
     [
-      "tracks an insertion at document end",
+      "leaves an insertion at document end outside",
       0,
       10,
       [{ rangeOffset: 10, rangeLength: 0, text: "X" }],
       0,
-      11,
-      true,
+      10,
+      false,
     ],
     [
       "tracks a whole-document replacement",
@@ -599,6 +608,37 @@ describe("ResultsController", () => {
     expect(recipe.evaluate).not.toHaveBeenCalled();
   });
 
+  test("keeps an insertion at a non-empty end boundary outside the result", async () => {
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const { editor: shown, editBuilder } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(shown);
+    const recipe = source("Recipe");
+    const { controller, change, emit, lastState } = setup(10);
+    controller.show(editor, "result", target(2, 5), recipe);
+    const id = lastState().items[0].id;
+
+    change(document, [{ rangeOffset: 5, rangeLength: 0, text: "\n" }]);
+    await emit({ type: "open", id });
+
+    expect(recipe.evaluate).not.toHaveBeenCalled();
+    expect(shown.selection).toEqual(
+      expect.objectContaining({
+        anchor: document.positionAt(2),
+        active: document.positionAt(5),
+      }),
+    );
+
+    await emit({ type: "action", action: "replace", id });
+    expect(editBuilder.replace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: document.positionAt(2),
+        end: document.positionAt(5),
+      }),
+      "result",
+    );
+  });
+
   test("debounces intersecting edits and evaluates the newest tracked text", async () => {
     jest.useFakeTimers();
     const document = makeDocument("source.txt", "abcdefghij");
@@ -699,7 +739,7 @@ describe("ResultsController", () => {
     expect(lastState().items).toHaveLength(0);
   });
 
-  test("recomputes a whole-document result for every content edit", async () => {
+  test("keeps document-end appends outside a whole-document result", async () => {
     jest.useFakeTimers();
     const document = makeDocument("source.txt", "abcdefghij");
     const { editor } = makeEditor(document, 0, 10);
@@ -712,8 +752,8 @@ describe("ResultsController", () => {
     change(document, [{ rangeOffset: 0, rangeLength: 0, text: "Y" }]);
     await jest.advanceTimersByTimeAsync(10);
 
-    expect(recipe.evaluate).toHaveBeenNthCalledWith(1, "abcdefghijX");
-    expect(recipe.evaluate).toHaveBeenNthCalledWith(2, "YabcdefghijX");
+    expect(recipe.evaluate).toHaveBeenCalledTimes(1);
+    expect(recipe.evaluate).toHaveBeenCalledWith("Yabcdefghij");
   });
 
   test("moves a zero-length range silently and expands it for an insertion there", async () => {

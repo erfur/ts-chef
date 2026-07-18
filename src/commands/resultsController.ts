@@ -44,6 +44,7 @@ export function transformTrackedRange(
   changes: readonly OffsetChange[],
 ): { start: number; end: number; changed: boolean } {
   const sorted = [...changes].sort((a, b) => a.rangeOffset - b.rangeOffset);
+  const empty = start === end;
   const mapBoundary = (offset: number, includeInsertion: boolean): number => {
     let delta = 0;
     for (const change of sorted) {
@@ -51,7 +52,7 @@ export function transformTrackedRange(
       const changeEnd = changeStart + change.rangeLength;
 
       if (change.rangeLength === 0 && changeStart === offset) {
-        if (includeInsertion) delta += change.text.length;
+        if (includeInsertion && empty) delta += change.text.length;
         continue;
       }
       if (changeEnd <= offset) {
@@ -67,7 +68,9 @@ export function transformTrackedRange(
   const changed = sorted.some((change) => {
     const changeEnd = change.rangeOffset + change.rangeLength;
     return change.rangeLength === 0
-      ? change.rangeOffset >= start && change.rangeOffset <= end
+      ? empty
+        ? change.rangeOffset === start
+        : change.rangeOffset >= start && change.rangeOffset < end
       : change.rangeOffset < end && changeEnd > start;
   });
 
@@ -281,7 +284,9 @@ export class ResultsController implements vscode.Disposable {
     this.remove(item.id);
     const editor = await this.reveal(item);
     if (!editor) return;
-    const edited = await editor.edit((builder) => builder.replace(range, output));
+    const edited = await editor.edit((builder) =>
+      builder.replace(range, output),
+    );
     if (!edited) throw new Error("Result replacement was not applied.");
   }
 
