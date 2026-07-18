@@ -14,6 +14,11 @@ export const window = {
   setStatusBarMessage: jest.fn(),
   activeTextEditor: undefined as unknown,
   createWebviewPanel: jest.fn(),
+  showTextDocument: jest.fn(),
+  onDidChangeActiveTextEditor: jest.fn<
+    { dispose: () => void },
+    [listener: (editor: unknown) => void]
+  >(() => ({ dispose: jest.fn() })),
 };
 
 let configValues: Record<string, unknown> = {};
@@ -29,6 +34,7 @@ export const workspace: {
     get: <T>(key: string, defaultValue: T) => T;
   };
   onDidChangeTextDocument: jest.Mock;
+  onDidCloseTextDocument: jest.Mock;
 } = {
   workspaceFolders: undefined,
   getConfiguration: () => ({
@@ -36,6 +42,10 @@ export const workspace: {
       key in configValues ? (configValues[key] as T) : defaultValue,
   }),
   onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
+  onDidCloseTextDocument: jest.fn<
+    { dispose: () => void },
+    [listener: (document: unknown) => void]
+  >(() => ({ dispose: jest.fn() })),
 };
 
 export const env = {
@@ -88,13 +98,28 @@ export class Range {
   readonly start: { line: number; character: number };
   readonly end: { line: number; character: number };
   constructor(
+    start: { line: number; character: number },
+    end: { line: number; character: number },
+  );
+  constructor(
     startLine: number,
     startCharacter: number,
     endLine: number,
     endCharacter: number,
+  );
+  constructor(
+    startOrLine: number | { line: number; character: number },
+    endOrCharacter: number | { line: number; character: number },
+    endLine?: number,
+    endCharacter?: number,
   ) {
-    this.start = { line: startLine, character: startCharacter };
-    this.end = { line: endLine, character: endCharacter };
+    if (typeof startOrLine === "number") {
+      this.start = { line: startOrLine, character: endOrCharacter as number };
+      this.end = { line: endLine as number, character: endCharacter as number };
+    } else {
+      this.start = startOrLine;
+      this.end = endOrCharacter as { line: number; character: number };
+    }
   }
 }
 
