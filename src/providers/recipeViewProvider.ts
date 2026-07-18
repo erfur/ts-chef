@@ -7,6 +7,7 @@ type Recipe = { name: string; steps: PipelineStep[] };
 export type RecipeCallbacks = {
   onApply: (name: string, steps: PipelineStep[]) => void | Promise<void>;
   onSave: (name: string, steps: PipelineStep[]) => void | Promise<void>;
+  getSelection: () => string | undefined;
 };
 
 /**
@@ -31,7 +32,13 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
     view.webview.options = { enableScripts: true };
     view.webview.html = this.html();
     view.webview.onDidReceiveMessage(
-      async (msg: { type?: string; name?: string; steps?: PipelineStep[] }) => {
+      async (msg: {
+        type?: string;
+        name?: string;
+        steps?: PipelineStep[];
+        step?: number;
+        arg?: number;
+      }) => {
         switch (msg.type) {
           case "ready":
             this.postState();
@@ -42,6 +49,18 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
               steps: Array.isArray(msg.steps) ? msg.steps : [],
             };
             break;
+          case "useSelection": {
+            if (!Number.isInteger(msg.step) || !Number.isInteger(msg.arg)) break;
+            const step = this.recipe.steps[msg.step!];
+            const argDef = step && this.argDefsFor(step.opName)[msg.arg!];
+            if (!step || argDef?.type !== "string") break;
+            const selection = this.callbacks.getSelection();
+            if (!selection) break;
+            if (!Array.isArray(step.args)) step.args = [];
+            step.args[msg.arg!] = selection;
+            this.postState();
+            break;
+          }
           case "apply":
             await this.callbacks.onApply(this.recipe.name, this.recipe.steps);
             break;
@@ -167,6 +186,18 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       }
       .arg-row input[type="checkbox"] {
         cursor: pointer;
+      }
+      .use-selection {
+        flex: none;
+        color: var(--vscode-button-secondaryForeground);
+        background: var(--vscode-button-secondaryBackground);
+        border: none;
+        padding: 3px 6px;
+        cursor: pointer;
+        border-radius: 2px;
+      }
+      .use-selection:hover {
+        background: var(--vscode-button-secondaryHoverBackground);
       }
       .empty {
         padding: 8px;
@@ -363,7 +394,10 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
               escAttr(strVal) +
               '" data-arg="' +
               ai +
-              '" data-type="string">';
+              '" data-type="string">' +
+              '<button type="button" class="use-selection" data-use-selection data-arg="' +
+              ai +
+              '" title="Use current editor selection">Use selection</button>';
           }
         }
         return '<div class="arg-row">' + lbl + input + "</div>";
@@ -467,6 +501,17 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         .addEventListener("click", () => vscode.postMessage({ type: "save" }));
 
       stepsEl.addEventListener("click", (e) => {
+        const useSelection = e.target.closest("[data-use-selection]");
+        if (useSelection) {
+          const argsDiv = useSelection.closest(".step-args");
+          if (!argsDiv) return;
+          vscode.postMessage({
+            type: "useSelection",
+            step: Number(argsDiv.dataset.step),
+            arg: Number(useSelection.dataset.arg),
+          });
+          return;
+        }
         const tog = e.target.closest("[data-toggle]");
         if (tog) {
           const i = Number(tog.dataset.toggle);

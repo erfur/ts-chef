@@ -150,6 +150,11 @@ export function activate(context: vscode.ExtensionContext): void {
           `ts-chef: Recipe "${name}" saved (${scope}).`,
         );
       },
+      getSelection: () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.selection.isEmpty) return undefined;
+        return editor.document.getText(editor.selection);
+      },
     },
     argDefsFor,
   );
