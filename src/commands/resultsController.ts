@@ -78,7 +78,7 @@ export function transformTrackedRange(
   };
 }
 
-export class ResultsController {
+export class ResultsController implements vscode.Disposable {
   private results: ResultRecord[] = [];
   private filter: ResultFilter = "all";
   private seq = 0;
@@ -92,7 +92,14 @@ export class ResultsController {
   register(context: vscode.ExtensionContext): void {
     this.activeUri = vscode.window.activeTextEditor?.document.uri.toString();
     context.subscriptions.push(
-      this.view.onDidMessage((message) => void this.onMessage(message)),
+      this.view.onDidMessage((message) => {
+        void this.onMessage(message).catch((error) => {
+          log(`Result action error: ${error}`);
+          vscode.window.showWarningMessage(
+            "ts-chef: Could not complete result action.",
+          );
+        });
+      }),
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) this.activeUri = editor.document.uri.toString();
         if (this.filter === "current") this.publish();
@@ -122,8 +129,18 @@ export class ResultsController {
         }
       }),
       this.view,
+      this,
     );
     this.publish();
+  }
+
+  dispose(): void {
+    for (const item of this.results) {
+      item.generation++;
+      if (item.timer) clearTimeout(item.timer);
+    }
+    this.results = [];
+    this.activeUri = undefined;
   }
 
   show(

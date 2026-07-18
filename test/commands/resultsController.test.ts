@@ -111,6 +111,7 @@ function setup(debounceMs?: number) {
 
   return {
     controller,
+    context,
     loadRecipe,
     showPanel,
     states,
@@ -127,6 +128,10 @@ function setup(debounceMs?: number) {
     },
     emit: async (message: ResultsViewMessage | Record<string, unknown>) => {
       listener?.(message as ResultsViewMessage);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     },
@@ -390,6 +395,21 @@ describe("ResultsController", () => {
     });
   });
 
+  test("warns without loading a recipe when revealing an open result rejects", async () => {
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    window.showTextDocument.mockRejectedValue(new Error("reveal failed"));
+    const { controller, emit, lastState, loadRecipe } = setup();
+    controller.show(editor, "result", target(2, 6), source("Recipe"));
+    const id = lastState().items[0].id;
+
+    await emit({ type: "open", id });
+
+    expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
+    expect(loadRecipe).not.toHaveBeenCalled();
+    expect(lastState().items).toHaveLength(1);
+  });
+
   test("popup and copy act on output without removing the row", async () => {
     const document = makeDocument("source.txt");
     const { editor } = makeEditor(document);
@@ -459,6 +479,37 @@ describe("ResultsController", () => {
       "replacement",
     );
     expect(lastState().totalCount).toBe(0);
+  });
+
+  test("warns once when editing a removed replacement rejects", async () => {
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    const { editor: shown } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(shown);
+    (shown.edit as jest.Mock).mockRejectedValue(new Error("edit failed"));
+    const { controller, emit, lastState } = setup();
+    controller.show(editor, "replacement", target(2, 6), source("Recipe"));
+    const id = lastState().items[0].id;
+
+    await emit({ type: "action", action: "replace", id });
+
+    expect(lastState().items).toHaveLength(0);
+    expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
+  });
+
+  test("contains unexpected async action rejections at the message listener", async () => {
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    env.clipboard.writeText.mockRejectedValue(new Error("clipboard failed"));
+    const { controller, emit, lastState } = setup();
+    controller.show(editor, "result", target(2, 6), source("Recipe"));
+    const id = lastState().items[0].id;
+
+    await emit({ type: "action", action: "copy", id });
+
+    expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
+    expect(window.setStatusBarMessage).not.toHaveBeenCalled();
+    expect(lastState().items).toHaveLength(1);
   });
 
   test("closing a source removes all its rows and keeps other documents", () => {
@@ -688,5 +739,23 @@ describe("ResultsController", () => {
     expect(deletedSource.evaluate).not.toHaveBeenCalled();
     expect(closedSource.evaluate).not.toHaveBeenCalled();
     expect(lastState().items).toHaveLength(0);
+  });
+
+  test("disposal invalidates results and clears pending evaluations", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const recipe = source("Recipe");
+    const { controller, context, change, states } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    const publishedBeforeDispose = states.length;
+
+    expect(context.subscriptions).toContain(controller);
+    controller.dispose();
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(recipe.evaluate).not.toHaveBeenCalled();
+    expect(states).toHaveLength(publishedBeforeDispose);
   });
 });
