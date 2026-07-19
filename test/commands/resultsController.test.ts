@@ -607,6 +607,26 @@ describe("ResultsController", () => {
     );
   });
 
+  test("prevents stale replacement while a reselection is pending", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor, editBuilder } = makeEditor(document);
+    const recipe = source("Recipe");
+    const { controller, emit, lastState, setSelection } = setup(10);
+    window.showTextDocument.mockResolvedValue(editor);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    const id = lastState().items[0].id;
+    setSelection(editor, 1, 7);
+    (window as { activeTextEditor: unknown }).activeTextEditor = editor;
+
+    await emit({ type: "action", action: "reselect", id });
+    expect(lastState().items[0].output).toBeUndefined();
+    await emit({ type: "action", action: "replace", id });
+
+    expect(editBuilder.replace).not.toHaveBeenCalled();
+    expect(lastState().items).toHaveLength(1);
+  });
+
   test.each(["no active editor", "empty selection", "different document"])(
     "keeps the result unchanged when reselection has %s",
     async (condition) => {
@@ -668,6 +688,33 @@ describe("ResultsController", () => {
       id: lastState().items[0].id,
     });
     await jest.advanceTimersByTimeAsync(10);
+    expect(lastState().items[0]).toEqual(
+      expect.objectContaining({ output: "recovered", error: undefined }),
+    );
+  });
+
+  test("retries an errored result when reselecting its current range", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const recipe = source("Recipe");
+    recipe.evaluate = jest
+      .fn()
+      .mockRejectedValueOnce(new Error("bad input"))
+      .mockResolvedValueOnce("recovered");
+    const { controller, change, emit, lastState, setSelection } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    const id = lastState().items[0].id;
+
+    change(document, [{ rangeOffset: 3, rangeLength: 0, text: "X" }]);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(lastState().items[0].error).toBe("bad input");
+
+    setSelection(editor, 2, 6);
+    (window as { activeTextEditor: unknown }).activeTextEditor = editor;
+    await emit({ type: "action", action: "reselect", id });
+    await jest.advanceTimersByTimeAsync(10);
+
     expect(lastState().items[0]).toEqual(
       expect.objectContaining({ output: "recovered", error: undefined }),
     );

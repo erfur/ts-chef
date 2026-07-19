@@ -107,7 +107,7 @@ function render(state) {
     const body = failed
       ? '<div class="error">' + esc(item.error) + "</div>"
       : "<pre>" + esc(item.output || "") + "</pre>";
-    const disabled = failed ? " disabled" : "";
+    const disabled = failed || item.output == null ? " disabled" : "";
     const action = (name, label) => '<button data-action="' + name + '" data-id="' + item.id + '"' +
       (name === "delete" || name === "reselect" ? "" : disabled) + ">" + label + "</button>";
     return '<div class="result" data-id="' + item.id + '"><div class="meta"><strong>' +

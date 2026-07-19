@@ -119,6 +119,31 @@ describe("ResultsViewProvider", () => {
     ).toBe(false);
   });
 
+  test("disables output actions while output is unavailable", () => {
+    const { webview } = setup();
+    const { dom } = renderResultsDom(webview.html, {
+      filter: "all",
+      totalCount: 1,
+      items: [{ id: 1, label: "Pending", source: "input.ts" }],
+    });
+    const document = dom.window.document;
+
+    for (const action of ["popup", "copy", "replace"]) {
+      expect(
+        document.querySelector<HTMLButtonElement>(
+          `[data-action="${action}"][data-id="1"]`,
+        )?.disabled,
+      ).toBe(true);
+    }
+    for (const action of ["reselect", "delete"]) {
+      expect(
+        document.querySelector<HTMLButtonElement>(
+          `[data-action="${action}"][data-id="1"]`,
+        )?.disabled,
+      ).toBe(false);
+    }
+  });
+
   test("renders result content as text rather than HTML", () => {
     const { webview } = setup();
     const unsafe = '<img src=x onerror="alert(1)">';

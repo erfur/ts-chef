@@ -264,10 +264,10 @@ export class ResultsController implements vscode.Disposable {
     }
     const startOffset = item.document.offsetAt(editor.selection.start);
     const endOffset = item.document.offsetAt(editor.selection.end);
-    if (startOffset === item.startOffset && endOffset === item.endOffset)
-      return;
     item.startOffset = startOffset;
     item.endOffset = endOffset;
+    item.output = undefined;
+    this.publish();
     this.schedule(item);
   }
 
