@@ -5,7 +5,12 @@ import type {
   TextEditor,
 } from "vscode";
 import { ResultsController } from "../../src/commands/resultsController";
-import type { SelectionReference } from "../../src/commands/selectionReference";
+import {
+  SelectionReferenceTracker,
+  type SelectionReference,
+} from "../../src/commands/selectionReference";
+import { createPipelineResultSource } from "../../src/commands/resultSource";
+import * as runner from "../../src/commands/runner";
 import { transformTrackedRange } from "../../src/commands/trackedRange";
 import type { RenderedResultSource } from "../../src/commands/pipelineResult";
 import type {
@@ -173,6 +178,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
 });
 
 describe("transformTrackedRange", () => {
@@ -364,6 +370,45 @@ describe("transformTrackedRange", () => {
 });
 
 describe("ResultsController", () => {
+  test("tracked reference clones recompute with newly materialized argument text", async () => {
+    jest.useFakeTimers();
+    const referenceDocument = makeDocument("reference.txt", "key-one");
+    const inputDocument = makeDocument("input.txt", "input");
+    const tracker = new SelectionReferenceTracker();
+    const reference = tracker.create(referenceDocument, target(0, 7));
+    const pipeline = createPipelineResultSource(
+      "Recipe",
+      [{ opName: "Test", args: ["old"] }],
+      [{ stepIndex: 0, argIndex: 0, type: "string", reference }],
+    );
+    reference.dispose();
+    const runPipeline = jest
+      .spyOn(runner, "runPipeline")
+      .mockImplementation(
+        (input, steps) => `${input}:${String(steps[0].args[0])}`,
+      );
+    const { controller, lastState } = setup(10);
+    const { editor } = makeEditor(inputDocument, 0, 5);
+    controller.show(editor, "initial", target(0, 5), {
+      ...pipeline,
+      label: "Recipe",
+    });
+
+    const changes = [{ rangeOffset: 0, rangeLength: 7, text: "key-two" }];
+    referenceDocument.applyChanges(changes);
+    for (const [listener] of workspace.onDidChangeTextDocument.mock.calls) {
+      listener({ document: referenceDocument, contentChanges: changes });
+    }
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(runPipeline).toHaveBeenCalledWith("input", [
+      { opName: "Test", args: ["key-two"] },
+    ]);
+    expect(lastState().items[0]).toMatchObject({ output: "input:key-two" });
+    controller.dispose();
+    tracker.dispose();
+  });
+
   test("debounces reference changes and recomputes with current values", async () => {
     jest.useFakeTimers();
     const dynamic = sourceWithReference();

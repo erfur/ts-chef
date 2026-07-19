@@ -65,13 +65,29 @@ export class RecipeViewProvider
             const steps = msg.steps;
             const incomingIds = msg.stepIds;
             if (
+              typeof msg.name !== "string" ||
               !Array.isArray(steps) ||
+              !steps.every(
+                (step): step is PipelineStep =>
+                  step !== null &&
+                  typeof step === "object" &&
+                  typeof step.opName === "string" &&
+                  Array.isArray(step.args),
+              ) ||
               !Array.isArray(incomingIds) ||
               incomingIds.length !== steps.length ||
+              incomingIds.length !== this.stepIds.length ||
               !incomingIds.every(
                 (id): id is string => typeof id === "string",
               ) ||
-              new Set(incomingIds).size !== incomingIds.length
+              new Set(incomingIds).size !== incomingIds.length ||
+              incomingIds.some((id, index) => {
+                const currentIndex = this.stepIds.indexOf(id);
+                return (
+                  currentIndex < 0 ||
+                  this.recipe.steps[currentIndex]?.opName !== steps[index].opName
+                );
+              })
             )
               break;
             this.stepIds = incomingIds;
@@ -87,8 +103,8 @@ export class RecipeViewProvider
               );
             }
             this.recipe = {
-              name: msg.name ?? "",
-              steps,
+              name: msg.name,
+              steps: steps.map(({ opName, args }) => ({ opName, args })),
             };
             this.removeOrphanedBindings();
             break;
@@ -120,6 +136,16 @@ export class RecipeViewProvider
             this.bindings.set(key, binding);
             if (!Array.isArray(step.args)) step.args = [];
             this.materializeBinding(msg.stepId, msg.arg!, binding);
+            this.postState();
+            break;
+          }
+          case "removeStep": {
+            if (typeof msg.stepId !== "string") break;
+            const stepIndex = this.stepIds.indexOf(msg.stepId);
+            if (stepIndex < 0) break;
+            this.recipe.steps.splice(stepIndex, 1);
+            this.stepIds.splice(stepIndex, 1);
+            this.removeOrphanedBindings();
             this.postState();
             break;
           }
@@ -691,11 +717,7 @@ export class RecipeViewProvider
         const rm = e.target.closest("[data-rm]");
         if (rm) {
           const index = Number(rm.dataset.rm);
-          steps.splice(index, 1);
-          stepIds.splice(index, 1);
-          collapsed.clear();
-          render();
-          emitEdit();
+          vscode.postMessage({ type: "removeStep", stepId: stepIds[index] });
         }
       });
       stepsEl.addEventListener("change", handleArgUpdate);

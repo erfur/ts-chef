@@ -83,6 +83,16 @@ function lastPostedState(v: ReturnType<typeof makeView>) {
   return v.webview.postMessage.mock.calls.at(-1)?.[0];
 }
 
+function loadRecipe(
+  p: RecipeViewProvider,
+  v: ReturnType<typeof makeView>,
+  name: string,
+  steps: { opName: string; args: unknown[] }[],
+): string[] {
+  p.load({ name, steps });
+  return [...lastPostedState(v).stepIds];
+}
+
 function renderRecipeDom(html: string) {
   const postMessage = jest.fn();
   const dom = new JSDOM(html, {
@@ -201,6 +211,21 @@ describe("RecipeViewProvider", () => {
     });
   });
 
+  test("requests authoritative removal by stable step ID", () => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html);
+    postMessage.mockClear();
+
+    dom.window.document
+      .querySelector<HTMLElement>("[data-rm]")
+      ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "removeStep",
+      stepId: "step-1",
+    });
+  });
+
   test("ready posts the empty recipe state with an empty defs map", () => {
     const { v, onMessage } = setup();
     onMessage({ type: "ready" });
@@ -213,9 +238,10 @@ describe("RecipeViewProvider", () => {
   });
 
   test("edit updates the canonical recipe; save passes it to onSave", () => {
-    const { onMessage, onSave } = setup();
+    const { p, v, onMessage, onSave } = setup();
     const steps = [{ opName: "FromBase64", args: [] }];
-    onMessage({ type: "edit", name: "r1", steps, stepIds: ["step-1"] });
+    const stepIds = loadRecipe(p, v, "old", steps);
+    onMessage({ type: "edit", name: "r1", steps, stepIds });
     onMessage({ type: "save" });
     expect(onSave).toHaveBeenCalledWith("r1", steps);
   });
@@ -245,23 +271,29 @@ describe("RecipeViewProvider", () => {
       label: "non-string IDs",
       message: { steps: [{ opName: "MD5", args: [] }], stepIds: [1] },
     },
+    {
+      label: "invented IDs",
+      message: {
+        steps: [{ opName: "FromBase64", args: ["forged"] }],
+        stepIds: ["invented"],
+      },
+    },
   ])(
     "rejects malformed edit with $label without changing state or bindings",
     async ({ message }) => {
-      const { onMessage, onApply, reference, v, setText, fire } =
+      const { p, onMessage, onApply, reference, v, setText, fire } =
         setupReference("bound");
-      await onMessage({
-        type: "edit",
+      p.load({
         name: "original",
         steps: [{ opName: "FromBase64", args: ["old"] }],
-        stepIds: ["a"],
       });
-      await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+      const stepId = lastPostedState(v).stepIds[0] as string;
+      await onMessage({ type: "useSelection", stepId, arg: 0 });
 
       await onMessage({
         type: "edit",
         name: "invalid",
-        editedArg: { stepId: "a", arg: 0 },
+        editedArg: { stepId, arg: 0 },
         ...message,
       });
       setText("latest");
@@ -274,7 +306,7 @@ describe("RecipeViewProvider", () => {
           name: "original",
           steps: [{ opName: "FromBase64", args: ["latest"] }],
         },
-        stepIds: ["a"],
+        stepIds: [stepId],
       });
       expect(onApply.mock.calls[0].slice(0, 2)).toEqual([
         "original",
@@ -287,38 +319,151 @@ describe("RecipeViewProvider", () => {
     },
   );
 
+  test.each([
+    ["a non-string name", 42, { opName: "FromBase64", args: ["new"] }],
+    ["a null step", "invalid", null],
+    ["a non-object step", "invalid", "FromBase64"],
+    ["a missing operation name", "invalid", { args: [] }],
+    ["a non-string operation name", "invalid", { opName: 1, args: [] }],
+    ["non-array arguments", "invalid", { opName: "FromBase64", args: null }],
+  ])("rejects edit with %s", async (_label, name, step) => {
+    const { p, v, onMessage, onApply } = setup();
+    const original = { opName: "FromBase64", args: ["old"] };
+    p.load({ name: "original", steps: [original] });
+    const stepId = lastPostedState(v).stepIds[0] as string;
+
+    await onMessage({
+      type: "edit",
+      name,
+      steps: [step],
+      stepIds: [stepId],
+    });
+    await onMessage({ type: "apply" });
+
+    expect(onApply).toHaveBeenCalledWith("original", [original], []);
+  });
+
+  test("strips extra top-level step metadata before save", async () => {
+    const { p, v, onMessage, onSave } = setup();
+    p.load({
+      name: "original",
+      steps: [{ opName: "FromBase64", args: ["old"] }],
+    });
+    const stepId = lastPostedState(v).stepIds[0] as string;
+
+    await onMessage({
+      type: "edit",
+      name: "normalized",
+      steps: [
+        {
+          opName: "FromBase64",
+          args: ["new"],
+          reference: { forged: true },
+        },
+      ],
+      stepIds: [stepId],
+    });
+    await onMessage({ type: "save" });
+
+    expect(onSave).toHaveBeenCalledWith("normalized", [
+      { opName: "FromBase64", args: ["new"] },
+    ]);
+  });
+
+  test("rejects an edit that omits a current step ID", async () => {
+    const { p, v, onMessage, onApply } = setup();
+    const original = [
+      { opName: "FromBase64", args: ["first"] },
+      { opName: "MD5", args: [] },
+    ];
+    const [firstId] = loadRecipe(p, v, "original", original);
+
+    await onMessage({
+      type: "edit",
+      name: "truncated",
+      steps: [{ opName: "FromBase64", args: ["changed"] }],
+      stepIds: [firstId],
+    });
+    await onMessage({ type: "apply" });
+
+    expect(onApply).toHaveBeenCalledWith("original", original, []);
+  });
+
+  test("rejects transferring an ID to another operation without detaching its binding", async () => {
+    const { p, v, onMessage, onApply, reference, setText, fire } =
+      setupReference("bound");
+    p.load({
+      name: "original",
+      steps: [
+        { opName: "FromBase64", args: ["first"] },
+        { opName: "MD5", args: [] },
+      ],
+    });
+    const [firstId, secondId] = lastPostedState(v).stepIds as string[];
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
+
+    await onMessage({
+      type: "edit",
+      name: "forged",
+      steps: [
+        { opName: "MD5", args: [] },
+        { opName: "FromBase64", args: ["forged"] },
+      ],
+      stepIds: [firstId, secondId],
+    });
+    setText("latest");
+    fire();
+    await onMessage({ type: "apply" });
+
+    expect(onApply.mock.calls[0].slice(0, 2)).toEqual([
+      "original",
+      [
+        { opName: "FromBase64", args: ["latest"] },
+        { opName: "MD5", args: [] },
+      ],
+    ]);
+    expect(onApply.mock.calls[0][2]).toEqual([
+      expect.objectContaining({
+        stepIndex: 0,
+        argIndex: 0,
+        reference,
+      }),
+    ]);
+    expect(reference.dispose).not.toHaveBeenCalled();
+  });
+
   test("assigns a non-empty selection to a plain string argument", async () => {
     const reference = fakeReference("selected text");
-    const { v, onMessage, getSelectionReference } = setup(reference.reference);
+    const { p, v, onMessage, getSelectionReference } = setup(reference.reference);
     const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
-    await onMessage({ type: "edit", name: "decode", steps, stepIds: ["step-1"] });
+    const [stepId] = loadRecipe(p, v, "decode", steps);
     v.webview.postMessage.mockClear();
 
-    await onMessage({ type: "useSelection", stepId: "step-1", arg: 0 });
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
 
     expect(getSelectionReference).toHaveBeenCalledTimes(1);
     expect(steps[0].args[0]).toBe("selected text");
     expect(v.webview.postMessage).toHaveBeenCalledWith({
       type: "state",
       recipe: { name: "decode", steps },
-      stepIds: ["step-1"],
+      stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
     });
   });
 
   test("assigns selection to toggleString while preserving its encoding", async () => {
     const reference = fakeReference("selected key");
-    const { v, onMessage, getSelectionReference } = setup(reference.reference);
+    const { p, v, onMessage, getSelectionReference } = setup(reference.reference);
     const steps = [
       {
         opName: "FromBase64",
         args: ["old", { string: "old key", option: "UTF8" }, ""],
       },
     ];
-    await onMessage({ type: "edit", name: "decode", steps, stepIds: ["step-1"] });
+    const [stepId] = loadRecipe(p, v, "decode", steps);
     v.webview.postMessage.mockClear();
 
-    await onMessage({ type: "useSelection", stepId: "step-1", arg: 1 });
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
 
     expect(getSelectionReference).toHaveBeenCalledTimes(1);
     expect(steps[0].args[1]).toEqual({
@@ -328,7 +473,7 @@ describe("RecipeViewProvider", () => {
     expect(v.webview.postMessage).toHaveBeenCalledWith({
       type: "state",
       recipe: { name: "decode", steps },
-      stepIds: ["step-1"],
+      stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
     });
   });
@@ -337,12 +482,12 @@ describe("RecipeViewProvider", () => {
     "leaves the argument unchanged when selection is %p",
     async (selection) => {
       const reference = selection ? fakeReference(selection).reference : undefined;
-      const { v, onMessage } = setup(reference);
+      const { p, v, onMessage } = setup(reference);
       const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
-      await onMessage({ type: "edit", name: "decode", steps, stepIds: ["step-1"] });
+      const [stepId] = loadRecipe(p, v, "decode", steps);
       v.webview.postMessage.mockClear();
 
-      await onMessage({ type: "useSelection", stepId: "step-1", arg: 0 });
+      await onMessage({ type: "useSelection", stepId, arg: 0 });
 
       expect(steps[0].args[0]).toBe("old");
       expect(v.webview.postMessage).not.toHaveBeenCalled();
@@ -354,12 +499,16 @@ describe("RecipeViewProvider", () => {
     { stepId: "step-1", arg: 2 },
   ])("ignores invalid or ineligible target $stepId:$arg", async (target) => {
     const reference = fakeReference("selected text");
-    const { v, onMessage, getSelectionReference } = setup(reference.reference);
+    const { p, v, onMessage, getSelectionReference } = setup(reference.reference);
     const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
-    await onMessage({ type: "edit", name: "decode", steps, stepIds: ["step-1"] });
+    const [stepId] = loadRecipe(p, v, "decode", steps);
     v.webview.postMessage.mockClear();
 
-    await onMessage({ type: "useSelection", ...target });
+    await onMessage({
+      type: "useSelection",
+      stepId: target.stepId === "missing" ? "missing" : stepId,
+      arg: target.arg,
+    });
 
     expect(getSelectionReference).not.toHaveBeenCalled();
     expect(steps[0].args).toEqual(["old", "Hex"]);
@@ -385,17 +534,14 @@ describe("RecipeViewProvider", () => {
     const { p, v, onMessage, onApply, getSelectionReference } = setup(
       first.reference,
     );
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [{ opName: "FromBase64", args: ["first"] }],
-      stepIds: ["step-1"],
-    });
-    await onMessage({ type: "useSelection", stepId: "step-1", arg: 0 });
+    const steps = [{ opName: "FromBase64", args: ["first"] }];
+    const [firstId] = loadRecipe(p, v, "r", steps);
+    await onMessage({ type: "edit", name: "r", steps, stepIds: [firstId] });
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
 
     p.addOp({ opName: "FromBase64", args: ["second"] });
     const stepIds = lastPostedState(v).stepIds as string[];
-    expect(stepIds).toEqual(["step-1", "step-2"]);
+    expect(stepIds).toEqual([firstId, "step-2"]);
 
     getSelectionReference.mockReturnValue(second.reference);
     await onMessage({ type: "useSelection", stepId: stepIds[1], arg: 0 });
@@ -429,22 +575,20 @@ describe("RecipeViewProvider", () => {
   });
 
   test("apply passes the current recipe name and steps", () => {
-    const { onMessage, onApply } = setup();
+    const { p, v, onMessage, onApply } = setup();
     const steps = [{ opName: "FromBase64", args: [] }];
-    onMessage({ type: "edit", name: "decode", steps, stepIds: ["step-1"] });
+    loadRecipe(p, v, "decode", steps);
     onMessage({ type: "apply" });
     expect(onApply).toHaveBeenCalledWith("decode", steps, []);
   });
 
   test("reference changes update the bound plain value", async () => {
-    const { onMessage, reference, v, setText, fire } = setupReference("first");
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [{ opName: "FromBase64", args: ["old", "", ""] }],
-      stepIds: ["step-1"],
-    });
-    await onMessage({ type: "useSelection", stepId: "step-1", arg: 0 });
+    const { p, onMessage, reference, v, setText, fire } =
+      setupReference("first");
+    const [stepId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old", "", ""] },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
     setText("second");
     fire();
     expect(lastPostedState(v).recipe.steps[0].args[0]).toBe("second");
@@ -452,19 +596,14 @@ describe("RecipeViewProvider", () => {
   });
 
   test("toggleString reference changes preserve the option", async () => {
-    const { onMessage, v, setText, fire } = setupReference("key-one");
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [
-        {
-          opName: "FromBase64",
-          args: ["", { string: "old", option: "UTF8" }, ""],
-        },
-      ],
-      stepIds: ["step-1"],
-    });
-    await onMessage({ type: "useSelection", stepId: "step-1", arg: 1 });
+    const { p, onMessage, v, setText, fire } = setupReference("key-one");
+    const [stepId] = loadRecipe(p, v, "r", [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old", option: "UTF8" }, ""],
+      },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
     setText("key-two");
     fire();
     expect(lastPostedState(v).recipe.steps[0].args[1]).toEqual({
@@ -474,29 +613,24 @@ describe("RecipeViewProvider", () => {
   });
 
   test("reorder follows step IDs and manual target edits unlink", async () => {
-    const { onMessage, reference, onApply, setText, fire } =
+    const { p, v, onMessage, reference, onApply, setText, fire } =
       setupReference("bound");
     const first = { opName: "FromBase64", args: ["first", "", ""] };
     const second = { opName: "FromBase64", args: ["second", "", ""] };
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [first, second],
-      stepIds: ["a", "b"],
-    });
-    await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+    const [firstId, secondId] = loadRecipe(p, v, "r", [first, second]);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
     await onMessage({
       type: "edit",
       name: "r",
       steps: [second, first],
-      stepIds: ["b", "a"],
+      stepIds: [secondId, firstId],
     });
     await onMessage({
       type: "edit",
       name: "r",
       steps: [second, { ...first, args: ["manual", "", ""] }],
-      stepIds: ["b", "a"],
-      editedArg: { stepId: "a", arg: 0 },
+      stepIds: [secondId, firstId],
+      editedArg: { stepId: firstId, arg: 0 },
     });
     setText("ignored");
     fire();
@@ -509,26 +643,16 @@ describe("RecipeViewProvider", () => {
   test("removing a step and loading a recipe dispose bindings", async () => {
     const first = fakeReference("first");
     const second = fakeReference("second");
-    const { p, onMessage, getSelectionReference } = setup(first.reference);
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [
-        { opName: "FromBase64", args: ["a"] },
-        { opName: "FromBase64", args: ["b"] },
-      ],
-      stepIds: ["a", "b"],
-    });
-    await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+    const { p, v, onMessage, getSelectionReference } = setup(first.reference);
+    const [firstId, secondId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["a"] },
+      { opName: "FromBase64", args: ["b"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
     getSelectionReference.mockReturnValue(second.reference);
-    await onMessage({ type: "useSelection", stepId: "b", arg: 0 });
+    await onMessage({ type: "useSelection", stepId: secondId, arg: 0 });
 
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [{ opName: "FromBase64", args: ["b"] }],
-      stepIds: ["b"],
-    });
+    await onMessage({ type: "removeStep", stepId: firstId });
     expect(first.reference.dispose).toHaveBeenCalledTimes(1);
     expect(second.reference.dispose).not.toHaveBeenCalled();
 
@@ -537,10 +661,10 @@ describe("RecipeViewProvider", () => {
   });
 
   test("save receives cloned materialized steps without reference metadata", async () => {
-    const { onMessage, onSave, setText } = setupReference("selected");
+    const { p, v, onMessage, onSave, setText } = setupReference("selected");
     const steps = [{ opName: "FromBase64", args: ["old"] }];
-    await onMessage({ type: "edit", name: "r", steps, stepIds: ["a"] });
-    await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+    const [stepId] = loadRecipe(p, v, "r", steps);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
     setText("latest");
     await onMessage({ type: "save" });
 
@@ -552,14 +676,11 @@ describe("RecipeViewProvider", () => {
   });
 
   test("dispose releases all active bindings", async () => {
-    const { p, onMessage, reference } = setupReference("selected");
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [{ opName: "FromBase64", args: ["old"] }],
-      stepIds: ["a"],
-    });
-    await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+    const { p, v, onMessage, reference } = setupReference("selected");
+    const [stepId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
 
     p.dispose();
 
