@@ -35,6 +35,7 @@ function fakeReference(initial: string) {
     },
     onDidChange: emitter.event,
     clone: jest.fn(),
+    reveal: jest.fn(async () => {}),
     dispose: jest.fn(() => emitter.dispose()),
   };
   return {

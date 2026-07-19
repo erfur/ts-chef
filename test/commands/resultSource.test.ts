@@ -22,6 +22,7 @@ function fakeReference(initial: string) {
         clones.push(clone);
         return clone;
       },
+      reveal: jest.fn(async () => {}),
       dispose: jest.fn(() => emitter.dispose()),
     };
     return reference;
