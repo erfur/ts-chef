@@ -220,12 +220,72 @@ describe("RecipeViewProvider", () => {
     expect(onSave).toHaveBeenCalledWith("r1", steps);
   });
 
-  test("edit coerces missing name/steps to empty defaults", () => {
-    const { onMessage, onSave } = setup();
-    onMessage({ type: "edit" });
-    onMessage({ type: "save" });
-    expect(onSave).toHaveBeenCalledWith("", []);
-  });
+  test.each([
+    { label: "missing steps and IDs", message: {} },
+    { label: "non-array steps", message: { steps: null, stepIds: [] } },
+    {
+      label: "missing IDs",
+      message: { steps: [{ opName: "MD5", args: [] }] },
+    },
+    {
+      label: "mismatched IDs",
+      message: { steps: [{ opName: "MD5", args: [] }], stepIds: [] },
+    },
+    {
+      label: "duplicate IDs",
+      message: {
+        steps: [
+          { opName: "MD5", args: [] },
+          { opName: "MD5", args: [] },
+        ],
+        stepIds: ["duplicate", "duplicate"],
+      },
+    },
+    {
+      label: "non-string IDs",
+      message: { steps: [{ opName: "MD5", args: [] }], stepIds: [1] },
+    },
+  ])(
+    "rejects malformed edit with $label without changing state or bindings",
+    async ({ message }) => {
+      const { onMessage, onApply, reference, v, setText, fire } =
+        setupReference("bound");
+      await onMessage({
+        type: "edit",
+        name: "original",
+        steps: [{ opName: "FromBase64", args: ["old"] }],
+        stepIds: ["a"],
+      });
+      await onMessage({ type: "useSelection", stepId: "a", arg: 0 });
+
+      await onMessage({
+        type: "edit",
+        name: "invalid",
+        editedArg: { stepId: "a", arg: 0 },
+        ...message,
+      });
+      setText("latest");
+      fire();
+      await onMessage({ type: "ready" });
+      await onMessage({ type: "apply" });
+
+      expect(lastPostedState(v)).toMatchObject({
+        recipe: {
+          name: "original",
+          steps: [{ opName: "FromBase64", args: ["latest"] }],
+        },
+        stepIds: ["a"],
+      });
+      expect(onApply.mock.calls[0].slice(0, 2)).toEqual([
+        "original",
+        [{ opName: "FromBase64", args: ["latest"] }],
+      ]);
+      expect(onApply.mock.calls[0][2]).toEqual([
+        expect.objectContaining({ stepIndex: 0, argIndex: 0, reference }),
+      ]);
+      expect(reference.dispose).not.toHaveBeenCalled();
+    },
+  );
 
   test("assigns a non-empty selection to a plain string argument", async () => {
     const reference = fakeReference("selected text");
@@ -317,6 +377,42 @@ describe("RecipeViewProvider", () => {
       stepIds: [expect.any(String)],
       defs: { FromBase64: ARG_DEFS },
     });
+  });
+
+  test("generated IDs skip accepted client IDs and target distinct steps", async () => {
+    const first = fakeReference("first-bound");
+    const second = fakeReference("second-bound");
+    const { p, v, onMessage, onApply, getSelectionReference } = setup(
+      first.reference,
+    );
+    await onMessage({
+      type: "edit",
+      name: "r",
+      steps: [{ opName: "FromBase64", args: ["first"] }],
+      stepIds: ["step-1"],
+    });
+    await onMessage({ type: "useSelection", stepId: "step-1", arg: 0 });
+
+    p.addOp({ opName: "FromBase64", args: ["second"] });
+    const stepIds = lastPostedState(v).stepIds as string[];
+    expect(stepIds).toEqual(["step-1", "step-2"]);
+
+    getSelectionReference.mockReturnValue(second.reference);
+    await onMessage({ type: "useSelection", stepId: stepIds[1], arg: 0 });
+    first.setText("first-latest");
+    first.fire();
+    second.setText("second-latest");
+    second.fire();
+    await onMessage({ type: "apply" });
+
+    expect(onApply.mock.calls[0][1]).toEqual([
+      { opName: "FromBase64", args: ["first-latest"] },
+      { opName: "FromBase64", args: ["second-latest"] },
+    ]);
+    expect(onApply.mock.calls[0][2]).toEqual([
+      expect.objectContaining({ stepIndex: 0, reference: first.reference }),
+      expect.objectContaining({ stepIndex: 1, reference: second.reference }),
+    ]);
   });
 
   test("load replaces the recipe, reveals the view, and posts state with defs", () => {

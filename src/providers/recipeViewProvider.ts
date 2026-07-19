@@ -62,15 +62,19 @@ export class RecipeViewProvider
             this.postState();
             break;
           case "edit": {
-            const steps = Array.isArray(msg.steps) ? msg.steps : [];
+            const steps = msg.steps;
             const incomingIds = msg.stepIds;
-            this.stepIds =
-              Array.isArray(incomingIds) &&
-              incomingIds.length === steps.length &&
-              incomingIds.every((id): id is string => typeof id === "string") &&
-              new Set(incomingIds).size === incomingIds.length
-                ? incomingIds
-                : steps.map(() => this.nextStepId());
+            if (
+              !Array.isArray(steps) ||
+              !Array.isArray(incomingIds) ||
+              incomingIds.length !== steps.length ||
+              !incomingIds.every(
+                (id): id is string => typeof id === "string",
+              ) ||
+              new Set(incomingIds).size !== incomingIds.length
+            )
+              break;
+            this.stepIds = incomingIds;
             const editedArg = msg.editedArg;
             if (
               editedArg &&
@@ -181,7 +185,10 @@ export class RecipeViewProvider
   }
 
   private nextStepId(): string {
-    return `step-${++this.stepSeq}`;
+    let id: string;
+    do id = `step-${++this.stepSeq}`;
+    while (this.stepIds.includes(id));
+    return id;
   }
 
   private disposeBinding(key: string): void {
