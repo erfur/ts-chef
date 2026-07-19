@@ -424,17 +424,31 @@ export class RecipeViewProvider
       .arg-row input[type="checkbox"] {
         cursor: pointer;
       }
-      .use-selection {
+      .selection-action {
         flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: var(--vscode-button-secondaryForeground);
         background: var(--vscode-button-secondaryBackground);
         border: none;
-        padding: 3px 6px;
+        padding: 3px;
         cursor: pointer;
         border-radius: 2px;
       }
-      .use-selection:hover {
+      .selection-action:hover {
         background: var(--vscode-button-secondaryHoverBackground);
+      }
+      .selection-action svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.5;
+      }
+      .arg-row input[data-selection-reference] {
+        cursor: pointer;
+        opacity: 0.85;
       }
       .empty {
         padding: 8px;
@@ -475,8 +489,13 @@ export class RecipeViewProvider
       let steps = [];
       let stepIds = [];
       let defs = {};
+      let boundArgs = new Set();
       const collapsed = new Set();
       let dragIdx = -1;
+      const LINK_ICON =
+        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5l3-3M5.25 11.75l-1 .99a2.12 2.12 0 01-3-3l2.5-2.49a2.12 2.12 0 013 0M10.75 4.25l1-.99a2.12 2.12 0 013 3l-2.5 2.49a2.12 2.12 0 01-3 0"/></svg>';
+      const CLEAR_ICON =
+        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
 
       function esc(s) {
         return String(s)
@@ -497,8 +516,43 @@ export class RecipeViewProvider
         return defs[op] || [];
       }
 
-      function renderArgRow(argDef, val, ai) {
+      function bindingKey(stepId, arg) {
+        return JSON.stringify([stepId, arg]);
+      }
+
+      function selectionButton(action, ai, title, icon) {
+        return (
+          '<button type="button" class="selection-action" data-' +
+          action +
+          ' data-arg="' +
+          ai +
+          '" title="' +
+          title +
+          '" aria-label="' +
+          title +
+          '">' +
+          icon +
+          "</button>"
+        );
+      }
+
+      function renderArgRow(argDef, val, ai, stepId) {
         const lbl = '<span class="arg-label">' + esc(argDef.name) + "</span>";
+        const bound = boundArgs.has(bindingKey(stepId, ai));
+        const referenceAttrs = bound ? " readonly data-selection-reference" : "";
+        const action = bound
+          ? selectionButton(
+              "clear-selection",
+              ai,
+              "Clear selection reference",
+              CLEAR_ICON,
+            )
+          : selectionButton(
+              "use-selection",
+              ai,
+              "Use current editor selection",
+              LINK_ICON,
+            );
         let input = "";
         switch (argDef.type) {
           case "boolean":
@@ -616,10 +670,10 @@ export class RecipeViewProvider
               escAttr(strVal) +
               '" data-arg="' +
               ai +
-              '" data-type="toggleString" data-subfield="string">' +
-              '<button type="button" class="use-selection" data-use-selection data-arg="' +
-              ai +
-              '" title="Use current editor selection">Use selection</button>' +
+              '" data-type="toggleString" data-subfield="string"' +
+              referenceAttrs +
+              ">" +
+              action +
               '<select data-arg="' +
               ai +
               '" data-type="toggleString" data-subfield="option">' +
@@ -635,12 +689,10 @@ export class RecipeViewProvider
               escAttr(strVal) +
               '" data-arg="' +
               ai +
-              '" data-type="string">' +
-              (argDef.type === "string"
-                ? '<button type="button" class="use-selection" data-use-selection data-arg="' +
-                  ai +
-                  '" title="Use current editor selection">Use selection</button>'
-                : "");
+              '" data-type="string"' +
+              (argDef.type === "string" ? referenceAttrs : "") +
+              ">" +
+              (argDef.type === "string" ? action : "");
           }
         }
         return '<div class="arg-row">' + lbl + input + "</div>";
@@ -649,7 +701,7 @@ export class RecipeViewProvider
       function renderArgs(s, i) {
         const ds = argDefs(s.opName);
         const rows = ds
-          .map((a, ai) => renderArgRow(a, (s.args || [])[ai], ai))
+          .map((a, ai) => renderArgRow(a, (s.args || [])[ai], ai, stepIds[i]))
           .join("");
         return '<div class="step-args" data-step="' + i + '">' + rows + "</div>";
       }
@@ -738,7 +790,11 @@ export class RecipeViewProvider
           default:
             s.args[ai] = t.value;
         }
-        emitEdit({ stepId: stepIds[si], arg: ai });
+        emitEdit({
+          stepId: stepIds[si],
+          arg: ai,
+          subfield: t.dataset.subfield,
+        });
       }
 
       nameEl.addEventListener("input", () => emitEdit());
@@ -750,6 +806,28 @@ export class RecipeViewProvider
         .addEventListener("click", () => vscode.postMessage({ type: "save" }));
 
       stepsEl.addEventListener("click", (e) => {
+        const referencedInput = e.target.closest("[data-selection-reference]");
+        if (referencedInput) {
+          const argsDiv = referencedInput.closest(".step-args");
+          if (!argsDiv) return;
+          vscode.postMessage({
+            type: "revealSelection",
+            stepId: stepIds[Number(argsDiv.dataset.step)],
+            arg: Number(referencedInput.dataset.arg),
+          });
+          return;
+        }
+        const clearSelection = e.target.closest("[data-clear-selection]");
+        if (clearSelection) {
+          const argsDiv = clearSelection.closest(".step-args");
+          if (!argsDiv) return;
+          vscode.postMessage({
+            type: "clearSelection",
+            stepId: stepIds[Number(argsDiv.dataset.step)],
+            arg: Number(clearSelection.dataset.arg),
+          });
+          return;
+        }
         const useSelection = e.target.closest("[data-use-selection]");
         if (useSelection) {
           const argsDiv = useSelection.closest(".step-args");
@@ -807,6 +885,11 @@ export class RecipeViewProvider
           steps = Array.isArray(msg.recipe.steps) ? msg.recipe.steps : [];
           stepIds = Array.isArray(msg.stepIds) ? msg.stepIds : [];
           defs = msg.defs || {};
+          boundArgs = new Set(
+            (Array.isArray(msg.boundArgs) ? msg.boundArgs : []).map((target) =>
+              bindingKey(target.stepId, target.arg),
+            ),
+          );
           collapsed.clear();
           render();
         }

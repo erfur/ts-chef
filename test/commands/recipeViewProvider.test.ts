@@ -94,7 +94,10 @@ function loadRecipe(
   return [...lastPostedState(v).stepIds];
 }
 
-function renderRecipeDom(html: string) {
+function renderRecipeDom(
+  html: string,
+  boundArgs: { stepId: string; arg: number }[] = [],
+) {
   const postMessage = jest.fn();
   const dom = new JSDOM(html, {
     runScripts: "dangerously",
@@ -115,6 +118,7 @@ function renderRecipeDom(html: string) {
         },
         stepIds: ["step-1"],
         defs: { FromBase64: ARG_DEFS },
+        boundArgs,
       },
     }),
   );
@@ -175,14 +179,22 @@ describe("RecipeViewProvider", () => {
     expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
   });
 
-  test("renders use-selection beside string and toggleString arguments", () => {
+  test("renders accessible icon-only use-selection controls", () => {
     const { v } = setup();
     const { dom } = renderRecipeDom(v.webview.html);
 
-    const buttons = dom.window.document.querySelectorAll("[data-use-selection]");
+    const buttons = dom.window.document.querySelectorAll<HTMLElement>(
+      "[data-use-selection]",
+    );
     expect(buttons).toHaveLength(2);
-    expect(buttons[0].closest(".arg-row")?.textContent).toContain("Value");
-    expect(buttons[1].closest(".arg-row")?.textContent).toContain("Alphabet");
+    for (const button of buttons) {
+      expect(button.textContent?.trim()).toBe("");
+      expect(button.querySelector("svg")).not.toBeNull();
+      expect(button.getAttribute("title")).toBe("Use current editor selection");
+      expect(button.getAttribute("aria-label")).toBe(
+        "Use current editor selection",
+      );
+    }
 
     const alphabetRow = buttons[1].closest(".arg-row");
     expect(
@@ -194,6 +206,65 @@ describe("RecipeViewProvider", () => {
     ).find((row) => row.textContent?.includes("Separator"));
     expect(separatorRow?.querySelector('input[type="text"]')).not.toBeNull();
     expect(separatorRow?.querySelector("[data-use-selection]")).toBeNull();
+  });
+
+  test("renders a bound field read-only with an accessible clear icon", () => {
+    const { v } = setup();
+    const { dom } = renderRecipeDom(v.webview.html, [
+      { stepId: "step-1", arg: 1 },
+    ]);
+    const input = dom.window.document.querySelector<HTMLInputElement>(
+      'input[data-arg="1"][data-subfield="string"]',
+    );
+    const clear = dom.window.document.querySelector<HTMLElement>(
+      "[data-clear-selection]",
+    );
+
+    expect(input?.readOnly).toBe(true);
+    expect(input?.hasAttribute("data-selection-reference")).toBe(true);
+    expect(clear?.textContent?.trim()).toBe("");
+    expect(clear?.querySelector("svg")).not.toBeNull();
+    expect(clear?.getAttribute("title")).toBe("Clear selection reference");
+    expect(clear?.getAttribute("aria-label")).toBe("Clear selection reference");
+  });
+
+  test.each([
+    ["input[data-selection-reference]", "revealSelection"],
+    ["[data-clear-selection]", "clearSelection"],
+  ])("clicking %s posts %s for its stable target", (selector, type) => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html, [
+      { stepId: "step-1", arg: 0 },
+    ]);
+    postMessage.mockClear();
+
+    dom.window.document
+      .querySelector<HTMLElement>(selector)
+      ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type,
+      stepId: "step-1",
+      arg: 0,
+    });
+  });
+
+  test("preserves the edited toggleString subfield", () => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html);
+    postMessage.mockClear();
+    const option = dom.window.document.querySelector<HTMLSelectElement>(
+      'select[data-arg="1"][data-subfield="option"]',
+    );
+
+    option?.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "edit",
+        editedArg: { stepId: "step-1", arg: 1, subfield: "option" },
+      }),
+    );
   });
 
   test("requests the current selection for the clicked argument", () => {
