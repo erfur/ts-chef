@@ -53,8 +53,7 @@
       "activitybar": [
         {
           "id": "vschef-sidebar",
-          "title": "vschef",
-          "icon": "media/icon.svg"
+          "title": "vschef"
         }
       ]
     },
