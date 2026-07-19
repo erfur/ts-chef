@@ -11,13 +11,18 @@ export function transformTrackedRange(
 ): { start: number; end: number; changed: boolean } {
   const sorted = [...changes].sort((a, b) => a.rangeOffset - b.rangeOffset);
   const empty = start === end;
+  const prefixLength = (text: string): number => {
+    const newline = text.search(/[\r\n]/);
+    return newline === -1 ? text.length : newline;
+  };
   const mapBoundary = (offset: number, includeInsertion: boolean): number => {
     let delta = 0;
     for (const change of sorted) {
       const changeStart = change.rangeOffset;
       const changeEnd = changeStart + change.rangeLength;
       if (change.rangeLength === 0 && changeStart === offset) {
-        if (includeInsertion && empty) delta += change.text.length;
+        if (includeInsertion)
+          delta += empty ? change.text.length : prefixLength(change.text);
         continue;
       }
       if (changeEnd <= offset) {
@@ -31,11 +36,11 @@ export function transformTrackedRange(
   };
   const changed = sorted.some((change) => {
     const changeEnd = change.rangeOffset + change.rangeLength;
-    return change.rangeLength === 0
-      ? empty
-        ? change.rangeOffset === start
-        : change.rangeOffset >= start && change.rangeOffset < end
-      : change.rangeOffset < end && changeEnd > start;
+    if (change.rangeLength !== 0)
+      return change.rangeOffset < end && changeEnd > start;
+    if (empty) return change.rangeOffset === start;
+    if (change.rangeOffset >= start && change.rangeOffset < end) return true;
+    return change.rangeOffset === end && prefixLength(change.text) > 0;
   });
   return {
     start: mapBoundary(start, false),

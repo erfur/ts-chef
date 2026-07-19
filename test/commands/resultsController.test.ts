@@ -234,14 +234,50 @@ describe("transformTrackedRange", () => {
       9,
       [{ rangeOffset: 9, rangeLength: 0, text: "X" }],
       5,
-      9,
-      false,
+      10,
+      true,
     ],
     [
       "insert newline at end",
       5,
       9,
       [{ rangeOffset: 9, rangeLength: 0, text: "\n" }],
+      5,
+      9,
+      false,
+    ],
+    [
+      "insert carriage return at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "\r" }],
+      5,
+      9,
+      false,
+    ],
+    [
+      "insert CRLF at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "\r\n" }],
+      5,
+      9,
+      false,
+    ],
+    [
+      "insert text followed by newline at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "abc\nxyz" }],
+      5,
+      12,
+      true,
+    ],
+    [
+      "insert newline followed by text at end",
+      5,
+      9,
+      [{ rangeOffset: 9, rangeLength: 0, text: "\nxyz" }],
       5,
       9,
       false,
@@ -358,13 +394,13 @@ describe("transformTrackedRange", () => {
       true,
     ],
     [
-      "leaves an insertion at document end outside",
+      "tracks text inserted at document end",
       0,
       10,
       [{ rangeOffset: 10, rangeLength: 0, text: "X" }],
       0,
-      10,
-      false,
+      11,
+      true,
     ],
     [
       "tracks a whole-document replacement",
@@ -1016,6 +1052,47 @@ describe("ResultsController", () => {
     expect(recipe.evaluate).not.toHaveBeenCalled();
   });
 
+  test.each([
+    ["text", "X", "cdeX", 6],
+    ["text before a newline", "XY\nZ", "cdeXY", 7],
+  ])(
+    "tracks %s inserted at a non-empty end boundary",
+    async (_name, inserted, expectedInput, expectedEnd) => {
+      jest.useFakeTimers();
+      const document = makeDocument("source.txt", "abcdefghij");
+      const { editor } = makeEditor(document);
+      const { editor: shown, editBuilder } = makeEditor(document);
+      window.showTextDocument.mockResolvedValue(shown);
+      const recipe = source("Recipe");
+      const { controller, change, emit, lastState } = setup(10);
+      controller.show(editor, "result", target(2, 5), recipe);
+      const id = lastState().items[0].id;
+
+      change(document, [
+        { rangeOffset: 5, rangeLength: 0, text: inserted },
+      ]);
+      await jest.advanceTimersByTimeAsync(10);
+
+      expect(recipe.evaluate).toHaveBeenCalledWith(expectedInput);
+      await emit({ type: "open", id });
+      expect(shown.selection).toEqual(
+        expect.objectContaining({
+          anchor: document.positionAt(2),
+          active: document.positionAt(expectedEnd),
+        }),
+      );
+
+      await emit({ type: "action", action: "replace", id });
+      expect(editBuilder.replace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start: document.positionAt(2),
+          end: document.positionAt(expectedEnd),
+        }),
+        expectedInput,
+      );
+    },
+  );
+
   test("keeps an insertion at a non-empty end boundary outside the result", async () => {
     const document = makeDocument("source.txt", "abcdefghij");
     const { editor } = makeEditor(document);
@@ -1147,7 +1224,7 @@ describe("ResultsController", () => {
     expect(lastState().items).toHaveLength(0);
   });
 
-  test("keeps document-end appends outside a whole-document result", async () => {
+  test("tracks text but not newlines appended to a whole-document result", async () => {
     jest.useFakeTimers();
     const document = makeDocument("source.txt", "abcdefghij");
     const { editor } = makeEditor(document, 0, 10);
@@ -1157,11 +1234,14 @@ describe("ResultsController", () => {
 
     change(document, [{ rangeOffset: 10, rangeLength: 0, text: "X" }]);
     await jest.advanceTimersByTimeAsync(10);
+    change(document, [{ rangeOffset: 11, rangeLength: 0, text: "\n" }]);
+    await jest.advanceTimersByTimeAsync(10);
     change(document, [{ rangeOffset: 0, rangeLength: 0, text: "Y" }]);
     await jest.advanceTimersByTimeAsync(10);
 
-    expect(recipe.evaluate).toHaveBeenCalledTimes(1);
-    expect(recipe.evaluate).toHaveBeenCalledWith("Yabcdefghij");
+    expect(recipe.evaluate).toHaveBeenCalledTimes(2);
+    expect(recipe.evaluate).toHaveBeenNthCalledWith(1, "abcdefghijX");
+    expect(recipe.evaluate).toHaveBeenNthCalledWith(2, "YabcdefghijX");
   });
 
   test("moves a zero-length range silently and expands it for an insertion there", async () => {
