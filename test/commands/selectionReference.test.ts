@@ -1,11 +1,19 @@
 import type { Range as VsCodeRange, TextDocument } from "vscode";
 import { SelectionReferenceTracker } from "../../src/commands/selectionReference";
 import type { OffsetChange } from "../../src/commands/trackedRange";
-import { Position, Range, workspace } from "../vscode-mock";
+import { Position, Range, Selection, window, workspace } from "../vscode-mock";
 
 type FakeDocument = TextDocument & {
   applyChanges: (changes: readonly OffsetChange[]) => void;
 };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 function makeDocument(text: string): FakeDocument {
   let contents = text;
@@ -97,6 +105,96 @@ test("freezes the final text when its document closes", () => {
   close(document);
   change(document, [{ rangeOffset: 2, rangeLength: 3, text: "new" }]);
   expect(tracker.reference.text).toBe("234");
+});
+
+test("reveals and selects the transformed source range", async () => {
+  const { tracker, document, change } = setup("0123456789", 2, 5);
+  const editor = { selection: undefined, revealRange: jest.fn() };
+  window.showTextDocument.mockResolvedValue(editor);
+  change(document, [{ rangeOffset: 0, rangeLength: 1, text: "abc" }]);
+
+  await tracker.reference.reveal();
+
+  expect(window.showTextDocument).toHaveBeenCalledWith(document, {
+    preserveFocus: false,
+  });
+  expect(editor.selection).toEqual(
+    new Selection(new Position(0, 4), new Position(0, 7)),
+  );
+  expect(editor.revealRange).toHaveBeenCalledWith(
+    expect.objectContaining({
+      start: new Position(0, 4),
+      end: new Position(0, 7),
+    }),
+  );
+});
+
+test("uses the latest transformed range after the editor opens", async () => {
+  const { tracker, document, change } = setup("0123456789", 2, 5);
+  const editor = { selection: undefined, revealRange: jest.fn() };
+  const opening = deferred<typeof editor>();
+  window.showTextDocument.mockReturnValue(opening.promise);
+
+  const revealing = tracker.reference.reveal();
+  change(document, [{ rangeOffset: 0, rangeLength: 1, text: "abc" }]);
+  opening.resolve(editor);
+  await revealing;
+
+  expect(editor.selection).toEqual(
+    new Selection(new Position(0, 4), new Position(0, 7)),
+  );
+  expect(editor.revealRange).toHaveBeenCalledWith(
+    expect.objectContaining({
+      start: new Position(0, 4),
+      end: new Position(0, 7),
+    }),
+  );
+});
+
+test("does not select or reveal when disposed while the editor opens", async () => {
+  const { tracker } = setup("0123456789", 2, 5);
+  const editor = { selection: undefined, revealRange: jest.fn() };
+  const opening = deferred<typeof editor>();
+  window.showTextDocument.mockReturnValue(opening.promise);
+
+  const revealing = tracker.reference.reveal();
+  tracker.reference.dispose();
+  opening.resolve(editor);
+  await revealing;
+
+  expect(editor.selection).toBeUndefined();
+  expect(editor.revealRange).not.toHaveBeenCalled();
+});
+
+test("does not select or reveal when the document closes while the editor opens", async () => {
+  const { tracker, document, close } = setup("0123456789", 2, 5);
+  const editor = { selection: undefined, revealRange: jest.fn() };
+  const opening = deferred<typeof editor>();
+  window.showTextDocument.mockReturnValue(opening.promise);
+
+  const revealing = tracker.reference.reveal();
+  close(document);
+  opening.resolve(editor);
+  await revealing;
+
+  expect(editor.selection).toBeUndefined();
+  expect(editor.revealRange).not.toHaveBeenCalled();
+});
+
+test("silently skips reveal after the source document closes", async () => {
+  const { tracker, document, close } = setup("0123456789", 2, 5);
+  close(document);
+
+  await expect(tracker.reference.reveal()).resolves.toBeUndefined();
+
+  expect(window.showTextDocument).not.toHaveBeenCalled();
+});
+
+test("silently ignores editor reveal failures", async () => {
+  const { tracker } = setup("0123456789", 2, 5);
+  window.showTextDocument.mockRejectedValue(new Error("closed while opening"));
+
+  await expect(tracker.reference.reveal()).resolves.toBeUndefined();
 });
 
 test("clone tracks independently and disposal stops updates", () => {

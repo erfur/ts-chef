@@ -35,6 +35,7 @@ function fakeReference(initial: string) {
     },
     onDidChange: emitter.event,
     clone: jest.fn(),
+    reveal: jest.fn(async () => {}),
     dispose: jest.fn(() => emitter.dispose()),
   };
   return {
@@ -93,7 +94,10 @@ function loadRecipe(
   return [...lastPostedState(v).stepIds];
 }
 
-function renderRecipeDom(html: string) {
+function renderRecipeDom(
+  html: string,
+  boundArgs: { stepId: string; arg: number }[] = [],
+) {
   const postMessage = jest.fn();
   const dom = new JSDOM(html, {
     runScripts: "dangerously",
@@ -114,6 +118,7 @@ function renderRecipeDom(html: string) {
         },
         stepIds: ["step-1"],
         defs: { FromBase64: ARG_DEFS },
+        boundArgs,
       },
     }),
   );
@@ -174,14 +179,22 @@ describe("RecipeViewProvider", () => {
     expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
   });
 
-  test("renders use-selection beside string and toggleString arguments", () => {
+  test("renders accessible icon-only use-selection controls", () => {
     const { v } = setup();
     const { dom } = renderRecipeDom(v.webview.html);
 
-    const buttons = dom.window.document.querySelectorAll("[data-use-selection]");
+    const buttons = dom.window.document.querySelectorAll<HTMLElement>(
+      "[data-use-selection]",
+    );
     expect(buttons).toHaveLength(2);
-    expect(buttons[0].closest(".arg-row")?.textContent).toContain("Value");
-    expect(buttons[1].closest(".arg-row")?.textContent).toContain("Alphabet");
+    for (const button of buttons) {
+      expect(button.textContent?.trim()).toBe("");
+      expect(button.querySelector("svg")).not.toBeNull();
+      expect(button.getAttribute("title")).toBe("Use current editor selection");
+      expect(button.getAttribute("aria-label")).toBe(
+        "Use current editor selection",
+      );
+    }
 
     const alphabetRow = buttons[1].closest(".arg-row");
     expect(
@@ -193,6 +206,97 @@ describe("RecipeViewProvider", () => {
     ).find((row) => row.textContent?.includes("Separator"));
     expect(separatorRow?.querySelector('input[type="text"]')).not.toBeNull();
     expect(separatorRow?.querySelector("[data-use-selection]")).toBeNull();
+  });
+
+  test("renders a bound field read-only with an accessible clear icon", () => {
+    const { v } = setup();
+    const { dom } = renderRecipeDom(v.webview.html, [
+      { stepId: "step-1", arg: 1 },
+    ]);
+    const input = dom.window.document.querySelector<HTMLInputElement>(
+      'input[data-arg="1"][data-subfield="string"]',
+    );
+    const clear = dom.window.document.querySelector<HTMLElement>(
+      "[data-clear-selection]",
+    );
+
+    expect(input?.readOnly).toBe(true);
+    expect(input?.hasAttribute("data-selection-reference")).toBe(true);
+    expect(input?.getAttribute("role")).toBe("button");
+    expect(input?.getAttribute("aria-label")).toBe(
+      "Reveal selection for Alphabet",
+    );
+    expect(clear?.textContent?.trim()).toBe("");
+    expect(clear?.querySelector("svg")).not.toBeNull();
+    expect(clear?.getAttribute("title")).toBe("Clear selection reference");
+    expect(clear?.getAttribute("aria-label")).toBe("Clear selection reference");
+  });
+
+  test.each([
+    ["input[data-selection-reference]", "revealSelection"],
+    ["[data-clear-selection]", "clearSelection"],
+  ])("clicking %s posts %s for its stable target", (selector, type) => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html, [
+      { stepId: "step-1", arg: 0 },
+    ]);
+    postMessage.mockClear();
+
+    dom.window.document
+      .querySelector<HTMLElement>(selector)
+      ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type,
+      stepId: "step-1",
+      arg: 0,
+    });
+  });
+
+  test.each(["Enter", " "])(
+    "pressing %p on a bound field posts revealSelection",
+    (key) => {
+      const { v } = setup();
+      const { dom, postMessage } = renderRecipeDom(v.webview.html, [
+        { stepId: "step-1", arg: 0 },
+      ]);
+      postMessage.mockClear();
+      const input = dom.window.document.querySelector<HTMLElement>(
+        "input[data-selection-reference]",
+      );
+      const event = new dom.window.KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      input?.dispatchEvent(event);
+
+      expect(postMessage).toHaveBeenCalledWith({
+        type: "revealSelection",
+        stepId: "step-1",
+        arg: 0,
+      });
+      if (key === " ") expect(event.defaultPrevented).toBe(true);
+    },
+  );
+
+  test("preserves the edited toggleString subfield", () => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html);
+    postMessage.mockClear();
+    const option = dom.window.document.querySelector<HTMLSelectElement>(
+      'select[data-arg="1"][data-subfield="option"]',
+    );
+
+    option?.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "edit",
+        editedArg: { stepId: "step-1", arg: 1, subfield: "option" },
+      }),
+    );
   });
 
   test("requests the current selection for the clicked argument", () => {
@@ -249,6 +353,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "", steps: [] },
       stepIds: [],
       defs: {},
+      boundArgs: [],
     });
   });
 
@@ -578,6 +683,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "decode", steps },
       stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [{ stepId, arg: 0 }],
     });
   });
 
@@ -605,6 +711,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "decode", steps },
       stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [{ stepId, arg: 1 }],
     });
   });
 
@@ -655,6 +762,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "", steps: [{ opName: "FromBase64", args: [] }] },
       stepIds: [expect.any(String)],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [],
     });
   });
 
@@ -701,6 +809,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "p", steps: [{ opName: "MD5", args: [] }] },
       stepIds: [expect.any(String)],
       defs: { MD5: [] },
+      boundArgs: [],
     });
   });
 
@@ -741,6 +850,138 @@ describe("RecipeViewProvider", () => {
       option: "UTF8",
     });
   });
+
+  test("reveals a bound target by stable ID", async () => {
+    const { p, v, onMessage, reference } = setupReference("selected");
+    const [stepId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+
+    await onMessage({ type: "revealSelection", stepId, arg: 0 });
+
+    expect(reference.reveal).toHaveBeenCalledTimes(1);
+  });
+
+  test("reveals a bound toggleString by stable ID", async () => {
+    const { p, v, onMessage, reference, onApply } =
+      setupReference("selected key");
+    const [stepId] = loadRecipe(p, v, "r", [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old key", option: "UTF8" }, ""],
+      },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+
+    await onMessage({ type: "revealSelection", stepId, arg: 1 });
+    await onMessage({ type: "apply" });
+
+    expect(reference.reveal).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][1][0].args[1]).toEqual({
+      string: "selected key",
+      option: "UTF8",
+    });
+  });
+
+  test("clears one binding while retaining its latest materialized value", async () => {
+    const first = fakeReference("first");
+    const second = fakeReference("second");
+    const { p, v, onMessage, getSelectionReference, onApply } = setup(
+      first.reference,
+    );
+    const [firstId, secondId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old-first"] },
+      { opName: "FromBase64", args: ["old-second"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
+    getSelectionReference.mockReturnValue(second.reference);
+    await onMessage({ type: "useSelection", stepId: secondId, arg: 0 });
+    first.setText("first-latest");
+
+    await onMessage({ type: "clearSelection", stepId: firstId, arg: 0 });
+    await onMessage({ type: "apply" });
+
+    expect(first.reference.dispose).toHaveBeenCalledTimes(1);
+    expect(second.reference.dispose).not.toHaveBeenCalled();
+    expect(onApply.mock.calls[0][1][0].args[0]).toBe("first-latest");
+    expect(lastPostedState(v).boundArgs).toEqual([
+      { stepId: secondId, arg: 0 },
+    ]);
+  });
+
+  test("clears a bound toggleString while preserving its encoding", async () => {
+    const { p, v, onMessage, reference, setText, onApply } =
+      setupReference("selected key");
+    const [stepId] = loadRecipe(p, v, "r", [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old key", option: "UTF8" }, ""],
+      },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+    setText("latest key");
+
+    await onMessage({ type: "clearSelection", stepId, arg: 1 });
+    await onMessage({ type: "apply" });
+
+    expect(reference.dispose).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][1][0].args[1]).toEqual({
+      string: "latest key",
+      option: "UTF8",
+    });
+    expect(lastPostedState(v).boundArgs).toEqual([]);
+  });
+
+  test("changing a bound toggle encoding keeps the text reference", async () => {
+    const { p, v, onMessage, reference, setText, fire } =
+      setupReference("selected");
+    const steps = [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old", option: "Hex" }, ""],
+      },
+    ];
+    const [stepId] = loadRecipe(p, v, "r", steps);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+
+    await onMessage({
+      type: "edit",
+      name: "r",
+      steps: [
+        {
+          opName: "FromBase64",
+          args: ["", { string: "selected", option: "UTF8" }, ""],
+        },
+      ],
+      stepIds: [stepId],
+      editedArg: { stepId, arg: 1, subfield: "option" },
+    });
+    setText("latest");
+    fire();
+
+    expect(lastPostedState(v).recipe.steps[0].args[1]).toEqual({
+      string: "latest",
+      option: "UTF8",
+    });
+    expect(reference.dispose).not.toHaveBeenCalled();
+  });
+
+  test.each(["revealSelection", "clearSelection"])(
+    "ignores %s for invalid or unbound targets",
+    async (type) => {
+      const { p, v, onMessage, reference } = setupReference("selected");
+      const [stepId] = loadRecipe(p, v, "r", [
+        { opName: "FromBase64", args: ["old"] },
+      ]);
+      await onMessage({ type, stepId, arg: 0 });
+      await onMessage({ type, stepId: "missing", arg: 0 });
+      await onMessage({ type, stepId, arg: 99 });
+
+      expect(reference.reveal).not.toHaveBeenCalled();
+      expect(reference.dispose).not.toHaveBeenCalled();
+    },
+  );
 
   test("reorder follows step IDs and manual target edits unlink", async () => {
     const { p, v, onMessage, reference, onApply, setText, fire } =

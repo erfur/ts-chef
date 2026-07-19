@@ -98,6 +98,7 @@ function sourceWithReference() {
       return subscription;
     }),
     clone: jest.fn(),
+    reveal: jest.fn(async () => {}),
     dispose: jest.fn(),
   };
   const value = source("Recipe");

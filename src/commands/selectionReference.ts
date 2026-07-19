@@ -5,6 +5,7 @@ export interface SelectionReference extends vscode.Disposable {
   readonly text: string;
   readonly onDidChange: vscode.Event<void>;
   clone(): SelectionReference;
+  reveal(): Promise<void>;
 }
 
 class TrackedSelection implements SelectionReference {
@@ -64,6 +65,25 @@ class TrackedSelection implements SelectionReference {
     if (this.disposed || document !== this.document) return;
     this.lastText = this.read();
     this.document = undefined;
+  }
+
+  async reveal(): Promise<void> {
+    if (this.disposed || !this.document) return;
+    const document = this.document;
+    try {
+      const editor = await vscode.window.showTextDocument(document, {
+        preserveFocus: false,
+      });
+      if (this.disposed || this.document !== document) return;
+      const range = new vscode.Range(
+        document.positionAt(this.startOffset),
+        document.positionAt(this.endOffset),
+      );
+      editor.selection = new vscode.Selection(range.start, range.end);
+      editor.revealRange(range);
+    } catch {
+      // The document may close while VS Code is opening it.
+    }
   }
 
   dispose(): void {
