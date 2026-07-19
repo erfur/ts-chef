@@ -80,6 +80,44 @@ describe("presentPipelineResult", () => {
     expect(source.dispose).not.toHaveBeenCalled();
   });
 
+  test("disposes a runtime source once when the sidebar renderer rejects", async () => {
+    __setConfig({ pipelineResultAction: "sidebar" });
+    const source = disposableSource();
+    const error = new Error("sidebar failed");
+    const { editor } = makeEditor();
+
+    await expect(
+      presentPipelineResult(
+        editor as unknown as TextEditor,
+        "RESULT",
+        "Result",
+        { sidebar: jest.fn().mockRejectedValue(error) },
+        undefined,
+        source,
+      ),
+    ).rejects.toBe(error);
+    expect(source.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  test("disposes a runtime source once when a custom non-sidebar renderer rejects", async () => {
+    __setConfig({ pipelineResultAction: "inline" });
+    const source = disposableSource();
+    const error = new Error("inline failed");
+    const { editor } = makeEditor();
+
+    await expect(
+      presentPipelineResult(
+        editor as unknown as TextEditor,
+        "RESULT",
+        "Result",
+        { inline: jest.fn().mockRejectedValue(error) },
+        undefined,
+        source,
+      ),
+    ).rejects.toBe(error);
+    expect(source.dispose).toHaveBeenCalledTimes(1);
+  });
+
   test("copy mode copies to clipboard without a popup", async () => {
     __setConfig({ pipelineResultAction: "copy" });
     const { editor } = makeEditor();

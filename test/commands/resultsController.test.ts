@@ -404,6 +404,19 @@ describe("ResultsController", () => {
     expect(dynamic.source.dispose).toHaveBeenCalledTimes(1);
   });
 
+  test("closing an unrelated document preserves result reference resources", () => {
+    const dynamic = sourceWithReference();
+    const { controller, close, lastState } = setup();
+    const { editor } = makeEditor(makeDocument("source.txt"));
+    controller.show(editor, "initial", target(1, 4), dynamic.source);
+
+    close(makeDocument("reference.txt"));
+
+    expect(lastState().items).toHaveLength(1);
+    expect(dynamic.subscription.dispose).not.toHaveBeenCalled();
+    expect(dynamic.source.dispose).not.toHaveBeenCalled();
+  });
+
   test("controller disposal releases result reference resources", () => {
     const dynamic = sourceWithReference();
     const { controller } = setup();

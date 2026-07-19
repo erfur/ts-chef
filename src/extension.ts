@@ -117,8 +117,10 @@ export function activate(context: vscode.ExtensionContext): void {
           editor.document.getText(editor.selection) ||
           editor.document.getText();
         const source = createPipelineResultSource(name, steps, references);
+        let presentationOwnsSource = false;
         try {
           const result = await source.evaluate(text);
+          presentationOwnsSource = true;
           await presentPipelineResult(
             editor,
             result,
@@ -128,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
             source,
           );
         } catch (e) {
-          source.dispose?.();
+          if (!presentationOwnsSource) source.dispose?.();
           log(`Recipe apply error: ${e}`);
           vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
         }
