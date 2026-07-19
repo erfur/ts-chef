@@ -1,6 +1,6 @@
 /*
  * -----------------------------------------------------------------------------
- * Project:     ts-chef
+ * Project:     vschef
  * Model:       Qwen 3.5 Coder Next (Local)
  * Version:     1.0.0
  * Author:      Michael Weiss
