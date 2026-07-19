@@ -864,7 +864,8 @@ describe("RecipeViewProvider", () => {
   });
 
   test("reveals a bound toggleString by stable ID", async () => {
-    const { p, v, onMessage, reference } = setupReference("selected key");
+    const { p, v, onMessage, reference, onApply } =
+      setupReference("selected key");
     const [stepId] = loadRecipe(p, v, "r", [
       {
         opName: "FromBase64",
@@ -874,8 +875,13 @@ describe("RecipeViewProvider", () => {
     await onMessage({ type: "useSelection", stepId, arg: 1 });
 
     await onMessage({ type: "revealSelection", stepId, arg: 1 });
+    await onMessage({ type: "apply" });
 
     expect(reference.reveal).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][1][0].args[1]).toEqual({
+      string: "selected key",
+      option: "UTF8",
+    });
   });
 
   test("clears one binding while retaining its latest materialized value", async () => {
