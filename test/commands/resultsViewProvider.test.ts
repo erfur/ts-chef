@@ -71,12 +71,12 @@ describe("ResultsViewProvider", () => {
 
     onMessage({ type: "filter", filter: "current" });
     onMessage({ type: "open", id: 4 });
-    onMessage({ type: "action", action: "copy", id: 4 });
+    onMessage({ type: "action", action: "reselect", id: 4 });
 
     expect(received).toEqual([
       { type: "filter", filter: "current" },
       { type: "open", id: 4 },
-      { type: "action", action: "copy", id: 4 },
+      { type: "action", action: "reselect", id: 4 },
     ]);
   });
 
@@ -110,6 +110,11 @@ describe("ResultsViewProvider", () => {
     expect(
       document.querySelector<HTMLButtonElement>(
         '[data-action="delete"][data-id="2"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '[data-action="reselect"][data-id="2"]',
       )?.disabled,
     ).toBe(false);
   });
@@ -164,12 +169,16 @@ describe("ResultsViewProvider", () => {
     document.querySelector<HTMLElement>('[data-filter="current"]')?.click();
     document.querySelector<HTMLElement>('.result[data-id="4"]')?.click();
     document
+      .querySelector<HTMLElement>('[data-action="reselect"][data-id="4"]')
+      ?.click();
+    document
       .querySelector<HTMLElement>('[data-action="copy"][data-id="4"]')
       ?.click();
 
     expect(postMessage.mock.calls.map(([message]) => message)).toEqual([
       { type: "filter", filter: "current" },
       { type: "open", id: 4 },
+      { type: "action", action: "reselect", id: 4 },
       { type: "action", action: "copy", id: 4 },
     ]);
   });

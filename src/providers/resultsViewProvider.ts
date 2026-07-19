@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 
 export type ResultFilter = "all" | "current";
-export type ResultAction = "popup" | "copy" | "replace" | "delete";
+export type ResultAction =
+  | "popup"
+  | "copy"
+  | "replace"
+  | "reselect"
+  | "delete";
 
 export type ResultViewItem = {
   id: number;
@@ -104,11 +109,12 @@ function render(state) {
       : "<pre>" + esc(item.output || "") + "</pre>";
     const disabled = failed ? " disabled" : "";
     const action = (name, label) => '<button data-action="' + name + '" data-id="' + item.id + '"' +
-      (name === "delete" ? "" : disabled) + ">" + label + "</button>";
+      (name === "delete" || name === "reselect" ? "" : disabled) + ">" + label + "</button>";
     return '<div class="result" data-id="' + item.id + '"><div class="meta"><strong>' +
       esc(item.label) + '</strong><span class="source">' + esc(item.source) + "</span></div>" + body +
       '<div class="actions">' + action("popup", "Popup") + action("copy", "Copy") +
-      action("replace", "Replace") + action("delete", "Delete") + "</div></div>";
+      action("reselect", "Reselect") + action("replace", "Replace") +
+      action("delete", "Delete") + "</div></div>";
   }).join("");
 }
 document.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () =>
