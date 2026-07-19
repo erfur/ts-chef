@@ -57,7 +57,7 @@ export class RecipeViewProvider
           stepIds?: unknown;
           stepId?: string;
           arg?: number;
-          editedArg?: { stepId?: unknown; arg?: unknown };
+          editedArg?: { stepId?: unknown; arg?: unknown; subfield?: unknown };
         };
         switch (msg.type) {
           case "ready":
@@ -98,9 +98,19 @@ export class RecipeViewProvider
               this.stepIds.includes(editedArg.stepId) &&
               Number.isInteger(editedArg.arg)
             ) {
-              this.disposeBinding(
-                this.bindingKey(editedArg.stepId, editedArg.arg as number),
+              const key = this.bindingKey(
+                editedArg.stepId,
+                editedArg.arg as number,
               );
+              const binding = this.bindings.get(key);
+              if (
+                !(
+                  binding?.type === "toggleString" &&
+                  editedArg.subfield === "option"
+                )
+              ) {
+                this.disposeBinding(key);
+              }
             }
             this.recipe = {
               name: msg.name,
@@ -159,6 +169,26 @@ export class RecipeViewProvider
             this.postState();
             break;
           }
+          case "revealSelection": {
+            if (typeof msg.stepId !== "string" || !Number.isInteger(msg.arg))
+              break;
+            const binding = this.bindings.get(
+              this.bindingKey(msg.stepId, msg.arg as number),
+            );
+            if (binding) await binding.reference.reveal();
+            break;
+          }
+          case "clearSelection": {
+            if (typeof msg.stepId !== "string" || !Number.isInteger(msg.arg))
+              break;
+            const key = this.bindingKey(msg.stepId, msg.arg as number);
+            const binding = this.bindings.get(key);
+            if (!binding) break;
+            this.materializeBinding(msg.stepId, msg.arg as number, binding);
+            this.disposeBinding(key);
+            this.postState();
+            break;
+          }
           case "removeStep": {
             if (typeof msg.stepId !== "string") break;
             const stepIndex = this.stepIds.indexOf(msg.stepId);
@@ -210,11 +240,16 @@ export class RecipeViewProvider
     for (const s of this.recipe.steps) {
       if (!(s.opName in defs)) defs[s.opName] = this.argDefsFor(s.opName);
     }
+    const boundArgs = [...this.bindings.keys()].map((key) => {
+      const [stepId, arg] = this.parseBindingKey(key);
+      return { stepId, arg };
+    });
     this.view?.webview.postMessage({
       type: "state",
       recipe: this.recipe,
       stepIds: this.stepIds,
       defs,
+      boundArgs,
     });
   }
 

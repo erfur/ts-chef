@@ -250,6 +250,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "", steps: [] },
       stepIds: [],
       defs: {},
+      boundArgs: [],
     });
   });
 
@@ -579,6 +580,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "decode", steps },
       stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [{ stepId, arg: 0 }],
     });
   });
 
@@ -606,6 +608,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "decode", steps },
       stepIds: [stepId],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [{ stepId, arg: 1 }],
     });
   });
 
@@ -656,6 +659,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "", steps: [{ opName: "FromBase64", args: [] }] },
       stepIds: [expect.any(String)],
       defs: { FromBase64: ARG_DEFS },
+      boundArgs: [],
     });
   });
 
@@ -702,6 +706,7 @@ describe("RecipeViewProvider", () => {
       recipe: { name: "p", steps: [{ opName: "MD5", args: [] }] },
       stepIds: [expect.any(String)],
       defs: { MD5: [] },
+      boundArgs: [],
     });
   });
 
@@ -742,6 +747,94 @@ describe("RecipeViewProvider", () => {
       option: "UTF8",
     });
   });
+
+  test("reveals a bound target by stable ID", async () => {
+    const { p, v, onMessage, reference } = setupReference("selected");
+    const [stepId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+
+    await onMessage({ type: "revealSelection", stepId, arg: 0 });
+
+    expect(reference.reveal).toHaveBeenCalledTimes(1);
+  });
+
+  test("clears one binding while retaining its latest materialized value", async () => {
+    const first = fakeReference("first");
+    const second = fakeReference("second");
+    const { p, v, onMessage, getSelectionReference, onApply } = setup(
+      first.reference,
+    );
+    const [firstId, secondId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["old-first"] },
+      { opName: "FromBase64", args: ["old-second"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
+    getSelectionReference.mockReturnValue(second.reference);
+    await onMessage({ type: "useSelection", stepId: secondId, arg: 0 });
+    first.setText("first-latest");
+
+    await onMessage({ type: "clearSelection", stepId: firstId, arg: 0 });
+    await onMessage({ type: "apply" });
+
+    expect(first.reference.dispose).toHaveBeenCalledTimes(1);
+    expect(second.reference.dispose).not.toHaveBeenCalled();
+    expect(onApply.mock.calls[0][1][0].args[0]).toBe("first-latest");
+    expect(lastPostedState(v).boundArgs).toEqual([
+      { stepId: secondId, arg: 0 },
+    ]);
+  });
+
+  test("changing a bound toggle encoding keeps the text reference", async () => {
+    const { p, v, onMessage, reference, setText, fire } =
+      setupReference("selected");
+    const steps = [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old", option: "Hex" }, ""],
+      },
+    ];
+    const [stepId] = loadRecipe(p, v, "r", steps);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+
+    await onMessage({
+      type: "edit",
+      name: "r",
+      steps: [
+        {
+          opName: "FromBase64",
+          args: ["", { string: "selected", option: "UTF8" }, ""],
+        },
+      ],
+      stepIds: [stepId],
+      editedArg: { stepId, arg: 1, subfield: "option" },
+    });
+    setText("latest");
+    fire();
+
+    expect(lastPostedState(v).recipe.steps[0].args[1]).toEqual({
+      string: "latest",
+      option: "UTF8",
+    });
+    expect(reference.dispose).not.toHaveBeenCalled();
+  });
+
+  test.each(["revealSelection", "clearSelection"])(
+    "ignores %s for invalid or unbound targets",
+    async (type) => {
+      const { p, v, onMessage, reference } = setupReference("selected");
+      const [stepId] = loadRecipe(p, v, "r", [
+        { opName: "FromBase64", args: ["old"] },
+      ]);
+      await onMessage({ type, stepId, arg: 0 });
+      await onMessage({ type, stepId: "missing", arg: 0 });
+      await onMessage({ type, stepId, arg: 99 });
+
+      expect(reference.reveal).not.toHaveBeenCalled();
+      expect(reference.dispose).not.toHaveBeenCalled();
+    },
+  );
 
   test("reorder follows step IDs and manual target edits unlink", async () => {
     const { p, v, onMessage, reference, onApply, setText, fire } =
