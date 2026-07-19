@@ -48,15 +48,17 @@ export class RecipeViewProvider
     view.webview.options = { enableScripts: true };
     view.webview.html = this.html();
     view.webview.onDidReceiveMessage(
-      async (msg: {
-        type?: string;
-        name?: string;
-        steps?: PipelineStep[];
-        stepIds?: unknown;
-        stepId?: string;
-        arg?: number;
-        editedArg?: { stepId?: unknown; arg?: unknown };
-      }) => {
+      async (raw: unknown) => {
+        if (raw === null || typeof raw !== "object") return;
+        const msg = raw as {
+          type?: string;
+          name?: string;
+          steps?: PipelineStep[];
+          stepIds?: unknown;
+          stepId?: string;
+          arg?: number;
+          editedArg?: { stepId?: unknown; arg?: unknown };
+        };
         switch (msg.type) {
           case "ready":
             this.postState();
@@ -81,16 +83,14 @@ export class RecipeViewProvider
                 (id): id is string => typeof id === "string",
               ) ||
               new Set(incomingIds).size !== incomingIds.length ||
-              incomingIds.some((id, index) => {
-                const currentIndex = this.stepIds.indexOf(id);
-                return (
-                  currentIndex < 0 ||
-                  this.recipe.steps[currentIndex]?.opName !== steps[index].opName
-                );
-              })
+              incomingIds.some(
+                (id, index) =>
+                  id !== this.stepIds[index] ||
+                  this.recipe.steps[index]?.opName !== steps[index].opName,
+              )
             )
               break;
-            this.stepIds = incomingIds;
+            this.stepIds = [...incomingIds];
             const editedArg = msg.editedArg;
             if (
               editedArg &&
@@ -107,6 +107,26 @@ export class RecipeViewProvider
               steps: steps.map(({ opName, args }) => ({ opName, args })),
             };
             this.removeOrphanedBindings();
+            break;
+          }
+          case "reorderSteps": {
+            const incomingIds = msg.stepIds;
+            if (
+              !Array.isArray(incomingIds) ||
+              incomingIds.length !== this.stepIds.length ||
+              !incomingIds.every(
+                (id): id is string => typeof id === "string",
+              ) ||
+              new Set(incomingIds).size !== incomingIds.length ||
+              incomingIds.some((id) => !this.stepIds.includes(id))
+            )
+              break;
+            const stepsById = new Map(
+              this.stepIds.map((id, index) => [id, this.recipe.steps[index]]),
+            );
+            this.recipe.steps = incomingIds.map((id) => stepsById.get(id)!);
+            this.stepIds = [...incomingIds];
+            this.postState();
             break;
           }
           case "useSelection": {
@@ -742,7 +762,7 @@ export class RecipeViewProvider
         dragIdx = -1;
         collapsed.clear();
         render();
-        emitEdit();
+        vscode.postMessage({ type: "reorderSteps", stepIds });
       });
 
       window.addEventListener("message", (e) => {

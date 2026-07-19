@@ -226,6 +226,21 @@ describe("RecipeViewProvider", () => {
     });
   });
 
+  test("requests authoritative reorder by stable step IDs", () => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html);
+    postMessage.mockClear();
+    const step = dom.window.document.querySelector<HTMLElement>(".step");
+
+    step?.dispatchEvent(new dom.window.Event("dragstart", { bubbles: true }));
+    step?.dispatchEvent(new dom.window.Event("drop", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "reorderSteps",
+      stepIds: ["step-1"],
+    });
+  });
+
   test("ready posts the empty recipe state with an empty defs map", () => {
     const { v, onMessage } = setup();
     onMessage({ type: "ready" });
@@ -236,6 +251,21 @@ describe("RecipeViewProvider", () => {
       defs: {},
     });
   });
+
+  test.each([null, undefined, 0, "message", true])(
+    "ignores non-object message %p",
+    async (message) => {
+      const { p, v, onMessage, onApply } = setup();
+      const steps = [{ opName: "FromBase64", args: ["original"] }];
+      const stepIds = loadRecipe(p, v, "original", steps);
+
+      await expect(onMessage(message)).resolves.toBeUndefined();
+      await onMessage({ type: "apply" });
+
+      expect(onApply).toHaveBeenCalledWith("original", steps, []);
+      expect(lastPostedState(v).stepIds).toEqual(stepIds);
+    },
+  );
 
   test("edit updates the canonical recipe; save passes it to onSave", () => {
     const { p, v, onMessage, onSave } = setup();
@@ -432,6 +462,106 @@ describe("RecipeViewProvider", () => {
     expect(reference.dispose).not.toHaveBeenCalled();
   });
 
+  test("rejects a generic ID swap between duplicate operations without moving bindings", async () => {
+    const first = fakeReference("first-bound");
+    const second = fakeReference("second-bound");
+    const { p, v, onMessage, onApply, getSelectionReference } = setup(
+      first.reference,
+    );
+    const original = [
+      { opName: "FromBase64", args: ["first"] },
+      { opName: "FromBase64", args: ["second"] },
+    ];
+    const [firstId, secondId] = loadRecipe(p, v, "original", original);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
+    getSelectionReference.mockReturnValue(second.reference);
+    await onMessage({ type: "useSelection", stepId: secondId, arg: 0 });
+
+    await onMessage({
+      type: "edit",
+      name: "forged",
+      steps: [
+        { opName: "FromBase64", args: ["forged-second"] },
+        { opName: "FromBase64", args: ["forged-first"] },
+      ],
+      stepIds: [secondId, firstId],
+    });
+    first.setText("first-latest");
+    first.fire();
+    second.setText("second-latest");
+    second.fire();
+    await onMessage({ type: "apply" });
+
+    expect(onApply.mock.calls[0].slice(0, 2)).toEqual([
+      "original",
+      [
+        { opName: "FromBase64", args: ["first-latest"] },
+        { opName: "FromBase64", args: ["second-latest"] },
+      ],
+    ]);
+    expect(onApply.mock.calls[0][2]).toEqual([
+      expect.objectContaining({ stepIndex: 0, reference: first.reference }),
+      expect.objectContaining({ stepIndex: 1, reference: second.reference }),
+    ]);
+  });
+
+  test("authoritative reorder moves duplicate operations and bindings by ID", async () => {
+    const first = fakeReference("first-bound");
+    const second = fakeReference("second-bound");
+    const { p, v, onMessage, onApply, getSelectionReference } = setup(
+      first.reference,
+    );
+    const [firstId, secondId] = loadRecipe(p, v, "r", [
+      { opName: "FromBase64", args: ["first"] },
+      { opName: "FromBase64", args: ["second"] },
+    ]);
+    await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
+    getSelectionReference.mockReturnValue(second.reference);
+    await onMessage({ type: "useSelection", stepId: secondId, arg: 0 });
+
+    await onMessage({
+      type: "reorderSteps",
+      stepIds: [secondId, firstId],
+    });
+    first.setText("first-latest");
+    first.fire();
+    second.setText("second-latest");
+    second.fire();
+    await onMessage({ type: "apply" });
+
+    expect(onApply.mock.calls[0][1]).toEqual([
+      { opName: "FromBase64", args: ["second-latest"] },
+      { opName: "FromBase64", args: ["first-latest"] },
+    ]);
+    expect(onApply.mock.calls[0][2]).toEqual([
+      expect.objectContaining({ stepIndex: 1, reference: first.reference }),
+      expect.objectContaining({ stepIndex: 0, reference: second.reference }),
+    ]);
+  });
+
+  test.each([
+    ["missing IDs", ["first"]],
+    ["duplicate IDs", ["first", "first"]],
+    ["invented IDs", ["first", "invented"]],
+    ["non-string IDs", ["first", 2]],
+    ["non-array IDs", null],
+  ])("rejects authoritative reorder with %s", async (_label, requestedIds) => {
+    const { p, v, onMessage, onApply } = setup();
+    const steps = [
+      { opName: "FromBase64", args: ["first"] },
+      { opName: "FromBase64", args: ["second"] },
+    ];
+    const [firstId] = loadRecipe(p, v, "r", steps);
+    const stepIds = Array.isArray(requestedIds)
+      ? requestedIds.map((id) => (id === "first" ? firstId : id))
+      : requestedIds;
+
+    await onMessage({ type: "reorderSteps", stepIds });
+    await onMessage({ type: "apply" });
+
+    expect(onApply).toHaveBeenCalledWith("r", steps, []);
+  });
+
   test("assigns a non-empty selection to a plain string argument", async () => {
     const reference = fakeReference("selected text");
     const { p, v, onMessage, getSelectionReference } = setup(reference.reference);
@@ -619,12 +749,7 @@ describe("RecipeViewProvider", () => {
     const second = { opName: "FromBase64", args: ["second", "", ""] };
     const [firstId, secondId] = loadRecipe(p, v, "r", [first, second]);
     await onMessage({ type: "useSelection", stepId: firstId, arg: 0 });
-    await onMessage({
-      type: "edit",
-      name: "r",
-      steps: [second, first],
-      stepIds: [secondId, firstId],
-    });
+    await onMessage({ type: "reorderSteps", stepIds: [secondId, firstId] });
     await onMessage({
       type: "edit",
       name: "r",
