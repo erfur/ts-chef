@@ -2,11 +2,17 @@ import fs from "fs";
 import path from "path";
 import pkg from "../package.json";
 
+const readme = fs.readFileSync(
+  path.resolve(__dirname, "..", "README.md"),
+  "utf8",
+);
+
 describe("package identity", () => {
   test("uses the vschef Marketplace identity", () => {
     expect(pkg).toMatchObject({
       name: "vschef",
       displayName: "vschef",
+      version: "0.3.0",
       publisher: "erfur",
       author: {
         name: "Furkan Er",
@@ -24,6 +30,12 @@ describe("package identity", () => {
 });
 
 describe("package contributions", () => {
+  test("shows the packaged logo in the README", () => {
+    expect(readme).toContain(
+      '<img src="assets/logo.png" alt="vschef logo" width="120" />',
+    );
+  });
+
   test("contributes packaged extension and activity-bar icons", () => {
     const [sidebar] = pkg.contributes.viewsContainers.activitybar;
 
