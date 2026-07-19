@@ -3,6 +3,7 @@
   "displayName": "vschef",
   "description": "CyberChef-style data transformations directly in VS Code",
   "version": "0.2.0",
+  "icon": "assets/logo.png",
   "publisher": "erfur",
   "author": {
     "name": "Furkan Er",
@@ -52,7 +53,8 @@
       "activitybar": [
         {
           "id": "vschef-sidebar",
-          "title": "vschef"
+          "title": "vschef",
+          "icon": "media/icon.png"
         }
       ]
     },

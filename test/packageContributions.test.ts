@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import pkg from "../package.json";
 
 describe("package identity", () => {
@@ -22,6 +24,20 @@ describe("package identity", () => {
 });
 
 describe("package contributions", () => {
+  test("contributes packaged extension and activity-bar icons", () => {
+    const [sidebar] = pkg.contributes.viewsContainers.activitybar;
+
+    expect(pkg.icon).toBe("assets/logo.png");
+    expect(sidebar).toMatchObject({
+      id: "vschef-sidebar",
+      icon: "media/icon.png",
+    });
+    expect(fs.existsSync(path.resolve(__dirname, "..", pkg.icon))).toBe(true);
+    expect(fs.existsSync(path.resolve(__dirname, "..", "media/icon.png"))).toBe(
+      true,
+    );
+  });
+
   test("does not contribute the standalone pipeline editor command", () => {
     const commands = pkg.contributes.commands.map((command) => command.command);
 

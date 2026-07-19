@@ -42,5 +42,6 @@ docs/**
 report.md
 *.vsix
 
-# Assets
+# Assets: ship only the extension logo
 assets/**
+!assets/logo.png
