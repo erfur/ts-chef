@@ -4,10 +4,8 @@ import type {
   TextDocument,
   TextEditor,
 } from "vscode";
-import {
-  ResultsController,
-  transformTrackedRange,
-} from "../../src/commands/resultsController";
+import { ResultsController } from "../../src/commands/resultsController";
+import { transformTrackedRange } from "../../src/commands/trackedRange";
 import type { RenderedResultSource } from "../../src/commands/pipelineResult";
 import type {
   ResultsViewMessage,
