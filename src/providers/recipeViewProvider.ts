@@ -1,13 +1,24 @@
 import * as vscode from "vscode";
 import type { PipelineStep } from "../storage/store";
 import type { ArgConfig } from "../chef/Operation";
+import type { PipelineArgReference } from "../commands/pipelineResult";
+import type { SelectionReference } from "../commands/selectionReference";
 
 type Recipe = { name: string; steps: PipelineStep[] };
+type RecipeBinding = {
+  type: "string" | "toggleString";
+  reference: SelectionReference;
+  subscription: vscode.Disposable;
+};
 
 export type RecipeCallbacks = {
-  onApply: (name: string, steps: PipelineStep[]) => void | Promise<void>;
+  onApply: (
+    name: string,
+    steps: PipelineStep[],
+    references: PipelineArgReference[],
+  ) => void | Promise<void>;
   onSave: (name: string, steps: PipelineStep[]) => void | Promise<void>;
-  getSelection: () => string | undefined;
+  getSelectionReference: () => SelectionReference | undefined;
 };
 
 /**
@@ -17,9 +28,14 @@ export type RecipeCallbacks = {
  * whose operation has arguments can be expanded to edit them. The controller
  * holds the canonical recipe so it survives hide/show and loads.
  */
-export class RecipeViewProvider implements vscode.WebviewViewProvider {
+export class RecipeViewProvider
+  implements vscode.WebviewViewProvider, vscode.Disposable
+{
   private view: vscode.WebviewView | undefined;
   private recipe: Recipe = { name: "", steps: [] };
+  private stepIds: string[] = [];
+  private stepSeq = 0;
+  private bindings = new Map<string, RecipeBinding>();
 
   constructor(
     private readonly items: { opName: string; displayName: string }[],
@@ -36,54 +52,87 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         type?: string;
         name?: string;
         steps?: PipelineStep[];
-        step?: number;
+        stepIds?: unknown;
+        stepId?: string;
         arg?: number;
+        editedArg?: { stepId?: unknown; arg?: unknown };
       }) => {
         switch (msg.type) {
           case "ready":
             this.postState();
             break;
-          case "edit":
+          case "edit": {
+            const steps = Array.isArray(msg.steps) ? msg.steps : [];
+            const incomingIds = msg.stepIds;
+            this.stepIds =
+              Array.isArray(incomingIds) &&
+              incomingIds.length === steps.length &&
+              incomingIds.every((id): id is string => typeof id === "string") &&
+              new Set(incomingIds).size === incomingIds.length
+                ? incomingIds
+                : steps.map(() => this.nextStepId());
+            const editedArg = msg.editedArg;
+            if (
+              editedArg &&
+              typeof editedArg.stepId === "string" &&
+              this.stepIds.includes(editedArg.stepId) &&
+              Number.isInteger(editedArg.arg)
+            ) {
+              this.disposeBinding(
+                this.bindingKey(editedArg.stepId, editedArg.arg as number),
+              );
+            }
             this.recipe = {
               name: msg.name ?? "",
-              steps: Array.isArray(msg.steps) ? msg.steps : [],
+              steps,
             };
+            this.removeOrphanedBindings();
             break;
+          }
           case "useSelection": {
-            if (!Number.isInteger(msg.step) || !Number.isInteger(msg.arg)) break;
-            const step = this.recipe.steps[msg.step!];
+            if (typeof msg.stepId !== "string" || !Number.isInteger(msg.arg))
+              break;
+            const stepIndex = this.stepIds.indexOf(msg.stepId);
+            if (stepIndex < 0) break;
+            const step = this.recipe.steps[stepIndex];
             const argDef = step && this.argDefsFor(step.opName)[msg.arg!];
             if (
               !step ||
               (argDef?.type !== "string" && argDef?.type !== "toggleString")
             )
               break;
-            const selection = this.callbacks.getSelection();
-            if (!selection) break;
+            const reference = this.callbacks.getSelectionReference();
+            if (!reference) break;
+            const key = this.bindingKey(msg.stepId, msg.arg!);
+            this.disposeBinding(key);
+            const binding: RecipeBinding = {
+              type: argDef.type,
+              reference,
+              subscription: reference.onDidChange(() => {
+                this.materializeBinding(msg.stepId!, msg.arg!, binding);
+                this.postState();
+              }),
+            };
+            this.bindings.set(key, binding);
             if (!Array.isArray(step.args)) step.args = [];
-            if (argDef.type === "toggleString") {
-              const current = step.args[msg.arg!] as
-                | { option?: unknown }
-                | string
-                | undefined;
-              step.args[msg.arg!] = {
-                string: selection,
-                option:
-                  current && typeof current === "object"
-                    ? current.option
-                    : (argDef.toggleValues?.[0] ?? "Hex"),
-              };
-            } else {
-              step.args[msg.arg!] = selection;
-            }
+            this.materializeBinding(msg.stepId, msg.arg!, binding);
             this.postState();
             break;
           }
           case "apply":
-            await this.callbacks.onApply(this.recipe.name, this.recipe.steps);
+            this.materializeAll();
+            await this.callbacks.onApply(
+              this.recipe.name,
+              this.recipe.steps,
+              this.resultReferences(),
+            );
             break;
           case "save":
-            await this.callbacks.onSave(this.recipe.name, this.recipe.steps);
+            this.materializeAll();
+            await this.callbacks.onSave(
+              this.recipe.name,
+              structuredClone(this.recipe.steps),
+            );
             break;
         }
       },
@@ -93,12 +142,15 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
   /** Append an operation step to the working recipe. */
   addOp(step: PipelineStep): void {
     this.recipe.steps.push(step);
+    this.stepIds.push(this.nextStepId());
     this.postState();
   }
 
   /** Replace the working recipe with a saved pipeline and reveal the pane. */
   load(pipeline: { name: string; steps: PipelineStep[] }): void {
+    this.disposeBindings();
     this.recipe = { name: pipeline.name, steps: [...pipeline.steps] };
+    this.stepIds = pipeline.steps.map(() => this.nextStepId());
     this.view?.show?.(false);
     this.postState();
   }
@@ -111,8 +163,87 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({
       type: "state",
       recipe: this.recipe,
+      stepIds: this.stepIds,
       defs,
     });
+  }
+
+  dispose(): void {
+    this.disposeBindings();
+  }
+
+  private bindingKey(stepId: string, arg: number): string {
+    return JSON.stringify([stepId, arg]);
+  }
+
+  private parseBindingKey(key: string): [string, number] {
+    return JSON.parse(key) as [string, number];
+  }
+
+  private nextStepId(): string {
+    return `step-${++this.stepSeq}`;
+  }
+
+  private disposeBinding(key: string): void {
+    const binding = this.bindings.get(key);
+    if (!binding) return;
+    binding.subscription.dispose();
+    binding.reference.dispose();
+    this.bindings.delete(key);
+  }
+
+  private disposeBindings(): void {
+    for (const key of [...this.bindings.keys()]) this.disposeBinding(key);
+  }
+
+  private removeOrphanedBindings(): void {
+    const live = new Set(this.stepIds);
+    for (const key of [...this.bindings.keys()]) {
+      if (!live.has(this.parseBindingKey(key)[0])) this.disposeBinding(key);
+    }
+  }
+
+  private materializeBinding(
+    stepId: string,
+    arg: number,
+    binding: RecipeBinding,
+  ): void {
+    const stepIndex = this.stepIds.indexOf(stepId);
+    const step = this.recipe.steps[stepIndex];
+    if (!step) return;
+    if (!Array.isArray(step.args)) step.args = [];
+    if (binding.type === "toggleString") {
+      const current = step.args[arg] as { option?: unknown } | undefined;
+      step.args[arg] = {
+        string: binding.reference.text,
+        option: current?.option,
+      };
+    } else {
+      step.args[arg] = binding.reference.text;
+    }
+  }
+
+  private materializeAll(): void {
+    for (const [key, binding] of this.bindings) {
+      const [stepId, arg] = this.parseBindingKey(key);
+      this.materializeBinding(stepId, arg, binding);
+    }
+  }
+
+  private resultReferences(): PipelineArgReference[] {
+    const references: PipelineArgReference[] = [];
+    for (const [key, binding] of this.bindings) {
+      const [stepId, argIndex] = this.parseBindingKey(key);
+      const stepIndex = this.stepIds.indexOf(stepId);
+      if (stepIndex < 0) continue;
+      references.push({
+        stepIndex,
+        argIndex,
+        type: binding.type,
+        reference: binding.reference,
+      });
+    }
+    return references;
   }
 
   private html(): string {
@@ -254,6 +385,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
       const nameEl = document.getElementById("name");
       const stepsEl = document.getElementById("steps");
       let steps = [];
+      let stepIds = [];
       let defs = {};
       const collapsed = new Set();
       let dragIdx = -1;
@@ -467,8 +599,14 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         stepsEl.innerHTML = html;
       }
 
-      function emitEdit() {
-        vscode.postMessage({ type: "edit", name: nameEl.value, steps });
+      function emitEdit(editedArg) {
+        vscode.postMessage({
+          type: "edit",
+          name: nameEl.value,
+          steps,
+          stepIds,
+          editedArg,
+        });
       }
 
       function handleArgUpdate(e) {
@@ -512,10 +650,10 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
           default:
             s.args[ai] = t.value;
         }
-        emitEdit();
+        emitEdit({ stepId: stepIds[si], arg: ai });
       }
 
-      nameEl.addEventListener("input", emitEdit);
+      nameEl.addEventListener("input", () => emitEdit());
       document
         .getElementById("apply")
         .addEventListener("click", () => vscode.postMessage({ type: "apply" }));
@@ -530,7 +668,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
           if (!argsDiv) return;
           vscode.postMessage({
             type: "useSelection",
-            step: Number(argsDiv.dataset.step),
+            stepId: stepIds[Number(argsDiv.dataset.step)],
             arg: Number(useSelection.dataset.arg),
           });
           return;
@@ -545,7 +683,9 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         }
         const rm = e.target.closest("[data-rm]");
         if (rm) {
-          steps.splice(Number(rm.dataset.rm), 1);
+          const index = Number(rm.dataset.rm);
+          steps.splice(index, 1);
+          stepIds.splice(index, 1);
           collapsed.clear();
           render();
           emitEdit();
@@ -567,7 +707,9 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         if (!el || dragIdx < 0) return;
         const to = Number(el.dataset.i);
         const moved = steps.splice(dragIdx, 1)[0];
+        const movedId = stepIds.splice(dragIdx, 1)[0];
         steps.splice(to, 0, moved);
+        stepIds.splice(to, 0, movedId);
         dragIdx = -1;
         collapsed.clear();
         render();
@@ -579,6 +721,7 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
         if (msg.type === "state") {
           nameEl.value = msg.recipe.name || "";
           steps = Array.isArray(msg.recipe.steps) ? msg.recipe.steps : [];
+          stepIds = Array.isArray(msg.stepIds) ? msg.stepIds : [];
           defs = msg.defs || {};
           collapsed.clear();
           render();

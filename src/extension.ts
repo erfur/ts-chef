@@ -29,6 +29,7 @@ import { InlineResultController } from "./commands/inlineResult";
 import { WebviewResultController } from "./commands/webviewResult";
 import { ResultsController } from "./commands/resultsController";
 import { createPipelineResultSource } from "./commands/resultSource";
+import { SelectionReferenceTracker } from "./commands/selectionReference";
 import { ResultsViewProvider } from "./providers/resultsViewProvider";
 import { initOutputChannel, log } from "./logger";
 import registry from "./generated/opsRegistry";
@@ -87,6 +88,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const panelResult = new WebviewResultController();
   panelResult.register(context);
+  const selectionReferences = new SelectionReferenceTracker();
+  context.subscriptions.push(selectionReferences);
 
   // Recipe callbacks require this map before its controller dependencies exist.
   // eslint-disable-next-line prefer-const
@@ -104,7 +107,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const recipeView = new RecipeViewProvider(
     opItems,
     {
-      onApply: async (name, steps) => {
+      onApply: async (name, steps, references) => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showWarningMessage("ts-chef: No active editor.");
@@ -113,17 +116,19 @@ export function activate(context: vscode.ExtensionContext): void {
         const text =
           editor.document.getText(editor.selection) ||
           editor.document.getText();
+        const source = createPipelineResultSource(name, steps, references);
         try {
-          const result = runPipeline(text, steps);
+          const result = await source.evaluate(text);
           await presentPipelineResult(
             editor,
             result,
             "Recipe",
             resultRenderers,
             undefined,
-            createPipelineResultSource(name, steps),
+            source,
           );
         } catch (e) {
+          source.dispose?.();
           log(`Recipe apply error: ${e}`);
           vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
         }
@@ -150,10 +155,10 @@ export function activate(context: vscode.ExtensionContext): void {
           `ts-chef: Recipe "${name}" saved (${scope}).`,
         );
       },
-      getSelection: () => {
+      getSelectionReference: () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.selection.isEmpty) return undefined;
-        return editor.document.getText(editor.selection);
+        return selectionReferences.create(editor.document, editor.selection);
       },
     },
     argDefsFor,
@@ -193,6 +198,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   context.subscriptions.push(
+    recipeView,
     vscode.window.registerWebviewViewProvider("tschef.recipeView", recipeView, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
