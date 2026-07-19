@@ -11,7 +11,7 @@ class PipelineNode extends vscode.TreeItem {
     this.contextValue = `pipeline-${pipeline.scope}`;
     this.iconPath = new vscode.ThemeIcon("symbol-event");
     this.command = {
-      command: "tschef.runSavedPipeline",
+      command: "vschef.runSavedPipeline",
       title: "Run Pipeline",
       arguments: [pipeline.name, pipeline.scope],
     };

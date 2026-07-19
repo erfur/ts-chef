@@ -46,7 +46,7 @@ function fakeContext(): ExtensionContext {
 /** The registered apply(action, id) command handler. */
 function getApply() {
   const call = commands.registerCommand.mock.calls.find(
-    (c) => c[0] === "tschef.applyInlineResult",
+    (c) => c[0] === "vschef.applyInlineResult",
   );
   return call?.[1] as (action: string, id: number) => Promise<void>;
 }
@@ -73,7 +73,7 @@ describe("InlineResultController (multi-result)", () => {
 
     expect(languages.registerCodeLensProvider).toHaveBeenCalledTimes(1);
     expect(commands.registerCommand).toHaveBeenCalledWith(
-      "tschef.applyInlineResult",
+      "vschef.applyInlineResult",
       expect.any(Function),
     );
     expect(workspace.onDidChangeTextDocument).not.toHaveBeenCalled();
@@ -101,9 +101,9 @@ describe("InlineResultController (multi-result)", () => {
     expect(lenses).toHaveLength(4);
     expect(cmd(lenses[0]).command).toBe("");
     expect(lenses.slice(1).map((l) => cmd(l).command)).toEqual([
-      "tschef.applyInlineResult",
-      "tschef.applyInlineResult",
-      "tschef.applyInlineResult",
+      "vschef.applyInlineResult",
+      "vschef.applyInlineResult",
+      "vschef.applyInlineResult",
     ]);
     expect(lenses.slice(1).map((l) => cmd(l).arguments?.[0])).toEqual([
       "replace",

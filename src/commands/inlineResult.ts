@@ -26,7 +26,7 @@ export class InlineResultController implements vscode.CodeLensProvider {
     context.subscriptions.push(
       vscode.languages.registerCodeLensProvider({ scheme: "*" }, this),
       vscode.commands.registerCommand(
-        "tschef.applyInlineResult",
+        "vschef.applyInlineResult",
         (action: InlineAction, id: number) => this.apply(action, id),
       ),
       this._onDidChangeCodeLenses,
@@ -69,17 +69,17 @@ export class InlineResultController implements vscode.CodeLensProvider {
         }),
         new vscode.CodeLens(range, {
           title: "$(replace) Replace",
-          command: "tschef.applyInlineResult",
+          command: "vschef.applyInlineResult",
           arguments: ["replace", item.id],
         }),
         new vscode.CodeLens(range, {
           title: "$(copy) Copy",
-          command: "tschef.applyInlineResult",
+          command: "vschef.applyInlineResult",
           arguments: ["copy", item.id],
         }),
         new vscode.CodeLens(range, {
           title: "$(close) Close",
-          command: "tschef.applyInlineResult",
+          command: "vschef.applyInlineResult",
           arguments: ["close", item.id],
         }),
       );

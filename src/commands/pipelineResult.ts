@@ -51,7 +51,7 @@ export type ResultRenderers = Partial<
 >;
 
 /**
- * Present a pipeline's result according to the `tschef.pipelineResultAction`
+ * Present a pipeline's result according to the `vschef.pipelineResultAction`
  * setting: show a popup with Replace/Copy buttons (default, "popup"), replace
  * the selection directly ("replace"), copy to the clipboard ("copy"), or
  * render via an injected renderer ("inline", "panel", or "sidebar").
@@ -70,7 +70,7 @@ export async function presentPipelineResult(
   source?: PipelineResultSource,
 ): Promise<void> {
   const mode = vscode.workspace
-    .getConfiguration("tschef")
+    .getConfiguration("vschef")
     .get<PipelineResultAction>("pipelineResultAction", "popup");
   let sourceRetained = false;
 

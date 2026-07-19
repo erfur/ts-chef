@@ -52,7 +52,7 @@ describe("WebviewResultController", () => {
 
     expect(window.createWebviewPanel).toHaveBeenCalledTimes(1);
     const args = window.createWebviewPanel.mock.calls[0];
-    expect(args[0]).toBe("tschef.result");
+    expect(args[0]).toBe("vschef.result");
     expect(args[2]).toEqual({
       viewColumn: ViewColumn.Beside,
       preserveFocus: true,

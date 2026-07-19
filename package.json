@@ -1,18 +1,23 @@
 {
-  "name": "vscode-ts-chef",
-  "displayName": "ts-chef",
+  "name": "vschef",
+  "displayName": "vschef",
   "description": "CyberChef-style data transformations directly in VS Code",
   "version": "0.2.0",
   "icon": "assets/logo.jpg",
-  "publisher": "michaelweiss",
+  "publisher": "erfur",
+  "author": {
+    "name": "Furkan Er",
+    "email": "mail@erfur.dev",
+    "url": "https://github.com/erfur"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/michaelweiss/ts-chef.git"
+    "url": "https://github.com/erfur/vschef.git"
   },
   "bugs": {
-    "url": "https://github.com/michaelweiss/ts-chef/issues"
+    "url": "https://github.com/erfur/vschef/issues"
   },
-  "homepage": "https://github.com/michaelweiss/ts-chef#readme",
+  "homepage": "https://github.com/erfur/vschef#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -26,87 +31,87 @@
   "contributes": {
     "commands": [
       {
-        "command": "tschef.quickConvert",
-        "title": "tschef: Quick Convert Selection"
+        "command": "vschef.quickConvert",
+        "title": "vschef: Quick Convert Selection"
       },
       {
-        "command": "tschef.loadRecipe",
-        "title": "tschef: Load Pipeline into Recipe",
+        "command": "vschef.loadRecipe",
+        "title": "vschef: Load Pipeline into Recipe",
         "icon": "$(arrow-right)"
       },
       {
-        "command": "tschef.runPipeline",
-        "title": "tschef: Run Pipeline on Selection"
+        "command": "vschef.runPipeline",
+        "title": "vschef: Run Pipeline on Selection"
       },
       {
-        "command": "tschef.runSavedPipelinePicker",
-        "title": "tschef: Run Saved Pipeline",
+        "command": "vschef.runSavedPipelinePicker",
+        "title": "vschef: Run Saved Pipeline",
         "icon": "$(run)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "tschef-sidebar",
-          "title": "tschef",
+          "id": "vschef-sidebar",
+          "title": "vschef",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "tschef-sidebar": [
+      "vschef-sidebar": [
         {
-          "id": "tschef.operationsView",
+          "id": "vschef.operationsView",
           "name": "Operations",
           "type": "webview",
-          "contextualTitle": "tschef Operations"
+          "contextualTitle": "vschef Operations"
         },
         {
-          "id": "tschef.recipeView",
+          "id": "vschef.recipeView",
           "name": "Recipe",
           "type": "webview",
-          "contextualTitle": "tschef Recipe"
+          "contextualTitle": "vschef Recipe"
         },
         {
-          "id": "tschef.resultsView",
+          "id": "vschef.resultsView",
           "name": "Results",
           "type": "webview",
-          "contextualTitle": "tschef Results"
+          "contextualTitle": "vschef Results"
         },
         {
-          "id": "tschef.pipelinesView",
+          "id": "vschef.pipelinesView",
           "name": "Pipelines",
-          "contextualTitle": "tschef Pipelines"
+          "contextualTitle": "vschef Pipelines"
         }
       ]
     },
     "menus": {
       "editor/context": [
         {
-          "command": "tschef.quickConvert",
+          "command": "vschef.quickConvert",
           "when": "editorHasSelection",
-          "group": "tschef"
+          "group": "vschef"
         }
       ],
       "view/title": [
         {
-          "command": "tschef.runSavedPipelinePicker",
-          "when": "view == tschef.pipelinesView",
+          "command": "vschef.runSavedPipelinePicker",
+          "when": "view == vschef.pipelinesView",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "tschef.loadRecipe",
-          "when": "view == tschef.pipelinesView && viewItem =~ /^pipeline-/",
+          "command": "vschef.loadRecipe",
+          "when": "view == vschef.pipelinesView && viewItem =~ /^pipeline-/",
           "group": "inline"
         }
       ]
     },
     "configuration": {
-      "title": "tschef",
+      "title": "vschef",
       "properties": {
-        "tschef.pipelineResultAction": {
+        "vschef.pipelineResultAction": {
           "type": "string",
           "enum": [
             "popup",
@@ -127,7 +132,7 @@
           "default": "popup",
           "description": "What to do with a pipeline's result. 'popup' asks each time."
         },
-        "tschef.defaultPipelineScope": {
+        "vschef.defaultPipelineScope": {
           "type": "string",
           "enum": [
             "global",

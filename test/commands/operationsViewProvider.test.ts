@@ -35,7 +35,7 @@ describe("OperationsViewProvider", () => {
     expect(webview.html).toContain("MD5");
   });
 
-  test("an 'apply' message runs tschef.applyOperation with the opName", () => {
+  test("an 'apply' message runs vschef.applyOperation with the opName", () => {
     const p = new OperationsViewProvider(ITEMS);
     const { view, webview } = makeView();
     p.resolveWebviewView(view);
@@ -44,7 +44,7 @@ describe("OperationsViewProvider", () => {
     onMessage({ type: "apply", opName: "FromBase64" });
 
     expect(commands.executeCommand).toHaveBeenCalledWith(
-      "tschef.applyOperation",
+      "vschef.applyOperation",
       "FromBase64",
     );
   });
@@ -60,7 +60,7 @@ describe("OperationsViewProvider", () => {
     expect(commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  test("an 'addToRecipe' message runs tschef.addToRecipe with the opName", () => {
+  test("an 'addToRecipe' message runs vschef.addToRecipe with the opName", () => {
     const p = new OperationsViewProvider(ITEMS);
     const { view, webview } = makeView();
     p.resolveWebviewView(view);
@@ -69,7 +69,7 @@ describe("OperationsViewProvider", () => {
     onMessage({ type: "addToRecipe", opName: "FromBase64" });
 
     expect(commands.executeCommand).toHaveBeenCalledWith(
-      "tschef.addToRecipe",
+      "vschef.addToRecipe",
       "FromBase64",
     );
   });

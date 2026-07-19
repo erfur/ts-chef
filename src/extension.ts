@@ -79,8 +79,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const opsView = new OperationsViewProvider(opItems);
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider("tschef.operationsView", opsView),
-    vscode.window.registerTreeDataProvider("tschef.pipelinesView", pipeTree),
+    vscode.window.registerWebviewViewProvider("vschef.operationsView", opsView),
+    vscode.window.registerTreeDataProvider("vschef.pipelinesView", pipeTree),
   );
 
   const inlineResult = new InlineResultController();
@@ -147,7 +147,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         const scope = vscode.workspace
-          .getConfiguration("tschef")
+          .getConfiguration("vschef")
           .get<StorageScope>("defaultPipelineScope", "global");
         const raw = steps.map((s) => s.opName).join(" | ");
         pipeStore.upsert(scope, { name, steps, raw });
@@ -169,7 +169,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const resultsView = new ResultsViewProvider();
   const resultsController = new ResultsController(resultsView, {
     loadRecipe: (recipe, references) => {
-      vscode.commands.executeCommand("tschef.recipeView.focus");
+      vscode.commands.executeCommand("vschef.recipeView.focus");
       recipeView.load(recipe, references);
     },
     showPanel: (editor, result, target) =>
@@ -178,7 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
   resultsController.register(context);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      "tschef.resultsView",
+      "vschef.resultsView",
       resultsView,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
@@ -201,7 +201,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     recipeView,
-    vscode.window.registerWebviewViewProvider("tschef.recipeView", recipeView, {
+    vscode.window.registerWebviewViewProvider("vschef.recipeView", recipeView, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
   );
@@ -209,7 +209,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // ---- Commands ----
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.addToRecipe", (opName: string) => {
+    vscode.commands.registerCommand("vschef.addToRecipe", (opName: string) => {
       const entry = registry.find((e) => e.opName === opName);
       if (!entry) return;
       const step = {
@@ -217,17 +217,17 @@ export function activate(context: vscode.ExtensionContext): void {
         args: entry.factory().args.map((a) => resolveDefaultArg(a)),
       };
       recipeView.addOp(step);
-      vscode.commands.executeCommand("tschef.recipeView.focus");
+      vscode.commands.executeCommand("vschef.recipeView.focus");
     }),
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "tschef.loadRecipe",
+      "vschef.loadRecipe",
       (node?: { pipeline?: ScopedPipeline }) => {
         const pipeline = node?.pipeline;
         if (!pipeline) return;
-        vscode.commands.executeCommand("tschef.recipeView.focus");
+        vscode.commands.executeCommand("vschef.recipeView.focus");
         recipeView.load(pipeline);
       },
     ),
@@ -235,7 +235,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "tschef.applyOperation",
+      "vschef.applyOperation",
       async (opName: string) => {
         const entry = registry.find((e) => e.opName === opName);
         await applyOperation(opName, entry, resultRenderers);
@@ -244,7 +244,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.quickConvert", async () => {
+    vscode.commands.registerCommand("vschef.quickConvert", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       const selection = editor.selection;
@@ -288,7 +288,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.runPipeline", async () => {
+    vscode.commands.registerCommand("vschef.runPipeline", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
       const text =
@@ -323,7 +323,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "tschef.runSavedPipeline",
+      "vschef.runSavedPipeline",
       async (name: string, scope?: StorageScope) => {
         const all = pipeStore.loadAll();
         const pipeline = scope
@@ -361,10 +361,10 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // tschef.runSavedPipelinePicker — pick from saved pipelines via QuickPick
+  // vschef.runSavedPipelinePicker — pick from saved pipelines via QuickPick
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "tschef.runSavedPipelinePicker",
+      "vschef.runSavedPipelinePicker",
       async () => {
         const pipelines = pipeStore.loadAll();
         if (!pipelines.length) {
@@ -389,7 +389,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         if (!picked) return;
         vscode.commands.executeCommand(
-          "tschef.runSavedPipeline",
+          "vschef.runSavedPipeline",
           picked.name,
           picked.scope,
         );
@@ -398,7 +398,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tschef.refreshPipelines", () =>
+    vscode.commands.registerCommand("vschef.refreshPipelines", () =>
       pipeTree.refresh(),
     ),
   );

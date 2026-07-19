@@ -91,7 +91,7 @@ export class WebviewResultController {
     this.state = { editor, targetRange, result };
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
-        "tschef.result",
+        "vschef.result",
         "ts-chef result",
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true },

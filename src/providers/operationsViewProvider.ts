@@ -9,7 +9,7 @@ export type OperationItem = {
 /**
  * Sidebar webview listing operations grouped by module with an inline
  * as-you-type filter. Matching groups auto-expand while filtering; clicking an
- * operation invokes `tschef.applyOperation` with its opName.
+ * operation invokes `vschef.applyOperation` with its opName.
  */
 export class OperationsViewProvider implements vscode.WebviewViewProvider {
   constructor(private readonly items: OperationItem[]) {}
@@ -21,9 +21,9 @@ export class OperationsViewProvider implements vscode.WebviewViewProvider {
       (msg: { type?: string; opName?: string }) => {
         if (typeof msg.opName !== "string") return;
         if (msg.type === "apply") {
-          vscode.commands.executeCommand("tschef.applyOperation", msg.opName);
+          vscode.commands.executeCommand("vschef.applyOperation", msg.opName);
         } else if (msg.type === "addToRecipe") {
-          vscode.commands.executeCommand("tschef.addToRecipe", msg.opName);
+          vscode.commands.executeCommand("vschef.addToRecipe", msg.opName);
         }
       },
     );
