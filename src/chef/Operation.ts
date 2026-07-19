@@ -66,7 +66,7 @@ export type InputMode = "required" | "optional" | "none";
 export type AnyInput = any;
 
 /**
- * Abstract base class for all operations in ts-chef.
+ * Abstract base class for all operations in vschef.
  *
  * Each operation defines its metadata (name, description, arguments)
  * and implements the `run` method to perform data transformation.
