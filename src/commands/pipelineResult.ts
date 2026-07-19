@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { PipelineStep } from "../storage/store";
+import type { SelectionReference } from "./selectionReference";
 
 export type PipelineResultAction =
   | "popup"
@@ -9,9 +10,18 @@ export type PipelineResultAction =
   | "panel"
   | "sidebar";
 
+export type PipelineArgReference = {
+  stepIndex: number;
+  argIndex: number;
+  type: "string" | "toggleString";
+  reference: SelectionReference;
+};
+
 export type PipelineResultSource = {
   recipe: { name: string; steps: PipelineStep[] };
   evaluate: (input: string) => string | Promise<string>;
+  references?: PipelineArgReference[];
+  dispose?: () => void;
 };
 
 export type RenderedResultSource = PipelineResultSource & { label: string };
