@@ -886,6 +886,64 @@ describe("RecipeViewProvider", () => {
     expect(toggleClone.reference.dispose).toHaveBeenCalledTimes(1);
   });
 
+  test("load keeps only the last valid reference for a target", () => {
+    const firstSource = fakeReference("first source");
+    const firstClone = fakeReference("first clone");
+    const lastSource = fakeReference("last source");
+    const lastClone = fakeReference("last clone");
+    const invalidSource = fakeReference("invalid source");
+    (firstSource.reference.clone as jest.Mock).mockReturnValue(
+      firstClone.reference,
+    );
+    (lastSource.reference.clone as jest.Mock).mockReturnValue(
+      lastClone.reference,
+    );
+    const { p, v } = setup();
+
+    p.load(
+      {
+        name: "duplicates",
+        steps: [{ opName: "FromBase64", args: ["snapshot"] }],
+      },
+      [
+        {
+          stepIndex: 0,
+          argIndex: 0,
+          type: "string",
+          reference: firstSource.reference,
+        },
+        {
+          stepIndex: 0,
+          argIndex: 0,
+          type: "string",
+          reference: lastSource.reference,
+        },
+        {
+          stepIndex: 0,
+          argIndex: 0,
+          type: "toggleString",
+          reference: invalidSource.reference,
+        },
+      ],
+    );
+
+    expect(firstClone.reference.dispose).toHaveBeenCalledTimes(1);
+    expect(lastClone.reference.dispose).not.toHaveBeenCalled();
+    expect(invalidSource.reference.clone).not.toHaveBeenCalled();
+    expect(lastPostedState(v).recipe.steps[0].args[0]).toBe("last clone");
+
+    firstClone.setText("stale");
+    firstClone.fire();
+    expect(lastPostedState(v).recipe.steps[0].args[0]).toBe("last clone");
+
+    lastClone.setText("latest");
+    lastClone.fire();
+    expect(lastPostedState(v).recipe.steps[0].args[0]).toBe("latest");
+
+    p.load({ name: "replacement", steps: [] });
+    expect(lastClone.reference.dispose).toHaveBeenCalledTimes(1);
+  });
+
   test.each([
     ["missing step", 1, 0, "string"],
     ["negative step", -1, 0, "string"],

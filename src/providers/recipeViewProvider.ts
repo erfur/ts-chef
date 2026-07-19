@@ -248,6 +248,8 @@ export class RecipeViewProvider
       if (candidate.type !== "string" && candidate.type !== "toggleString")
         continue;
 
+      const key = this.bindingKey(stepId, candidate.argIndex);
+      this.disposeBinding(key);
       const reference = candidate.reference.clone();
       const binding: RecipeBinding = {
         type: candidate.type,
@@ -257,10 +259,7 @@ export class RecipeViewProvider
           this.postState();
         }),
       };
-      this.bindings.set(
-        this.bindingKey(stepId, candidate.argIndex),
-        binding,
-      );
+      this.bindings.set(key, binding);
       this.materializeBinding(stepId, candidate.argIndex, binding);
     }
 
