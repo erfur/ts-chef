@@ -121,6 +121,14 @@ function target(start: number, end: number): VsCodeRange {
   return new Range(0, start, 0, end) as unknown as VsCodeRange;
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 function setup(debounceMs?: number) {
   let listener: ((message: ResultsViewMessage) => void) | undefined;
   const states: ResultsViewState[] = [];
@@ -638,6 +646,84 @@ describe("ResultsController", () => {
     expect(sourceA.evaluate).not.toHaveBeenCalled();
     expect(sourceB.evaluate).toHaveBeenCalledWith("mnop");
   });
+
+  test("the latest open request stays active when reveals resolve out of order", async () => {
+    jest.useFakeTimers();
+    const documentA = makeDocument("a.txt", "abcdefghij");
+    const documentB = makeDocument("b.txt", "jklmnopqrs");
+    const { editor: editorA } = makeEditor(documentA);
+    const { editor: editorB } = makeEditor(documentB);
+    const { editor: shownA } = makeEditor(documentA);
+    const { editor: shownB } = makeEditor(documentB);
+    const revealA = deferred<TextEditor>();
+    const revealB = deferred<TextEditor>();
+    window.showTextDocument
+      .mockReturnValueOnce(revealA.promise)
+      .mockReturnValueOnce(revealB.promise);
+    const sourceA = source("A");
+    const sourceB = source("B");
+    const { controller, emit, lastState, loadRecipe, select } = setup(10);
+    controller.show(editorA, "a", target(1, 4), sourceA);
+    const idA = lastState().items[0].id;
+    controller.show(editorB, "b", target(2, 5), sourceB);
+    const idB = lastState().items[0].id;
+
+    await emit({ type: "open", id: idA });
+    await emit({ type: "open", id: idB });
+    revealB.resolve(shownB);
+    await Promise.resolve();
+    await Promise.resolve();
+    revealA.resolve(shownA);
+    await Promise.resolve();
+    await Promise.resolve();
+    select(shownA, 0, 6);
+    select(shownB, 3, 7);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(loadRecipe).toHaveBeenCalledTimes(1);
+    expect(loadRecipe).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "B" }),
+    );
+    expect(sourceA.evaluate).not.toHaveBeenCalled();
+    expect(sourceB.evaluate).toHaveBeenCalledWith("mnop");
+  });
+
+  test.each(["delete", "close", "replace", "dispose"] as const)(
+    "%s while reveal is pending prevents stale open activation",
+    async (cleanup) => {
+      jest.useFakeTimers();
+      const document = makeDocument("source.txt", "abcdefghij");
+      const { editor } = makeEditor(document);
+      const { editor: pendingEditor } = makeEditor(document);
+      const { editor: replacementEditor } = makeEditor(document);
+      const pendingReveal = deferred<TextEditor>();
+      window.showTextDocument
+        .mockReturnValueOnce(pendingReveal.promise)
+        .mockResolvedValue(replacementEditor);
+      const recipe = source("Recipe");
+      const { controller, close, emit, lastState, loadRecipe, select } =
+        setup(10);
+      controller.show(editor, "initial", target(2, 5), recipe);
+      const id = lastState().items[0].id;
+      await emit({ type: "open", id });
+
+      if (cleanup === "delete")
+        await emit({ type: "action", action: "delete", id });
+      else if (cleanup === "close") close(document);
+      else if (cleanup === "replace")
+        await emit({ type: "action", action: "replace", id });
+      else controller.dispose();
+      pendingReveal.resolve(pendingEditor);
+      await Promise.resolve();
+      await Promise.resolve();
+      select(pendingEditor, 0, 6);
+      await jest.advanceTimersByTimeAsync(10);
+
+      expect(loadRecipe).not.toHaveBeenCalled();
+      expect(pendingEditor.revealRange).not.toHaveBeenCalled();
+      expect(recipe.evaluate).not.toHaveBeenCalled();
+    },
+  );
 
   test("a failed open warns without loading or activating the result", async () => {
     jest.useFakeTimers();

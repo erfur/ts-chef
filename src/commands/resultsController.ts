@@ -38,6 +38,7 @@ export class ResultsController implements vscode.Disposable {
   private results: ResultRecord[] = [];
   private filter: ResultFilter = "all";
   private seq = 0;
+  private openRequest = 0;
   private activeUri: string | undefined;
   private activeSelectionTarget: ResultRecord | undefined;
 
@@ -269,8 +270,14 @@ export class ResultsController implements vscode.Disposable {
   }
 
   private async open(item: ResultRecord): Promise<void> {
+    const request = ++this.openRequest;
     const editor = await this.reveal(item);
-    if (!editor) return;
+    if (
+      !editor ||
+      request !== this.openRequest ||
+      !this.results.includes(item)
+    )
+      return;
     const range = this.range(item);
     this.activeSelectionTarget = item;
     editor.selection = new vscode.Selection(range.start, range.end);
