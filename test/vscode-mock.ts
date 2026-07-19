@@ -19,6 +19,10 @@ export const window = {
     { dispose: () => void },
     [listener: (editor: unknown) => void]
   >(() => ({ dispose: jest.fn() })),
+  onDidChangeTextEditorSelection: jest.fn<
+    { dispose: () => void },
+    [listener: (event: unknown) => void]
+  >(() => ({ dispose: jest.fn() })),
 };
 
 let configValues: Record<string, unknown> = {};

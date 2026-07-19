@@ -159,6 +159,18 @@ function setup(debounceMs?: number) {
       const closeHandler = workspace.onDidCloseTextDocument.mock.calls[0][0];
       closeHandler(document);
     },
+    select: (editor: TextEditor, start: number, end: number) => {
+      const selection = {
+        isEmpty: start === end,
+        start: editor.document.positionAt(start),
+        end: editor.document.positionAt(end),
+      };
+      (editor as unknown as { selection: typeof selection }).selection =
+        selection;
+      const selectionHandler =
+        window.onDidChangeTextEditorSelection.mock.calls[0][0];
+      selectionHandler({ textEditor: editor, selections: [selection] });
+    },
     emit: async (message: ResultsViewMessage | Record<string, unknown>) => {
       listener?.(message as ResultsViewMessage);
       await Promise.resolve();
@@ -540,18 +552,110 @@ describe("ResultsController", () => {
     });
   });
 
-  test("warns without loading a recipe when revealing an open result rejects", async () => {
+  test("retargets an opened result when its selection is extended or shrunk", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const { editor } = makeEditor(document);
+    const { editor: shown, editBuilder } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(shown);
+    const recipe = source("Recipe");
+    const { controller, emit, lastState, select } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    const id = lastState().items[0].id;
+    await emit({ type: "open", id });
+
+    select(shown, 1, 7);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(recipe.evaluate).toHaveBeenLastCalledWith("bcdefg");
+
+    select(shown, 3, 6);
+    await jest.advanceTimersByTimeAsync(10);
+    expect(recipe.evaluate).toHaveBeenLastCalledWith("def");
+
+    await emit({ type: "open", id });
+    expect(shown.selection).toEqual(
+      expect.objectContaining({
+        anchor: document.positionAt(3),
+        active: document.positionAt(6),
+      }),
+    );
+    await emit({ type: "action", action: "replace", id });
+    expect(editBuilder.replace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start: document.positionAt(3),
+        end: document.positionAt(6),
+      }),
+      "def",
+    );
+  });
+
+  test("ignores empty, unchanged, and unrelated selections", async () => {
+    jest.useFakeTimers();
+    const document = makeDocument("source.txt", "abcdefghij");
+    const otherDocument = makeDocument("other.txt", "klmnopqrst");
+    const { editor } = makeEditor(document);
+    const { editor: shown } = makeEditor(document);
+    const { editor: otherEditor } = makeEditor(otherDocument);
+    window.showTextDocument.mockResolvedValue(shown);
+    const recipe = source("Recipe");
+    const { controller, emit, lastState, select } = setup(10);
+    controller.show(editor, "initial", target(2, 5), recipe);
+    await emit({ type: "open", id: lastState().items[0].id });
+
+    select(shown, 2, 5);
+    select(shown, 4, 4);
+    select(otherEditor, 1, 6);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(recipe.evaluate).not.toHaveBeenCalled();
+  });
+
+  test("opening another row transfers selection tracking", async () => {
+    jest.useFakeTimers();
+    const documentA = makeDocument("a.txt", "abcdefghij");
+    const documentB = makeDocument("b.txt", "jklmnopqrs");
+    const { editor: editorA } = makeEditor(documentA);
+    const { editor: editorB } = makeEditor(documentB);
+    const { editor: shownA } = makeEditor(documentA);
+    const { editor: shownB } = makeEditor(documentB);
+    const sourceA = source("A");
+    const sourceB = source("B");
+    window.showTextDocument
+      .mockResolvedValueOnce(shownA)
+      .mockResolvedValueOnce(shownB);
+    const { controller, emit, lastState, select } = setup(10);
+    controller.show(editorA, "a", target(1, 4), sourceA);
+    const idA = lastState().items[0].id;
+    controller.show(editorB, "b", target(2, 5), sourceB);
+    const idB = lastState().items[0].id;
+
+    await emit({ type: "open", id: idA });
+    await emit({ type: "open", id: idB });
+    select(shownA, 0, 6);
+    select(shownB, 3, 7);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(sourceA.evaluate).not.toHaveBeenCalled();
+    expect(sourceB.evaluate).toHaveBeenCalledWith("mnop");
+  });
+
+  test("a failed open warns without loading or activating the result", async () => {
+    jest.useFakeTimers();
     const document = makeDocument("source.txt");
     const { editor } = makeEditor(document);
     window.showTextDocument.mockRejectedValue(new Error("reveal failed"));
-    const { controller, emit, lastState, loadRecipe } = setup();
-    controller.show(editor, "result", target(2, 6), source("Recipe"));
+    const recipe = source("Recipe");
+    const { controller, emit, lastState, loadRecipe, select } = setup(10);
+    controller.show(editor, "result", target(2, 6), recipe);
     const id = lastState().items[0].id;
 
     await emit({ type: "open", id });
+    select(editor, 1, 7);
+    await jest.advanceTimersByTimeAsync(10);
 
     expect(window.showWarningMessage).toHaveBeenCalledTimes(1);
     expect(loadRecipe).not.toHaveBeenCalled();
+    expect(recipe.evaluate).not.toHaveBeenCalled();
     expect(lastState().items).toHaveLength(1);
   });
 
@@ -932,6 +1036,31 @@ describe("ResultsController", () => {
     expect(closedSource.evaluate).not.toHaveBeenCalled();
     expect(lastState().items).toHaveLength(0);
   });
+
+  test.each(["delete", "close", "dispose"] as const)(
+    "%s clears the active selection target",
+    async (cleanup) => {
+      jest.useFakeTimers();
+      const document = makeDocument("source.txt", "abcdefghij");
+      const { editor } = makeEditor(document);
+      const { editor: shown } = makeEditor(document);
+      window.showTextDocument.mockResolvedValue(shown);
+      const recipe = source("Recipe");
+      const { controller, close, emit, lastState, select } = setup(10);
+      controller.show(editor, "initial", target(2, 5), recipe);
+      const id = lastState().items[0].id;
+      await emit({ type: "open", id });
+
+      if (cleanup === "delete")
+        await emit({ type: "action", action: "delete", id });
+      else if (cleanup === "close") close(document);
+      else controller.dispose();
+      select(shown, 1, 7);
+      await jest.advanceTimersByTimeAsync(10);
+
+      expect(recipe.evaluate).not.toHaveBeenCalled();
+    },
+  );
 
   test("disposal invalidates results and clears pending evaluations", async () => {
     jest.useFakeTimers();
