@@ -57,7 +57,7 @@ describe("applyOperation", () => {
     await applyOperation("Required", entry("required"), {});
 
     expect(window.showWarningMessage).toHaveBeenCalledWith(
-      "ts-chef: No active editor.",
+      "vschef: No active editor.",
     );
     expect(runOpMock).not.toHaveBeenCalled();
     expect(presentMock).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ describe("applyOperation", () => {
     await applyOperation("Required", entry("required"), {});
 
     expect(window.showWarningMessage).toHaveBeenCalledWith(
-      "ts-chef: Select text first.",
+      "vschef: Select text first.",
     );
     expect(runOpMock).not.toHaveBeenCalled();
   });

@@ -30,8 +30,8 @@ describe("scope-aware stores", () => {
   let wsDir: string;
 
   beforeEach(() => {
-    globalDir = mkTmp("tschef-global-");
-    wsDir = mkTmp("tschef-ws-");
+    globalDir = mkTmp("vschef-global-");
+    wsDir = mkTmp("vschef-ws-");
     mockVscode.workspace.workspaceFolders = [{ uri: { fsPath: wsDir } }];
     mockVscode.window.showWarningMessage.mockClear();
   });
@@ -54,7 +54,7 @@ describe("scope-aware stores", () => {
   test("workspace pipeline save persists under workspace dir tagged workspace", () => {
     const store = new PipelineStore(globalDir);
     store.upsert("workspace", samplePipeline("w1"));
-    expect(fs.existsSync(path.join(wsDir, ".ts-chef", "pipelines.json"))).toBe(
+    expect(fs.existsSync(path.join(wsDir, ".vschef", "pipelines.json"))).toBe(
       true,
     );
     const all = store.loadAll();
@@ -110,7 +110,7 @@ describe("scope-aware stores", () => {
 
   test("legacy variable cleanup removes global and workspace files only", () => {
     const vscodeDir = path.join(wsDir, ".vscode");
-    const workspaceStoreDir = path.join(vscodeDir, "ts-chef");
+    const workspaceStoreDir = path.join(vscodeDir, "vschef");
     fs.mkdirSync(workspaceStoreDir, { recursive: true });
 
     const globalVariables = path.join(globalDir, "variables.json");
@@ -143,7 +143,7 @@ describe("scope-aware stores", () => {
 
   test("legacy variable cleanup reports deletion failures and continues", () => {
     const globalVariables = path.join(globalDir, "variables.json");
-    const workspaceStoreDir = path.join(wsDir, ".ts-chef");
+    const workspaceStoreDir = path.join(wsDir, ".vschef");
     const workspaceVariables = path.join(workspaceStoreDir, "variables.json");
     fs.mkdirSync(workspaceStoreDir, { recursive: true });
     fs.writeFileSync(globalVariables, "[]");

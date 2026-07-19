@@ -80,7 +80,7 @@ export async function presentPipelineResult(
         eb.replace(target ?? replaceTarget(editor), result),
       );
       vscode.window.setStatusBarMessage(
-        "ts-chef: Pipeline result replaced selection",
+        "vschef: Pipeline result replaced selection",
         3000,
       );
       return;
@@ -89,7 +89,7 @@ export async function presentPipelineResult(
     if (mode === "copy") {
       vscode.env.clipboard.writeText(result);
       vscode.window.setStatusBarMessage(
-        "ts-chef: Pipeline result copied",
+        "vschef: Pipeline result copied",
         3000,
       );
       return;

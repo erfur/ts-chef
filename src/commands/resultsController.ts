@@ -59,7 +59,7 @@ export class ResultsController implements vscode.Disposable {
         void this.onMessage(message).catch((error) => {
           log(`Result action error: ${error}`);
           vscode.window.showWarningMessage(
-            "ts-chef: Could not complete result action.",
+            "vschef: Could not complete result action.",
           );
         });
       }),
@@ -165,7 +165,7 @@ export class ResultsController implements vscode.Disposable {
   ): Promise<vscode.TextEditor | undefined> {
     if (item.document.isClosed) {
       vscode.window.showWarningMessage(
-        "ts-chef: Cannot open result - the source document is closed.",
+        "vschef: Cannot open result - the source document is closed.",
       );
       return undefined;
     }
@@ -267,7 +267,7 @@ export class ResultsController implements vscode.Disposable {
       editor.selection.isEmpty
     ) {
       vscode.window.showWarningMessage(
-        "ts-chef: Select non-empty text in this result's source document before reselecting.",
+        "vschef: Select non-empty text in this result's source document before reselecting.",
       );
       return;
     }
@@ -333,7 +333,7 @@ export class ResultsController implements vscode.Disposable {
     if (message.action === "copy") {
       await vscode.env.clipboard.writeText(item.output);
       vscode.window.setStatusBarMessage(
-        "ts-chef: Pipeline result copied",
+        "vschef: Pipeline result copied",
         3000,
       );
       return;

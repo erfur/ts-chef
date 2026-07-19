@@ -110,7 +110,7 @@ export function activate(context: vscode.ExtensionContext): void {
       onApply: async (name, steps, references) => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-          vscode.window.showWarningMessage("ts-chef: No active editor.");
+          vscode.window.showWarningMessage("vschef: No active editor.");
           return;
         }
         const text =
@@ -132,18 +132,18 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (e) {
           if (!presentationOwnsSource) source.dispose?.();
           log(`Recipe apply error: ${e}`);
-          vscode.window.showErrorMessage(`ts-chef recipe error: ${e}`);
+          vscode.window.showErrorMessage(`vschef recipe error: ${e}`);
         }
       },
       onSave: async (name, steps) => {
         if (!name) {
           vscode.window.showWarningMessage(
-            "ts-chef: Name the recipe before saving.",
+            "vschef: Name the recipe before saving.",
           );
           return;
         }
         if (!steps.length) {
-          vscode.window.showWarningMessage("ts-chef: Recipe is empty.");
+          vscode.window.showWarningMessage("vschef: Recipe is empty.");
           return;
         }
         const scope = vscode.workspace
@@ -154,7 +154,7 @@ export function activate(context: vscode.ExtensionContext): void {
         pipeTree.refresh();
         log(`Recipe "${name}" saved as pipeline (${scope})`);
         vscode.window.showInformationMessage(
-          `ts-chef: Recipe "${name}" saved (${scope}).`,
+          `vschef: Recipe "${name}" saved (${scope}).`,
         );
       },
       getSelectionReference: () => {
@@ -250,12 +250,12 @@ export function activate(context: vscode.ExtensionContext): void {
       const selection = editor.selection;
       const text = editor.document.getText(selection);
       if (!text) {
-        vscode.window.showWarningMessage("ts-chef: Select text first.");
+        vscode.window.showWarningMessage("vschef: Select text first.");
         return;
       }
 
       const picked = await vscode.window.showQuickPick(buildOpPickItems(), {
-        placeHolder: "Pick a ts-chef operation…",
+        placeHolder: "Pick a vschef operation…",
         matchOnDescription: true,
       });
       if (!picked || !picked.opName) return;
@@ -270,19 +270,19 @@ export function activate(context: vscode.ExtensionContext): void {
         const str = resultToString(runOp(picked.opName, text, args));
         if (str === "" && text !== "") {
           vscode.window.showWarningMessage(
-            `ts-chef: "${picked.label}" produced an empty result — nothing replaced.`,
+            `vschef: "${picked.label}" produced an empty result — nothing replaced.`,
           );
           return;
         }
         await editor.edit((eb) => eb.replace(selection, str));
         log(`quickConvert: "${picked.label}" applied`);
         vscode.window.setStatusBarMessage(
-          `ts-chef: Applied "${picked.label}"`,
+          `vschef: Applied "${picked.label}"`,
           3000,
         );
       } catch (e) {
         log(`quickConvert error: ${e}`);
-        vscode.window.showErrorMessage(`ts-chef: ${e}`);
+        vscode.window.showErrorMessage(`vschef: ${e}`);
       }
     }),
   );
@@ -316,7 +316,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       } catch (e) {
         log(`Pipeline error: ${e}`);
-        vscode.window.showErrorMessage(`ts-chef pipeline error: ${e}`);
+        vscode.window.showErrorMessage(`vschef pipeline error: ${e}`);
       }
     }),
   );
@@ -332,7 +332,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!pipeline) return;
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-          vscode.window.showWarningMessage("ts-chef: No active editor.");
+          vscode.window.showWarningMessage("vschef: No active editor.");
           return;
         }
         const text =
@@ -354,7 +354,7 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (e) {
           log(`Saved pipeline "${name}" error: ${e}`);
           vscode.window.showErrorMessage(
-            `ts-chef pipeline "${name}" error: ${e}`,
+            `vschef pipeline "${name}" error: ${e}`,
           );
         }
       },
@@ -369,7 +369,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const pipelines = pipeStore.loadAll();
         if (!pipelines.length) {
           vscode.window.showInformationMessage(
-            "ts-chef: No saved pipelines. Save one from the Recipe view first.",
+            "vschef: No saved pipelines. Save one from the Recipe view first.",
           );
           return;
         }

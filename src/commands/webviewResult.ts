@@ -92,7 +92,7 @@ export class WebviewResultController {
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
         "vschef.result",
-        "ts-chef result",
+        "vschef result",
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true },
       );
@@ -114,7 +114,7 @@ export class WebviewResultController {
       // closed by the time Replace fires — guard and fail gracefully.
       if (state.editor.document.isClosed) {
         vscode.window.showWarningMessage(
-          "ts-chef: Cannot replace — the editor is no longer open.",
+          "vschef: Cannot replace — the editor is no longer open.",
         );
         return;
       }
@@ -124,13 +124,13 @@ export class WebviewResultController {
         );
       } catch {
         vscode.window.showWarningMessage(
-          "ts-chef: Could not replace — the editor is no longer available.",
+          "vschef: Could not replace — the editor is no longer available.",
         );
       }
     } else if (msg.type === "copy") {
       vscode.env.clipboard.writeText(state.result);
       vscode.window.setStatusBarMessage(
-        "ts-chef: Pipeline result copied",
+        "vschef: Pipeline result copied",
         3000,
       );
     } else if (msg.type === "close") {

@@ -97,7 +97,7 @@ export class InlineResultController implements vscode.CodeLensProvider {
       // active one — they may differ when several rows span documents).
       if (item.editor.document.isClosed) {
         vscode.window.showWarningMessage(
-          "ts-chef: Cannot replace — the editor is no longer open.",
+          "vschef: Cannot replace — the editor is no longer open.",
         );
         return;
       }
@@ -108,7 +108,7 @@ export class InlineResultController implements vscode.CodeLensProvider {
         this.remove(id);
       } catch {
         vscode.window.showWarningMessage(
-          "ts-chef: Could not replace — the editor is no longer available.",
+          "vschef: Could not replace — the editor is no longer available.",
         );
       }
       return;
@@ -117,7 +117,7 @@ export class InlineResultController implements vscode.CodeLensProvider {
     if (action === "copy") {
       vscode.env.clipboard.writeText(item.result);
       vscode.window.setStatusBarMessage(
-        "ts-chef: Pipeline result copied",
+        "vschef: Pipeline result copied",
         3000,
       );
       return;

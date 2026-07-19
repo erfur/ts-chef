@@ -95,7 +95,7 @@ function setup(resultSource: PipelineResultSource) {
     registerTreeDataProvider: jest.fn(() => ({ dispose: jest.fn() })),
   });
   const context = {
-    globalStorageUri: { fsPath: "/tmp/ts-chef-test" },
+    globalStorageUri: { fsPath: "/tmp/vschef-test" },
     subscriptions: [],
   } as unknown as ExtensionContext;
 

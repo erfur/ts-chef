@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/verifyOps.js — Registry lint + sample-input test for all ts-chef operations
+// scripts/verifyOps.js — Registry lint + sample-input test for all vschef operations
 // Run: node scripts/verifyOps.js   (requires npm run build first)
 
 const fs   = require("fs");
@@ -32,7 +32,7 @@ const compiledSet = new Set(compiledFiles);
 const inRegNotInFiles = [...registeredOps].filter(op => !compiledSet.has(op));
 const inFilesNotInReg = compiledFiles.filter(op => !registeredOps.has(op) && !EXCLUDED.has(op) && op !== "index");
 
-console.log("\n═══ ts-chef Op Verification ═══\n");
+console.log("\n═══ vschef Op Verification ═══\n");
 console.log(`Compiled ops:  ${compiledFiles.length}`);
 console.log(`Registered ops: ${registeredOps.size}`);
 console.log(`Excluded:       ${EXCLUDED.size}`);

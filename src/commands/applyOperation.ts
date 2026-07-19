@@ -48,7 +48,7 @@ export async function applyOperation(
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    vscode.window.showWarningMessage("ts-chef: No active editor.");
+    vscode.window.showWarningMessage("vschef: No active editor.");
     return;
   }
   if (!entry) return;
@@ -56,7 +56,7 @@ export async function applyOperation(
   const operation = entry.factory();
   const text = editor.document.getText(editor.selection);
   if (!text && operation.inputMode === "required") {
-    vscode.window.showWarningMessage("ts-chef: Select text first.");
+    vscode.window.showWarningMessage("vschef: Select text first.");
     return;
   }
 
@@ -73,7 +73,7 @@ export async function applyOperation(
     const str = resultToString(result);
     if (str === "" && text !== "") {
       vscode.window.showWarningMessage(
-        `ts-chef: "${entry.displayName}" produced an empty result — nothing replaced.`,
+        `vschef: "${entry.displayName}" produced an empty result — nothing replaced.`,
       );
       return;
     }
@@ -97,6 +97,6 @@ export async function applyOperation(
     log(`applyOperation: "${entry.displayName}" applied`);
   } catch (error) {
     log(`applyOperation error: ${error}`);
-    vscode.window.showErrorMessage(`ts-chef: ${error}`);
+    vscode.window.showErrorMessage(`vschef: ${error}`);
   }
 }

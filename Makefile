@@ -1,7 +1,7 @@
 .PHONY: build test lint docs release package upload clean help
 
 help:
-	@echo "ts-chef development commands:"
+	@echo "vschef development commands:"
 	@echo "  make build    - Build the project"
 	@echo "  make test     - Run all tests"
 	@echo "  make lint     - Run linting and formatting"

@@ -127,7 +127,7 @@
             "Copy the result to the clipboard",
             "Show the result in a CodeLens row above the selection with Replace/Copy/Close actions",
             "Show the result in a webview panel beside the editor (multi-line, with Replace/Copy/Close actions)",
-            "Keep a live result in the ts-chef Results view with Popup/Copy/Replace/Delete actions"
+            "Keep a live result in the vschef Results view with Popup/Copy/Replace/Delete actions"
           ],
           "default": "popup",
           "description": "What to do with a pipeline's result. 'popup' asks each time."

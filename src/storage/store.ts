@@ -9,8 +9,8 @@ function workspaceStoreDir(): string | undefined {
   const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!ws) return undefined;
   const vscodePath = path.join(ws, ".vscode");
-  if (fs.existsSync(vscodePath)) return path.join(vscodePath, "ts-chef");
-  return path.join(ws, ".ts-chef");
+  if (fs.existsSync(vscodePath)) return path.join(vscodePath, "vschef");
+  return path.join(ws, ".vschef");
 }
 
 function ensureDir(dir: string): void {
@@ -93,7 +93,7 @@ export class PipelineStore {
     const dir = this.dir(scope);
     if (!dir) {
       vscode.window.showWarningMessage(
-        "ts-chef: open a workspace folder to save pipelines.",
+        "vschef: open a workspace folder to save pipelines.",
       );
       return;
     }

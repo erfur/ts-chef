@@ -713,7 +713,7 @@ describe("ResultsController", () => {
       expect(recipe.evaluate).not.toHaveBeenCalled();
       expect(lastState().items[0].output).toBe("initial");
       expect(window.showWarningMessage).toHaveBeenCalledWith(
-        "ts-chef: Select non-empty text in this result's source document before reselecting.",
+        "vschef: Select non-empty text in this result's source document before reselecting.",
       );
     },
   );
@@ -884,7 +884,7 @@ describe("ResultsController", () => {
     await emit({ type: "action", action: "copy", id });
     expect(env.clipboard.writeText).toHaveBeenCalledWith("result");
     expect(window.setStatusBarMessage).toHaveBeenCalledWith(
-      "ts-chef: Pipeline result copied",
+      "vschef: Pipeline result copied",
       3000,
     );
     expect(lastState().items).toHaveLength(1);
@@ -1014,7 +1014,7 @@ describe("ResultsController", () => {
     await emit({ type: "action", action: "delete", id: 999 });
 
     expect(window.showWarningMessage).toHaveBeenCalledWith(
-      "ts-chef: Cannot open result - the source document is closed.",
+      "vschef: Cannot open result - the source document is closed.",
     );
     expect(window.showTextDocument).not.toHaveBeenCalled();
     expect(loadRecipe).not.toHaveBeenCalled();

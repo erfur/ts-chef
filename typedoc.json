@@ -7,7 +7,7 @@
   ],
   "theme": "markdown",
   "hideGenerator": true,
-  "name": "ts-chef API Documentation",
+  "name": "vschef API Documentation",
   "excludeExternals": true,
   "readme": "docs/README.md",
   "entryFileName": "Home.md",
