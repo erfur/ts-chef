@@ -1,6 +1,6 @@
 # Included Formatters & Operations
 
-`ts-chef` provides a wide array of professional-grade tools for data formatting and transformation.
+`vschef` provides a wide array of professional-grade tools for data formatting and transformation.
 
 ## Beautifiers
 
@@ -28,4 +28,4 @@
 
 ---
 
-For a full list of all 480+ operations, please refer to the [Full Operations Index](https://github.com/michaelweiss/ts-chef/wiki/Operations).
+For a full list of all 480+ operations, please refer to the [Full Operations Index](https://github.com/erfur/vschef/wiki/Operations).

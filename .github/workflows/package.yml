@@ -31,7 +31,7 @@ jobs:
         id: vsix
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          echo "name=vscode-ts-chef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
+          echo "name=vschef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
 
       - name: Package VSIX
         run: |

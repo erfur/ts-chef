@@ -31,7 +31,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "VERSION=$VERSION"         >> "$GITHUB_OUTPUT"
-          echo "VSIX=vscode-ts-chef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
+          echo "VSIX=vschef-${VERSION}.vsix" >> "$GITHUB_OUTPUT"
 
       - name: Sync version in package.json
         run: |
@@ -67,12 +67,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "ts-chef ${{ github.ref_name }}"
+          name: "vschef ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           files: ${{ steps.ver.outputs.VSIX }}
           prerelease: ${{ contains(github.ref_name, '-') }}
           body: |
-            ## ts-chef ${{ github.ref_name }}
+            ## vschef ${{ github.ref_name }}
 
             ### Install
 

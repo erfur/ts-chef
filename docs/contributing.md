@@ -1,4 +1,4 @@
-# Contributing to ts-chef
+# Contributing to vschef
 
 Thank you for your interest in contributing! This project follows a structured development workflow to ensure stability and code quality.
 
@@ -11,8 +11,8 @@ Thank you for your interest in contributing! This project follows a structured d
 
 1.  **Clone and Install:**
     ```bash
-    git clone https://github.com/michaelweiss/ts-chef.git
-    cd ts-chef
+    git clone https://github.com/erfur/vschef.git
+    cd vschef
     npm install
     ```
 

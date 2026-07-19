@@ -1,26 +1,26 @@
 # Usage Guide
 
-`ts-chef` is designed to be intuitive and non-intrusive. There are two primary ways to interact with it.
+`vschef` is designed to be intuitive and non-intrusive. There are two primary ways to interact with it.
 
 ## 1. Quick Convert Selection
 
 1.  Select any text or data blob in your editor.
-2.  Right-click and select **ts-chef: Quick Convert Selection**.
+2.  Right-click and select **vschef: Quick Convert Selection**.
 3.  Choose from a list of automatically suggested transformations based on the data format.
 
-## 2. Pipeline Editor (Recipes)
+## 2. Build A Recipe
 
 For complex multi-step transformations:
 
-1.  Open the command palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
-2.  Type **ts-chef: Open Pipeline Editor**.
-3.  Search for and add operations to your pipeline.
-4.  Configure arguments for each step.
-5.  Click **Bake** to see the final output and optionally replace your selection.
+1. Open the **vschef** activity-bar view.
+2. Search for operations in **Operations** and add them to **Recipe**.
+3. Configure arguments for each step.
+4. Run the recipe against the current editor selection.
+5. Save it globally or to the workspace when you want to reuse it.
 
 ## Pipeline result action
 
-When you run a pipeline from a command (**ts-chef: Run Pipeline on Selection** or **ts-chef: Run Saved Pipeline**), ts-chef shows the result in a notification with **Replace** and **Copy** buttons by default. Set `tschef.pipelineResultAction` to change this default:
+When you run a pipeline from a command (**vschef: Run Pipeline on Selection** or **vschef: Run Saved Pipeline**), vschef shows the result in a notification with **Replace** and **Copy** buttons by default. Set `vschef.pipelineResultAction` to change this default:
 
 - `popup` (default) — ask each time with Replace/Copy buttons.
 - `replace` — replace the selection (or the whole document if nothing is selected) with the result.
