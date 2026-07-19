@@ -2,9 +2,9 @@
 
 ## Goal
 
-Restore dynamic Results sidebar updates when text is inserted exactly at the
-end of a tracked non-empty selection, while keeping newline insertions outside
-the tracked input.
+Restore dynamic updates to Results ranges and recipe parameter selection
+references when text is inserted exactly at the end of a tracked non-empty
+selection, while keeping newline insertions outside the tracked input.
 
 ## Root Cause
 
@@ -15,7 +15,8 @@ ordinary text modifications.
 
 The range transform currently ignores every zero-length change whose offset is
 equal to the end of a non-empty range. It therefore neither advances the end
-offset nor schedules result recomputation for ordinary text typed there.
+offset nor reports a Results or selection-reference change for ordinary text
+typed there.
 
 ## Boundary Semantics
 
@@ -23,7 +24,7 @@ For an insertion exactly at the end of a non-empty tracked range:
 
 - Include ordinary text in the tracked input, advance the end offset, and mark
   the range as changed.
-- Exclude a pure newline insertion, leaving the range and result unchanged.
+- Exclude a pure newline insertion, leaving the range and consumer unchanged.
 - For mixed inserted text, include only the prefix before the first `\r` or
   `\n`. For example, inserting `abc\nxyz` advances the end through `abc` and
   excludes the newline and `xyz`.
@@ -41,7 +42,7 @@ suffix of a mixed append remains outside the original tracked input.
 ## Implementation
 
 Change only the pure `transformTrackedRange` helper in
-`src/commands/trackedRange.ts` and its tests.
+`src/commands/trackedRange.ts` and add coverage for both consumers.
 
 When a zero-length change occurs exactly at a non-empty range's end, derive the
 length of the inserted prefix before the first CR or LF. Use that prefix length
@@ -51,8 +52,9 @@ consistently for both end-boundary mapping and the `changed` result:
 - A zero prefix length leaves the end unchanged and reports `changed: false`.
 
 Keeping boundary movement and change detection aligned ensures the evaluator,
-Open action, and Replace action all use the same dynamically updated input.
-Changes at all other offsets continue through the existing transform logic.
+Open action, Replace action, and tracked recipe parameter references all use
+the same dynamically updated input. Changes at all other offsets continue
+through the existing transform logic.
 
 ## Error And Edge Handling
 
@@ -85,12 +87,18 @@ Controller tests will verify:
 - Whole-document text appends update dynamically while newline suffixes remain
   outside the tracked range.
 
-Run the focused controller tests, typecheck, touched-file lint, and complete
-test suite.
+Selection-reference tests will verify:
+
+- Ordinary text inserted at the end expands `reference.text` and emits once.
+- Mixed text and newline includes only the prefix before the first newline and
+  emits once.
+- A pure newline remains outside `reference.text` and does not emit.
+
+Run the focused controller and selection-reference tests, typecheck,
+touched-file lint, and complete test suite.
 
 ## Non-Goals
 
 - Changing selection retargeting through editor selection events.
 - Including text after the first newline in an end-boundary insertion.
 - Changing result view rendering, filtering, actions, or persistence.
-- Changing tracked recipe parameter references.

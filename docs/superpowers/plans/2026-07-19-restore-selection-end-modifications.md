@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restore dynamic tracked-result updates for text inserted at a selection's end while excluding the newline and all text after it.
+**Goal:** Restore dynamic updates to Results ranges and recipe parameter selection references for text inserted at a selection's end while excluding the newline and all text after it.
 
-**Architecture:** Keep all boundary semantics in the pure `transformTrackedRange` helper. For an insertion at a non-empty range's end, map and report only the prefix before the first CR or LF; `ResultsController` will continue consuming the helper's range and `changed` result without modification.
+**Architecture:** Keep all boundary semantics in the pure `transformTrackedRange` helper. For an insertion at a non-empty range's end, map and report only the prefix before the first CR or LF; `ResultsController` and `SelectionReferenceTracker` will continue consuming the helper's range and `changed` result without modification.
 
 **Tech Stack:** TypeScript, VS Code extension APIs, Jest, ESLint
 
@@ -12,7 +12,9 @@
 
 - Include only the prefix before the first `\r` or `\n` for an insertion exactly at a non-empty tracked range's end.
 - Preserve the complete existing behavior for insertions at the start, strictly inside, and at empty tracked ranges.
-- Keep range movement and `changed` detection aligned so recomputation, Open, and Replace use the same input.
+- Keep range movement and `changed` detection aligned so recomputation, Open,
+  Replace, and tracked recipe parameter references use the same input and
+  change notification semantics.
 - Do not modify `src/generated/opsRegistry.ts`; it contains a pre-existing unrelated worktree change.
 
 ---
@@ -21,6 +23,7 @@
 
 - Modify `src/commands/trackedRange.ts`: define the end-insertion prefix rule inside the existing pure range transform.
 - Modify `test/commands/resultsController.test.ts`: cover pure transform semantics and observable controller recomputation/action ranges.
+- Modify `test/commands/selectionReference.test.ts`: cover observable recipe parameter selection-reference text and change events.
 
 ### Task 1: Restore End-Boundary Text Tracking
 
@@ -29,10 +32,12 @@
 - Test: `test/commands/resultsController.test.ts:202-312`
 - Test: `test/commands/resultsController.test.ts:1019-1048`
 - Test: `test/commands/resultsController.test.ts:1150-1165`
+- Test: `test/commands/selectionReference.test.ts:71-114`
 
 **Interfaces:**
 - Consumes: `transformTrackedRange(start: number, end: number, changes: readonly OffsetChange[])`
 - Produces: the existing `{ start: number; end: number; changed: boolean }` result with newline-aware end-boundary insertion semantics
+- Consumers: `ResultsController` tracked result ranges and `SelectionReferenceTracker` recipe parameter references
 
 - [ ] **Step 1: Write failing pure transform tests**
 
@@ -109,9 +114,15 @@ In the second transform table, replace the document-end row with:
     ],
 ```
 
-- [ ] **Step 2: Write failing controller regression tests**
+- [ ] **Step 2: Write failing consumer regression tests**
 
-Insert this test immediately before the existing newline end-boundary controller test:
+In `test/commands/selectionReference.test.ts`, add focused tests showing that
+ordinary text at the end expands `reference.text` and emits once, mixed text
+includes only the prefix before the first newline and emits once, and a pure
+newline remains outside the reference and does not emit.
+
+In `test/commands/resultsController.test.ts`, insert this test immediately
+before the existing newline end-boundary controller test:
 
 ```typescript
   test.each([
@@ -184,13 +195,16 @@ Replace `keeps document-end appends outside a whole-document result` with:
 
 - [ ] **Step 3: Run the focused suite and verify RED**
 
-Run:
+Run both focused consumer suites:
 
 ```bash
-npm test -- --runInBand test/commands/resultsController.test.ts
+npm test -- --runInBand test/commands/resultsController.test.ts test/commands/selectionReference.test.ts
 ```
 
-Expected: FAIL because `transformTrackedRange` returns end `9` and `changed: false` for ordinary end-boundary text, the controller does not evaluate it, and the whole-document append is ignored. Confirm the existing pure-newline test still passes.
+Expected: FAIL because `transformTrackedRange` returns the original end and
+`changed: false` for ordinary end-boundary text. The controller does not
+evaluate it, the whole-document append is ignored, and selection references do
+not expand or emit. Confirm the pure-newline tests still pass in both suites.
 
 - [ ] **Step 4: Implement the minimal newline-aware boundary transform**
 
@@ -237,17 +251,19 @@ Replace the body of `transformTrackedRange` in `src/commands/trackedRange.ts` wi
   };
 ```
 
-Do not change `ResultsController`; its existing event handler already updates offsets and schedules evaluation from this return value.
+Do not change `ResultsController` or `SelectionReferenceTracker`; their existing
+event handlers already consume the transformed offsets and `changed` result.
 
 - [ ] **Step 5: Run the focused suite and verify GREEN**
 
 Run:
 
 ```bash
-npm test -- --runInBand test/commands/resultsController.test.ts
+npm test -- --runInBand test/commands/resultsController.test.ts test/commands/selectionReference.test.ts
 ```
 
-Expected: PASS with all `resultsController` tests green and no warnings.
+Expected: PASS with all Results controller and selection-reference tests green
+apart from any documented pre-existing warnings.
 
 - [ ] **Step 6: Run static verification**
 
@@ -255,7 +271,7 @@ Run:
 
 ```bash
 npm run typecheck
-npx eslint src/commands/trackedRange.ts test/commands/resultsController.test.ts
+npx eslint src/commands/trackedRange.ts test/commands/resultsController.test.ts test/commands/selectionReference.test.ts
 git diff --check
 ```
 
@@ -277,12 +293,12 @@ Review only the intended files:
 
 ```bash
 git status --short
-git diff -- src/commands/trackedRange.ts test/commands/resultsController.test.ts
+git diff -- src/commands/trackedRange.ts test/commands/resultsController.test.ts test/commands/selectionReference.test.ts
 ```
 
 Confirm `src/generated/opsRegistry.ts` remains unstaged, then commit:
 
 ```bash
-git add src/commands/trackedRange.ts test/commands/resultsController.test.ts
+git add src/commands/trackedRange.ts test/commands/resultsController.test.ts test/commands/selectionReference.test.ts
 git commit -m "fix: restore selection end modifications"
 ```

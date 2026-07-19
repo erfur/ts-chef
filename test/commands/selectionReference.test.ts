@@ -80,6 +80,39 @@ test("updates text and emits for an edit inside the tracked range", () => {
   expect(listener).toHaveBeenCalledTimes(1);
 });
 
+test("includes text inserted at the tracked range end and emits once", () => {
+  const { tracker, document, change } = setup("0123456789", 2, 5);
+  const listener = jest.fn();
+  tracker.reference.onDidChange(listener);
+
+  change(document, [{ rangeOffset: 5, rangeLength: 0, text: "XY" }]);
+
+  expect(tracker.reference.text).toBe("234XY");
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
+test("includes only text before a newline inserted at the tracked range end", () => {
+  const { tracker, document, change } = setup("0123456789", 2, 5);
+  const listener = jest.fn();
+  tracker.reference.onDidChange(listener);
+
+  change(document, [{ rangeOffset: 5, rangeLength: 0, text: "XY\nZ" }]);
+
+  expect(tracker.reference.text).toBe("234XY");
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
+test("keeps a newline inserted at the tracked range end outside", () => {
+  const { tracker, document, change } = setup("0123456789", 2, 5);
+  const listener = jest.fn();
+  tracker.reference.onDidChange(listener);
+
+  change(document, [{ rangeOffset: 5, rangeLength: 0, text: "\n" }]);
+
+  expect(tracker.reference.text).toBe("234");
+  expect(listener).not.toHaveBeenCalled();
+});
+
 test("shifts for an edit before the range without emitting", () => {
   const { tracker, document, change } = setup("0123456789", 2, 5);
   const listener = jest.fn();
