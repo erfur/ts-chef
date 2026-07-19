@@ -28,4 +28,4 @@
 
 ---
 
-For a full list of all 480+ operations, please refer to the [Full Operations Index](https://github.com/erfur/vschef/wiki/Operations).
+For a full list of all 420+ operations, please refer to the [Full Operations Index](https://github.com/erfur/vschef/wiki/Operations).

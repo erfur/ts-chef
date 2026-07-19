@@ -28,7 +28,7 @@ Use it to inspect encoded strings, build repeatable transformation pipelines, de
 
 ## Features
 
-- **480+ operations** for encoding, decoding, hashing, compression, cryptography, parsing, formatting, images, and text processing.
+- **420+ operations** for encoding, decoding, hashing, compression, cryptography, parsing, formatting, images, and text processing.
 - **Quick Convert** for applying suggested transformations directly to selected editor text.
 - **Recipe sidebar** for composing multi-step recipes with configurable operation arguments.
 - **Saved pipelines** for reusable workflows, stored per-workspace or system-wide (global) so they are available in every workspace.
