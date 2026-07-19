@@ -71,12 +71,12 @@ describe("ResultsViewProvider", () => {
 
     onMessage({ type: "filter", filter: "current" });
     onMessage({ type: "open", id: 4 });
-    onMessage({ type: "action", action: "copy", id: 4 });
+    onMessage({ type: "action", action: "reselect", id: 4 });
 
     expect(received).toEqual([
       { type: "filter", filter: "current" },
       { type: "open", id: 4 },
-      { type: "action", action: "copy", id: 4 },
+      { type: "action", action: "reselect", id: 4 },
     ]);
   });
 
@@ -112,6 +112,36 @@ describe("ResultsViewProvider", () => {
         '[data-action="delete"][data-id="2"]',
       )?.disabled,
     ).toBe(false);
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '[data-action="reselect"][data-id="2"]',
+      )?.disabled,
+    ).toBe(false);
+  });
+
+  test("disables output actions while output is unavailable", () => {
+    const { webview } = setup();
+    const { dom } = renderResultsDom(webview.html, {
+      filter: "all",
+      totalCount: 1,
+      items: [{ id: 1, label: "Pending", source: "input.ts" }],
+    });
+    const document = dom.window.document;
+
+    for (const action of ["popup", "copy", "replace"]) {
+      expect(
+        document.querySelector<HTMLButtonElement>(
+          `[data-action="${action}"][data-id="1"]`,
+        )?.disabled,
+      ).toBe(true);
+    }
+    for (const action of ["reselect", "delete"]) {
+      expect(
+        document.querySelector<HTMLButtonElement>(
+          `[data-action="${action}"][data-id="1"]`,
+        )?.disabled,
+      ).toBe(false);
+    }
   });
 
   test("renders result content as text rather than HTML", () => {
@@ -164,12 +194,16 @@ describe("ResultsViewProvider", () => {
     document.querySelector<HTMLElement>('[data-filter="current"]')?.click();
     document.querySelector<HTMLElement>('.result[data-id="4"]')?.click();
     document
+      .querySelector<HTMLElement>('[data-action="reselect"][data-id="4"]')
+      ?.click();
+    document
       .querySelector<HTMLElement>('[data-action="copy"][data-id="4"]')
       ?.click();
 
     expect(postMessage.mock.calls.map(([message]) => message)).toEqual([
       { type: "filter", filter: "current" },
       { type: "open", id: 4 },
+      { type: "action", action: "reselect", id: 4 },
       { type: "action", action: "copy", id: 4 },
     ]);
   });

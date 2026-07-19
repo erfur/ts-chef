@@ -216,15 +216,21 @@ describe("RecipeViewProvider", () => {
     const input = dom.window.document.querySelector<HTMLInputElement>(
       'input[data-arg="1"][data-subfield="string"]',
     );
-    const clear = dom.window.document.querySelector<HTMLElement>(
-      "[data-clear-selection]",
-    );
+    const row = input?.closest(".arg-row");
+    const reselect = row?.querySelector<HTMLElement>("[data-use-selection]");
+    const clear = row?.querySelector<HTMLElement>("[data-clear-selection]");
 
     expect(input?.readOnly).toBe(true);
     expect(input?.hasAttribute("data-selection-reference")).toBe(true);
     expect(input?.getAttribute("role")).toBe("button");
     expect(input?.getAttribute("aria-label")).toBe(
       "Reveal selection for Alphabet",
+    );
+    expect(reselect?.getAttribute("title")).toBe(
+      "Reselect current editor selection",
+    );
+    expect(reselect?.getAttribute("aria-label")).toBe(
+      "Reselect current editor selection",
     );
     expect(clear?.textContent?.trim()).toBe("");
     expect(clear?.querySelector("svg")).not.toBeNull();
@@ -307,6 +313,26 @@ describe("RecipeViewProvider", () => {
     dom.window.document
       .querySelector<HTMLElement>("[data-use-selection]")
       ?.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "useSelection",
+      stepId: "step-1",
+      arg: 0,
+    });
+  });
+
+  test("requests reselection for a bound argument", () => {
+    const { v } = setup();
+    const { dom, postMessage } = renderRecipeDom(v.webview.html, [
+      { stepId: "step-1", arg: 0 },
+    ]);
+    postMessage.mockClear();
+
+    dom.window.document
+      .querySelector<HTMLElement>(
+        '.arg-row [data-arg="0"][data-use-selection]',
+      )
+      ?.click();
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "useSelection",
@@ -713,6 +739,40 @@ describe("RecipeViewProvider", () => {
       defs: { FromBase64: ARG_DEFS },
       boundArgs: [{ stepId, arg: 1 }],
     });
+  });
+
+  test("replaces an existing binding with the current selection", async () => {
+    const first = fakeReference("first");
+    const second = fakeReference("second");
+    const { p, v, onMessage, getSelectionReference } = setup(first.reference);
+    const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
+    const [stepId] = loadRecipe(p, v, "decode", steps);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+    getSelectionReference.mockReturnValueOnce(second.reference);
+
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+
+    expect(first.reference.dispose).toHaveBeenCalledTimes(1);
+    expect(steps[0].args[0]).toBe("second");
+    second.setText("updated second");
+    second.fire();
+    expect(steps[0].args[0]).toBe("updated second");
+  });
+
+  test("keeps an existing binding when reselection is unavailable", async () => {
+    const first = fakeReference("first");
+    const { p, v, onMessage, getSelectionReference } = setup(first.reference);
+    const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
+    const [stepId] = loadRecipe(p, v, "decode", steps);
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+    getSelectionReference.mockReturnValueOnce(undefined);
+
+    await onMessage({ type: "useSelection", stepId, arg: 0 });
+
+    expect(first.reference.dispose).not.toHaveBeenCalled();
+    first.setText("still tracked");
+    first.fire();
+    expect(steps[0].args[0]).toBe("still tracked");
   });
 
   test.each([undefined, ""])(

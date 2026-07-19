@@ -46,7 +46,6 @@ export class ResultsController implements vscode.Disposable {
   private seq = 0;
   private openRequest = 0;
   private activeUri: string | undefined;
-  private activeSelectionTarget: ResultRecord | undefined;
 
   constructor(
     private readonly view: ResultsViewProvider,
@@ -67,27 +66,6 @@ export class ResultsController implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) this.activeUri = editor.document.uri.toString();
         if (this.filter === "current") this.publish();
-      }),
-      vscode.window.onDidChangeTextEditorSelection((event) => {
-        const item = this.activeSelectionTarget;
-        if (
-          !item ||
-          !this.results.includes(item) ||
-          event.textEditor.document !== item.document
-        )
-          return;
-        const selection = event.textEditor.selection;
-        if (selection.isEmpty) return;
-        const startOffset = item.document.offsetAt(selection.start);
-        const endOffset = item.document.offsetAt(selection.end);
-        if (
-          startOffset === item.startOffset &&
-          endOffset === item.endOffset
-        )
-          return;
-        item.startOffset = startOffset;
-        item.endOffset = endOffset;
-        this.schedule(item);
       }),
       vscode.workspace.onDidCloseTextDocument((document) => {
         this.removeDocument(document.uri.toString());
@@ -125,7 +103,6 @@ export class ResultsController implements vscode.Disposable {
       if (item.timer) clearTimeout(item.timer);
       this.disposeSource(item);
     }
-    this.activeSelectionTarget = undefined;
     this.results = [];
     this.activeUri = undefined;
   }
@@ -201,8 +178,6 @@ export class ResultsController implements vscode.Disposable {
   private remove(id: number): void {
     const item = this.results.find((result) => result.id === id);
     if (!item) return;
-    if (this.activeSelectionTarget === item)
-      this.activeSelectionTarget = undefined;
     item.generation++;
     if (item.timer) {
       clearTimeout(item.timer);
@@ -218,11 +193,6 @@ export class ResultsController implements vscode.Disposable {
       (item) => item.document.uri.toString() === uri,
     );
     if (!removed.length) return;
-    if (
-      this.activeSelectionTarget &&
-      removed.includes(this.activeSelectionTarget)
-    )
-      this.activeSelectionTarget = undefined;
     for (const item of removed) {
       item.generation++;
       if (item.timer) {
@@ -278,20 +248,36 @@ export class ResultsController implements vscode.Disposable {
   private async open(item: ResultRecord): Promise<void> {
     const request = ++this.openRequest;
     const editor = await this.reveal(item);
-    if (
-      !editor ||
-      request !== this.openRequest ||
-      !this.results.includes(item)
-    )
+    if (!editor || request !== this.openRequest || !this.results.includes(item))
       return;
     const range = this.range(item);
-    this.activeSelectionTarget = item;
     editor.selection = new vscode.Selection(range.start, range.end);
     editor.revealRange(range);
     this.dependencies.loadRecipe(
       structuredClone(item.source.recipe),
       item.source.references ?? [],
     );
+  }
+
+  private reselect(item: ResultRecord): void {
+    const editor = vscode.window.activeTextEditor;
+    if (
+      !editor ||
+      editor.document !== item.document ||
+      editor.selection.isEmpty
+    ) {
+      vscode.window.showWarningMessage(
+        "ts-chef: Select non-empty text in this result's source document before reselecting.",
+      );
+      return;
+    }
+    const startOffset = item.document.offsetAt(editor.selection.start);
+    const endOffset = item.document.offsetAt(editor.selection.end);
+    item.startOffset = startOffset;
+    item.endOffset = endOffset;
+    item.output = undefined;
+    this.publish();
+    this.schedule(item);
   }
 
   private async replace(item: ResultRecord): Promise<void> {
@@ -325,6 +311,7 @@ export class ResultsController implements vscode.Disposable {
       message.action !== "popup" &&
       message.action !== "copy" &&
       message.action !== "replace" &&
+      message.action !== "reselect" &&
       message.action !== "delete"
     ) {
       return;
@@ -332,6 +319,10 @@ export class ResultsController implements vscode.Disposable {
 
     if (message.action === "delete") {
       this.remove(item.id);
+      return;
+    }
+    if (message.action === "reselect") {
+      this.reselect(item);
       return;
     }
     if (item.error || item.output === undefined) return;
