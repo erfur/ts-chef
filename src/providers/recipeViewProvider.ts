@@ -544,8 +544,14 @@ export class RecipeViewProvider
             escAttr(argDef.name) +
             '"'
           : "";
-        const action = bound
+        const actions = bound
           ? selectionButton(
+              "use-selection",
+              ai,
+              "Reselect current editor selection",
+              LINK_ICON,
+            ) +
+            selectionButton(
               "clear-selection",
               ai,
               "Clear selection reference",
@@ -677,7 +683,7 @@ export class RecipeViewProvider
               '" data-type="toggleString" data-subfield="string"' +
               referenceAttrs +
               ">" +
-              action +
+              actions +
               '<select data-arg="' +
               ai +
               '" data-type="toggleString" data-subfield="option">' +
@@ -696,7 +702,7 @@ export class RecipeViewProvider
               '" data-type="string"' +
               (argDef.type === "string" ? referenceAttrs : "") +
               ">" +
-              (argDef.type === "string" ? action : "");
+              (argDef.type === "string" ? actions : "");
           }
         }
         return '<div class="arg-row">' + lbl + input + "</div>";
