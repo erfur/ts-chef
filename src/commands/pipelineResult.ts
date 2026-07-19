@@ -72,50 +72,59 @@ export async function presentPipelineResult(
   const mode = vscode.workspace
     .getConfiguration("tschef")
     .get<PipelineResultAction>("pipelineResultAction", "popup");
+  let sourceRetained = false;
 
-  if (mode === "replace") {
-    await editor.edit((eb) =>
-      eb.replace(target ?? replaceTarget(editor), result),
-    );
-    vscode.window.setStatusBarMessage(
-      "ts-chef: Pipeline result replaced selection",
-      3000,
-    );
-    return;
-  }
-
-  if (mode === "copy") {
-    vscode.env.clipboard.writeText(result);
-    vscode.window.setStatusBarMessage("ts-chef: Pipeline result copied", 3000);
-    return;
-  }
-
-  if (mode === "inline" || mode === "panel" || mode === "sidebar") {
-    const renderer = render?.[mode];
-    if (renderer && (mode !== "sidebar" || source)) {
-      const renderedSource = source ? { ...source, label } : undefined;
-      await renderer(
-        editor,
-        result,
-        target ?? replaceTarget(editor),
-        renderedSource,
+  try {
+    if (mode === "replace") {
+      await editor.edit((eb) =>
+        eb.replace(target ?? replaceTarget(editor), result),
+      );
+      vscode.window.setStatusBarMessage(
+        "ts-chef: Pipeline result replaced selection",
+        3000,
       );
       return;
     }
-  }
 
-  const preview = `${result.slice(0, 80)}${result.length > 80 ? "…" : ""}`;
-  const action = await vscode.window.showInformationMessage(
-    `${label}: ${preview}`,
-    "Replace",
-    "Copy",
-  );
-  if (action === "Replace") {
-    await editor.edit((eb) =>
-      eb.replace(target ?? replaceTarget(editor), result),
+    if (mode === "copy") {
+      vscode.env.clipboard.writeText(result);
+      vscode.window.setStatusBarMessage(
+        "ts-chef: Pipeline result copied",
+        3000,
+      );
+      return;
+    }
+
+    if (mode === "inline" || mode === "panel" || mode === "sidebar") {
+      const renderer = render?.[mode];
+      if (renderer && (mode !== "sidebar" || source)) {
+        const renderedSource = source ? { ...source, label } : undefined;
+        await renderer(
+          editor,
+          result,
+          target ?? replaceTarget(editor),
+          renderedSource,
+        );
+        if (mode === "sidebar") sourceRetained = true;
+        return;
+      }
+    }
+
+    const preview = `${result.slice(0, 80)}${result.length > 80 ? "…" : ""}`;
+    const action = await vscode.window.showInformationMessage(
+      `${label}: ${preview}`,
+      "Replace",
+      "Copy",
     );
-  }
-  if (action === "Copy") {
-    vscode.env.clipboard.writeText(result);
+    if (action === "Replace") {
+      await editor.edit((eb) =>
+        eb.replace(target ?? replaceTarget(editor), result),
+      );
+    }
+    if (action === "Copy") {
+      vscode.env.clipboard.writeText(result);
+    }
+  } finally {
+    if (!sourceRetained) source?.dispose?.();
   }
 }

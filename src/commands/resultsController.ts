@@ -19,6 +19,7 @@ type ResultRecord = {
   output?: string;
   error?: string;
   source: RenderedResultSource;
+  referenceSubscriptions: vscode.Disposable[];
   generation: number;
   timer?: ReturnType<typeof setTimeout>;
 };
@@ -93,6 +94,7 @@ export class ResultsController implements vscode.Disposable {
     for (const item of this.results) {
       item.generation++;
       if (item.timer) clearTimeout(item.timer);
+      this.disposeSource(item);
     }
     this.results = [];
     this.activeUri = undefined;
@@ -104,7 +106,7 @@ export class ResultsController implements vscode.Disposable {
     target: vscode.Range,
     source: RenderedResultSource,
   ): void {
-    this.results.unshift({
+    const item: ResultRecord = {
       id: this.seq++,
       editor,
       document: editor.document,
@@ -112,8 +114,15 @@ export class ResultsController implements vscode.Disposable {
       endOffset: editor.document.offsetAt(target.end),
       output: result,
       source: { ...source, recipe: structuredClone(source.recipe) },
+      referenceSubscriptions: [],
       generation: 0,
-    });
+    };
+    for (const binding of source.references ?? []) {
+      item.referenceSubscriptions.push(
+        binding.reference.onDidChange(() => this.schedule(item)),
+      );
+    }
+    this.results.unshift(item);
     this.publish();
   }
 
@@ -167,6 +176,7 @@ export class ResultsController implements vscode.Disposable {
       clearTimeout(item.timer);
       item.timer = undefined;
     }
+    this.disposeSource(item);
     this.results = this.results.filter((result) => result.id !== id);
     this.publish();
   }
@@ -182,11 +192,19 @@ export class ResultsController implements vscode.Disposable {
         clearTimeout(item.timer);
         item.timer = undefined;
       }
+      this.disposeSource(item);
     }
     this.results = this.results.filter(
       (item) => item.document.uri.toString() !== uri,
     );
     this.publish();
+  }
+
+  private disposeSource(item: ResultRecord): void {
+    for (const subscription of item.referenceSubscriptions)
+      subscription.dispose();
+    item.referenceSubscriptions = [];
+    item.source.dispose?.();
   }
 
   private schedule(item: ResultRecord): void {

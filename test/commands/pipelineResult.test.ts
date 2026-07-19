@@ -1,4 +1,7 @@
-import { presentPipelineResult } from "../../src/commands/pipelineResult";
+import {
+  presentPipelineResult,
+  type PipelineResultSource,
+} from "../../src/commands/pipelineResult";
 import {
   window,
   env,
@@ -27,12 +30,56 @@ function makeEditor(opts?: { selectionEmpty?: boolean; text?: string }) {
   return { editor, editBuilder };
 }
 
+function disposableSource(): PipelineResultSource {
+  return {
+    recipe: { name: "r", steps: [] },
+    evaluate: jest.fn(),
+    dispose: jest.fn(),
+  };
+}
+
 beforeEach(() => {
   jest.resetAllMocks();
   __setConfig({});
 });
 
 describe("presentPipelineResult", () => {
+  test.each(["popup", "copy", "replace", "inline", "panel"] as const)(
+    "%s mode disposes a runtime result source after presentation",
+    async (mode) => {
+      __setConfig({ pipelineResultAction: mode });
+      const source = disposableSource();
+      const { editor } = makeEditor();
+      const render = { inline: jest.fn(), panel: jest.fn() };
+      await presentPipelineResult(
+        editor as unknown as TextEditor,
+        "RESULT",
+        "Result",
+        render,
+        undefined,
+        source,
+      );
+      expect(source.dispose).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  test("sidebar transfers runtime source ownership to its renderer", async () => {
+    __setConfig({ pipelineResultAction: "sidebar" });
+    const source = disposableSource();
+    const showSidebar = jest.fn();
+    const { editor } = makeEditor();
+    await presentPipelineResult(
+      editor as unknown as TextEditor,
+      "RESULT",
+      "Result",
+      { sidebar: showSidebar },
+      undefined,
+      source,
+    );
+    expect(showSidebar).toHaveBeenCalled();
+    expect(source.dispose).not.toHaveBeenCalled();
+  });
+
   test("copy mode copies to clipboard without a popup", async () => {
     __setConfig({ pipelineResultAction: "copy" });
     const { editor } = makeEditor();

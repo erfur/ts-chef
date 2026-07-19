@@ -5,6 +5,7 @@ import type {
   TextEditor,
 } from "vscode";
 import { ResultsController } from "../../src/commands/resultsController";
+import type { SelectionReference } from "../../src/commands/selectionReference";
 import { transformTrackedRange } from "../../src/commands/trackedRange";
 import type { RenderedResultSource } from "../../src/commands/pipelineResult";
 import type {
@@ -79,6 +80,35 @@ function source(label: string): RenderedResultSource {
       steps: [{ opName: "From Hex", args: [{ alphabet: "standard" }] }],
     },
     evaluate: jest.fn((input: string) => input),
+  };
+}
+
+function sourceWithReference() {
+  let listener: (() => void) | undefined;
+  const subscription = { dispose: jest.fn() };
+  const reference: SelectionReference = {
+    text: "key",
+    onDidChange: jest.fn((next: () => void) => {
+      listener = next;
+      return subscription;
+    }),
+    clone: jest.fn(),
+    dispose: jest.fn(),
+  };
+  const value = source("Recipe");
+  value.references = [
+    {
+      stepIndex: 0,
+      argIndex: 0,
+      type: "string",
+      reference,
+    },
+  ];
+  value.dispose = jest.fn();
+  return {
+    source: value,
+    fire: () => listener?.(),
+    subscription,
   };
 }
 
@@ -334,6 +364,56 @@ describe("transformTrackedRange", () => {
 });
 
 describe("ResultsController", () => {
+  test("debounces reference changes and recomputes with current values", async () => {
+    jest.useFakeTimers();
+    const dynamic = sourceWithReference();
+    const { controller } = setup(20);
+    const { editor } = makeEditor(makeDocument("source.txt", "input"), 0, 5);
+    controller.show(editor, "initial", target(0, 5), dynamic.source);
+
+    dynamic.fire();
+    dynamic.fire();
+    await jest.advanceTimersByTimeAsync(20);
+
+    expect(dynamic.source.evaluate).toHaveBeenCalledTimes(1);
+    expect(dynamic.source.evaluate).toHaveBeenCalledWith("input");
+  });
+
+  test("deleting a result disposes its reference subscription and source", async () => {
+    const dynamic = sourceWithReference();
+    const { controller, emit, lastState } = setup();
+    const { editor } = makeEditor(makeDocument("source.txt"));
+    controller.show(editor, "initial", target(1, 4), dynamic.source);
+    await emit({
+      type: "action",
+      action: "delete",
+      id: lastState().items[0].id,
+    });
+    expect(dynamic.subscription.dispose).toHaveBeenCalledTimes(1);
+    expect(dynamic.source.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  test("closing the input document disposes result reference resources", () => {
+    const dynamic = sourceWithReference();
+    const { controller, close } = setup();
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    controller.show(editor, "initial", target(1, 4), dynamic.source);
+    close(document);
+    expect(dynamic.subscription.dispose).toHaveBeenCalledTimes(1);
+    expect(dynamic.source.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  test("controller disposal releases result reference resources", () => {
+    const dynamic = sourceWithReference();
+    const { controller } = setup();
+    const { editor } = makeEditor(makeDocument("source.txt"));
+    controller.show(editor, "initial", target(1, 4), dynamic.source);
+    controller.dispose();
+    expect(dynamic.subscription.dispose).toHaveBeenCalledTimes(1);
+    expect(dynamic.source.dispose).toHaveBeenCalledTimes(1);
+  });
+
   test("collects newest first and filters by the active editor", async () => {
     const documentA = makeDocument("a.txt");
     const documentB = makeDocument("b.txt");
