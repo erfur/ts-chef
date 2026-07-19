@@ -222,6 +222,10 @@ describe("RecipeViewProvider", () => {
 
     expect(input?.readOnly).toBe(true);
     expect(input?.hasAttribute("data-selection-reference")).toBe(true);
+    expect(input?.getAttribute("role")).toBe("button");
+    expect(input?.getAttribute("aria-label")).toBe(
+      "Reveal selection for Alphabet",
+    );
     expect(clear?.textContent?.trim()).toBe("");
     expect(clear?.querySelector("svg")).not.toBeNull();
     expect(clear?.getAttribute("title")).toBe("Clear selection reference");
@@ -248,6 +252,34 @@ describe("RecipeViewProvider", () => {
       arg: 0,
     });
   });
+
+  test.each(["Enter", " "])(
+    "pressing %p on a bound field posts revealSelection",
+    (key) => {
+      const { v } = setup();
+      const { dom, postMessage } = renderRecipeDom(v.webview.html, [
+        { stepId: "step-1", arg: 0 },
+      ]);
+      postMessage.mockClear();
+      const input = dom.window.document.querySelector<HTMLElement>(
+        "input[data-selection-reference]",
+      );
+      const event = new dom.window.KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      input?.dispatchEvent(event);
+
+      expect(postMessage).toHaveBeenCalledWith({
+        type: "revealSelection",
+        stepId: "step-1",
+        arg: 0,
+      });
+      if (key === " ") expect(event.defaultPrevented).toBe(true);
+    },
+  );
 
   test("preserves the edited toggleString subfield", () => {
     const { v } = setup();
@@ -831,6 +863,21 @@ describe("RecipeViewProvider", () => {
     expect(reference.reveal).toHaveBeenCalledTimes(1);
   });
 
+  test("reveals a bound toggleString by stable ID", async () => {
+    const { p, v, onMessage, reference } = setupReference("selected key");
+    const [stepId] = loadRecipe(p, v, "r", [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old key", option: "UTF8" }, ""],
+      },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+
+    await onMessage({ type: "revealSelection", stepId, arg: 1 });
+
+    expect(reference.reveal).toHaveBeenCalledTimes(1);
+  });
+
   test("clears one binding while retaining its latest materialized value", async () => {
     const first = fakeReference("first");
     const second = fakeReference("second");
@@ -855,6 +902,29 @@ describe("RecipeViewProvider", () => {
     expect(lastPostedState(v).boundArgs).toEqual([
       { stepId: secondId, arg: 0 },
     ]);
+  });
+
+  test("clears a bound toggleString while preserving its encoding", async () => {
+    const { p, v, onMessage, reference, setText, onApply } =
+      setupReference("selected key");
+    const [stepId] = loadRecipe(p, v, "r", [
+      {
+        opName: "FromBase64",
+        args: ["", { string: "old key", option: "UTF8" }, ""],
+      },
+    ]);
+    await onMessage({ type: "useSelection", stepId, arg: 1 });
+    setText("latest key");
+
+    await onMessage({ type: "clearSelection", stepId, arg: 1 });
+    await onMessage({ type: "apply" });
+
+    expect(reference.dispose).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][1][0].args[1]).toEqual({
+      string: "latest key",
+      option: "UTF8",
+    });
+    expect(lastPostedState(v).boundArgs).toEqual([]);
   });
 
   test("changing a bound toggle encoding keeps the text reference", async () => {

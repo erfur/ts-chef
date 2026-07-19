@@ -70,14 +70,15 @@ class TrackedSelection implements SelectionReference {
   async reveal(): Promise<void> {
     if (this.disposed || !this.document) return;
     const document = this.document;
-    const range = new vscode.Range(
-      document.positionAt(this.startOffset),
-      document.positionAt(this.endOffset),
-    );
     try {
       const editor = await vscode.window.showTextDocument(document, {
         preserveFocus: false,
       });
+      if (this.disposed || this.document !== document) return;
+      const range = new vscode.Range(
+        document.positionAt(this.startOffset),
+        document.positionAt(this.endOffset),
+      );
       editor.selection = new vscode.Selection(range.start, range.end);
       editor.revealRange(range);
     } catch {

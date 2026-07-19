@@ -539,7 +539,11 @@ export class RecipeViewProvider
       function renderArgRow(argDef, val, ai, stepId) {
         const lbl = '<span class="arg-label">' + esc(argDef.name) + "</span>";
         const bound = boundArgs.has(bindingKey(stepId, ai));
-        const referenceAttrs = bound ? " readonly data-selection-reference" : "";
+        const referenceAttrs = bound
+          ? ' readonly data-selection-reference role="button" aria-label="Reveal selection for ' +
+            escAttr(argDef.name) +
+            '"'
+          : "";
         const action = bound
           ? selectionButton(
               "clear-selection",
@@ -797,6 +801,16 @@ export class RecipeViewProvider
         });
       }
 
+      function revealSelection(input) {
+        const argsDiv = input.closest(".step-args");
+        if (!argsDiv) return;
+        vscode.postMessage({
+          type: "revealSelection",
+          stepId: stepIds[Number(argsDiv.dataset.step)],
+          arg: Number(input.dataset.arg),
+        });
+      }
+
       nameEl.addEventListener("input", () => emitEdit());
       document
         .getElementById("apply")
@@ -808,13 +822,7 @@ export class RecipeViewProvider
       stepsEl.addEventListener("click", (e) => {
         const referencedInput = e.target.closest("[data-selection-reference]");
         if (referencedInput) {
-          const argsDiv = referencedInput.closest(".step-args");
-          if (!argsDiv) return;
-          vscode.postMessage({
-            type: "revealSelection",
-            stepId: stepIds[Number(argsDiv.dataset.step)],
-            arg: Number(referencedInput.dataset.arg),
-          });
+          revealSelection(referencedInput);
           return;
         }
         const clearSelection = e.target.closest("[data-clear-selection]");
@@ -852,6 +860,12 @@ export class RecipeViewProvider
           const index = Number(rm.dataset.rm);
           vscode.postMessage({ type: "removeStep", stepId: stepIds[index] });
         }
+      });
+      stepsEl.addEventListener("keydown", (e) => {
+        const referencedInput = e.target.closest("[data-selection-reference]");
+        if (!referencedInput || (e.key !== "Enter" && e.key !== " ")) return;
+        e.preventDefault();
+        revealSelection(referencedInput);
       });
       stepsEl.addEventListener("change", handleArgUpdate);
       stepsEl.addEventListener("input", (e) => {
