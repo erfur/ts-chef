@@ -555,10 +555,33 @@ describe("ResultsController", () => {
         end: document.positionAt(6),
       }),
     );
-    expect(loadRecipe).toHaveBeenCalledWith({
-      name: "Original",
-      steps: [{ opName: "From Hex", args: [{ alphabet: "standard" }] }],
-    });
+    expect(loadRecipe).toHaveBeenCalledWith(
+      {
+        name: "Original",
+        steps: [{ opName: "From Hex", args: [{ alphabet: "standard" }] }],
+      },
+      [],
+    );
+  });
+
+  test("opening a result loads its retained parameter references", async () => {
+    const dynamic = sourceWithReference();
+    const document = makeDocument("source.txt");
+    const { editor } = makeEditor(document);
+    window.showTextDocument.mockResolvedValue(makeEditor(document).editor);
+    const { controller, emit, lastState, loadRecipe } = setup();
+    controller.show(editor, "result", target(2, 6), dynamic.source);
+
+    await emit({ type: "open", id: lastState().items[0].id });
+
+    expect(loadRecipe).toHaveBeenCalledWith(
+      {
+        name: "Recipe",
+        steps: [{ opName: "From Hex", args: [{ alphabet: "standard" }] }],
+      },
+      dynamic.source.references,
+    );
+    expect(dynamic.source.dispose).not.toHaveBeenCalled();
   });
 
   test("retargets an opened result when its selection is extended or shrunk", async () => {
@@ -684,6 +707,7 @@ describe("ResultsController", () => {
     expect(loadRecipe).toHaveBeenCalledTimes(1);
     expect(loadRecipe).toHaveBeenCalledWith(
       expect.objectContaining({ name: "B" }),
+      [],
     );
     expect(sourceA.evaluate).not.toHaveBeenCalled();
     expect(sourceB.evaluate).toHaveBeenCalledWith("mnop");

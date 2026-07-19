@@ -2,7 +2,10 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { log } from "../logger";
 import type { PipelineStep } from "../storage/store";
-import type { RenderedResultSource } from "./pipelineResult";
+import type {
+  PipelineArgReference,
+  RenderedResultSource,
+} from "./pipelineResult";
 import {
   ResultsViewProvider,
   type ResultFilter,
@@ -25,7 +28,10 @@ type ResultRecord = {
 };
 
 type ResultsDependencies = {
-  loadRecipe: (recipe: { name: string; steps: PipelineStep[] }) => void;
+  loadRecipe: (
+    recipe: { name: string; steps: PipelineStep[] },
+    references?: PipelineArgReference[],
+  ) => void;
   showPanel: (
     editor: vscode.TextEditor,
     result: string,
@@ -282,7 +288,10 @@ export class ResultsController implements vscode.Disposable {
     this.activeSelectionTarget = item;
     editor.selection = new vscode.Selection(range.start, range.end);
     editor.revealRange(range);
-    this.dependencies.loadRecipe(structuredClone(item.source.recipe));
+    this.dependencies.loadRecipe(
+      structuredClone(item.source.recipe),
+      item.source.references ?? [],
+    );
   }
 
   private async replace(item: ResultRecord): Promise<void> {

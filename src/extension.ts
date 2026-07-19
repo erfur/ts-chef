@@ -168,9 +168,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const resultsView = new ResultsViewProvider();
   const resultsController = new ResultsController(resultsView, {
-    loadRecipe: (recipe) => {
+    loadRecipe: (recipe, references) => {
       vscode.commands.executeCommand("tschef.recipeView.focus");
-      recipeView.load(recipe);
+      recipeView.load(recipe, references);
     },
     showPanel: (editor, result, target) =>
       panelResult.show(editor, result, target),
