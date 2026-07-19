@@ -131,16 +131,20 @@ describe("RecipeViewProvider", () => {
     expect(dom.window.document.querySelector(".step-args")).not.toBeNull();
   });
 
-  test("renders use-selection only beside plain string arguments", () => {
+  test("renders use-selection beside string and toggleString arguments", () => {
     const { v } = setup();
     const { dom } = renderRecipeDom(v.webview.html);
 
     const buttons = dom.window.document.querySelectorAll("[data-use-selection]");
-    expect(buttons).toHaveLength(1);
+    expect(buttons).toHaveLength(2);
     expect(buttons[0].closest(".arg-row")?.textContent).toContain("Value");
-    expect(buttons[0].closest(".arg-row")?.textContent).not.toContain(
-      "Alphabet",
-    );
+    expect(buttons[1].closest(".arg-row")?.textContent).toContain("Alphabet");
+
+    const alphabetRow = buttons[1].closest(".arg-row");
+    expect(
+      alphabetRow?.querySelector('input[type="text"] + button + select'),
+    ).not.toBeNull();
+
     const separatorRow = Array.from(
       dom.window.document.querySelectorAll(".arg-row"),
     ).find((row) => row.textContent?.includes("Separator"));
@@ -206,6 +210,31 @@ describe("RecipeViewProvider", () => {
     });
   });
 
+  test("assigns selection to toggleString while preserving its encoding", async () => {
+    const { v, onMessage, getSelection } = setup("selected key");
+    const steps = [
+      {
+        opName: "FromBase64",
+        args: ["old", { string: "old key", option: "UTF8" }, ""],
+      },
+    ];
+    await onMessage({ type: "edit", name: "decode", steps });
+    v.webview.postMessage.mockClear();
+
+    await onMessage({ type: "useSelection", step: 0, arg: 1 });
+
+    expect(getSelection).toHaveBeenCalledTimes(1);
+    expect(steps[0].args[1]).toEqual({
+      string: "selected key",
+      option: "UTF8",
+    });
+    expect(v.webview.postMessage).toHaveBeenCalledWith({
+      type: "state",
+      recipe: { name: "decode", steps },
+      defs: { FromBase64: ARG_DEFS },
+    });
+  });
+
   test.each([undefined, ""])(
     "leaves the argument unchanged when selection is %p",
     async (selection) => {
@@ -223,8 +252,8 @@ describe("RecipeViewProvider", () => {
 
   test.each([
     { step: 2, arg: 0 },
-    { step: 0, arg: 1 },
-  ])("ignores invalid or specialized target $step:$arg", async (target) => {
+    { step: 0, arg: 2 },
+  ])("ignores invalid or ineligible target $step:$arg", async (target) => {
     const { v, onMessage, getSelection } = setup("selected text");
     const steps = [{ opName: "FromBase64", args: ["old", "Hex"] }];
     await onMessage({ type: "edit", name: "decode", steps });

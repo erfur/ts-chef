@@ -53,11 +53,29 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
             if (!Number.isInteger(msg.step) || !Number.isInteger(msg.arg)) break;
             const step = this.recipe.steps[msg.step!];
             const argDef = step && this.argDefsFor(step.opName)[msg.arg!];
-            if (!step || argDef?.type !== "string") break;
+            if (
+              !step ||
+              (argDef?.type !== "string" && argDef?.type !== "toggleString")
+            )
+              break;
             const selection = this.callbacks.getSelection();
             if (!selection) break;
             if (!Array.isArray(step.args)) step.args = [];
-            step.args[msg.arg!] = selection;
+            if (argDef.type === "toggleString") {
+              const current = step.args[msg.arg!] as
+                | { option?: unknown }
+                | string
+                | undefined;
+              step.args[msg.arg!] = {
+                string: selection,
+                option:
+                  current && typeof current === "object"
+                    ? current.option
+                    : (argDef.toggleValues?.[0] ?? "Hex"),
+              };
+            } else {
+              step.args[msg.arg!] = selection;
+            }
             this.postState();
             break;
           }
@@ -379,6 +397,9 @@ export class RecipeViewProvider implements vscode.WebviewViewProvider {
               '" data-arg="' +
               ai +
               '" data-type="toggleString" data-subfield="string">' +
+              '<button type="button" class="use-selection" data-use-selection data-arg="' +
+              ai +
+              '" title="Use current editor selection">Use selection</button>' +
               '<select data-arg="' +
               ai +
               '" data-type="toggleString" data-subfield="option">' +
