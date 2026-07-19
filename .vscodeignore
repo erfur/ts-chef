@@ -42,6 +42,5 @@ docs/**
 report.md
 *.vsix
 
-# Assets: ship only the extension icon; demo media is referenced via the repo URL
+# Assets
 assets/**
-!assets/logo.jpg

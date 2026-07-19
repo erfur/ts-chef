@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/logo.jpg" alt="vschef logo" width="120" />
-</p>
-
 <h1 align="center">vschef</h1>
 
 <p align="center">
