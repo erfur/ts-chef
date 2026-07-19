@@ -813,6 +813,118 @@ describe("RecipeViewProvider", () => {
     });
   });
 
+  test("load restores cloned string and toggleString references", async () => {
+    const stringSource = fakeReference("source string");
+    const stringClone = fakeReference("restored string");
+    const toggleSource = fakeReference("source key");
+    const toggleClone = fakeReference("restored key");
+    (stringSource.reference.clone as jest.Mock).mockReturnValue(
+      stringClone.reference,
+    );
+    (toggleSource.reference.clone as jest.Mock).mockReturnValue(
+      toggleClone.reference,
+    );
+    const { p, v, onMessage } = setup();
+
+    p.load(
+      {
+        name: "restored",
+        steps: [
+          {
+            opName: "FromBase64",
+            args: ["snapshot", { string: "snapshot key", option: "UTF8" }, ""],
+          },
+        ],
+      },
+      [
+        {
+          stepIndex: 0,
+          argIndex: 0,
+          type: "string",
+          reference: stringSource.reference,
+        },
+        {
+          stepIndex: 0,
+          argIndex: 1,
+          type: "toggleString",
+          reference: toggleSource.reference,
+        },
+      ],
+    );
+
+    const state = lastPostedState(v);
+    expect(stringSource.reference.clone).toHaveBeenCalledTimes(1);
+    expect(toggleSource.reference.clone).toHaveBeenCalledTimes(1);
+    expect(state.recipe.steps[0].args).toEqual([
+      "restored string",
+      { string: "restored key", option: "UTF8" },
+      "",
+    ]);
+    expect(state.boundArgs).toEqual([
+      { stepId: state.stepIds[0], arg: 0 },
+      { stepId: state.stepIds[0], arg: 1 },
+    ]);
+
+    stringSource.reference.dispose();
+    toggleSource.reference.dispose();
+    stringClone.setText("latest string");
+    toggleClone.setText("latest key");
+    stringClone.fire();
+    toggleClone.fire();
+    await onMessage({ type: "apply" });
+
+    expect(lastPostedState(v).recipe.steps[0].args).toEqual([
+      "latest string",
+      { string: "latest key", option: "UTF8" },
+      "",
+    ]);
+    expect(stringClone.reference.dispose).not.toHaveBeenCalled();
+    expect(toggleClone.reference.dispose).not.toHaveBeenCalled();
+
+    p.load({ name: "replacement", steps: [] });
+    expect(stringClone.reference.dispose).toHaveBeenCalledTimes(1);
+    expect(toggleClone.reference.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ["missing step", 1, 0, "string"],
+    ["negative step", -1, 0, "string"],
+    ["fractional step", 0.5, 0, "string"],
+    ["missing argument", 0, 9, "string"],
+    ["fractional argument", 0, 0.5, "string"],
+    ["mismatched type", 0, 0, "toggleString"],
+  ] as const)(
+    "load ignores a reference with %s",
+    (_label, stepIndex, argIndex, type) => {
+      const source = fakeReference("ignored");
+      const { p, v } = setup();
+
+      p.load(
+        {
+          name: "loaded",
+          steps: [{ opName: "FromBase64", args: ["snapshot"] }],
+        },
+        [
+          {
+            stepIndex,
+            argIndex,
+            type,
+            reference: source.reference,
+          },
+        ],
+      );
+
+      expect(source.reference.clone).not.toHaveBeenCalled();
+      expect(lastPostedState(v)).toMatchObject({
+        recipe: {
+          name: "loaded",
+          steps: [{ opName: "FromBase64", args: ["snapshot"] }],
+        },
+        boundArgs: [],
+      });
+    },
+  );
+
   test("apply passes the current recipe name and steps", () => {
     const { p, v, onMessage, onApply } = setup();
     const steps = [{ opName: "FromBase64", args: [] }];

@@ -227,10 +227,43 @@ export class RecipeViewProvider
   }
 
   /** Replace the working recipe with a saved pipeline and reveal the pane. */
-  load(pipeline: { name: string; steps: PipelineStep[] }): void {
+  load(
+    pipeline: { name: string; steps: PipelineStep[] },
+    references: PipelineArgReference[] = [],
+  ): void {
     this.disposeBindings();
     this.recipe = { name: pipeline.name, steps: [...pipeline.steps] };
     this.stepIds = pipeline.steps.map(() => this.nextStepId());
+
+    for (const candidate of references) {
+      if (
+        !Number.isInteger(candidate.stepIndex) ||
+        !Number.isInteger(candidate.argIndex)
+      )
+        continue;
+      const step = this.recipe.steps[candidate.stepIndex];
+      const stepId = this.stepIds[candidate.stepIndex];
+      const argDef = step && this.argDefsFor(step.opName)[candidate.argIndex];
+      if (!step || !stepId || argDef?.type !== candidate.type) continue;
+      if (candidate.type !== "string" && candidate.type !== "toggleString")
+        continue;
+
+      const reference = candidate.reference.clone();
+      const binding: RecipeBinding = {
+        type: candidate.type,
+        reference,
+        subscription: reference.onDidChange(() => {
+          this.materializeBinding(stepId, candidate.argIndex, binding);
+          this.postState();
+        }),
+      };
+      this.bindings.set(
+        this.bindingKey(stepId, candidate.argIndex),
+        binding,
+      );
+      this.materializeBinding(stepId, candidate.argIndex, binding);
+    }
+
     this.view?.show?.(false);
     this.postState();
   }
